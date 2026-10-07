@@ -1,12 +1,30 @@
 # Escopo do WappHub Chat
 
+## Objetivo de experiência
+
+O Chat deve ter comportamento fluido próximo de um aplicativo nativo de mensagens, sem copiar identidade visual do WhatsApp.
+
+Requisitos transversais:
+- realtime;
+- UI otimista;
+- reconexão;
+- rotas reais;
+- histórico incremental;
+- mídia integrada à conversa;
+- interface neutra e personalizável por accentColor.
+
+Detalhes:
+- `docs/UX_REALTIME.md`
+- `docs/DESIGN_SYSTEM.md`
+- `docs/MEDIA_EXPERIENCE.md`
+
 ## Perfis
 
 - Owner
 - Supervisor
 - Atendente
 
-As capacidades reais são resolvidas por permissions da Membership.
+Capacidades são resolvidas por permissions da Membership.
 
 ## MVP
 
@@ -14,7 +32,8 @@ As capacidades reais são resolvidas por permissions da Membership.
 - login;
 - aceite de convite;
 - seleção de organização;
-- alternância de organização.
+- alternância de organização;
+- troca completa do contexto de cache/realtime.
 
 ### Equipe
 - listar membros;
@@ -42,13 +61,17 @@ As capacidades reais são resolvidas por permissions da Membership.
 - atribuir;
 - transferir;
 - tags;
-- notas internas.
+- notas internas;
+- atualização realtime.
 
 ### Mensagens
 - texto;
 - imagem;
 - áudio;
-- status básico.
+- envio otimista;
+- estados de envio/entrega/leitura/falha;
+- retry;
+- clientMessageId.
 
 ### Transferência
 - histórico completo;
@@ -56,7 +79,7 @@ As capacidades reais são resolvidas por permissions da Membership.
 - sem histórico;
 - nota interna opcional.
 
-O histórico real não é apagado.
+Histórico real não é apagado.
 
 ### Atribuição
 - manual;
@@ -65,8 +88,12 @@ O histórico real não é apagado.
 ### Mídia
 - imagens;
 - áudios;
+- conteúdo multimídia por conversa;
 - filtros básicos;
-- download autorizado.
+- download autorizado;
+- imagem ampliada;
+- ir para mensagem;
+- gravação/player de áudio.
 
 ### Supervisão
 Owner/Supervisor autorizados podem:
@@ -77,10 +104,24 @@ Owner/Supervisor autorizados podem:
 
 ### Configuração
 - empresa;
+- aparência básica/accentColor;
 - conversas;
 - atribuição;
 - canal WhatsApp;
-- diagnóstico básico.
+- diagnóstico.
+
+## Interface
+
+Direção:
+- branco/cinza;
+- texto escuro;
+- uma cor de destaque por Organization;
+- hierarquia visual discreta;
+- tema claro no MVP.
+
+## Android futuro
+
+O app Android nativo é pós-MVP, mas o Chat Web não deve introduzir regras que impeçam o mesmo domínio/API de ser usado por ele.
 
 ## Fora do MVP
 
@@ -91,4 +132,5 @@ Owner/Supervisor autorizados podem:
 - chatbot/IA;
 - CRM;
 - automações avançadas;
-- BI/SLA avançado.
+- BI/SLA avançado;
+- app Android nativo.
