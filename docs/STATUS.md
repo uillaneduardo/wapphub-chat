@@ -30,7 +30,9 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Seletor de equipe para assignment/transfer | ✅ frontend integrado; `GET /api/v1/team/members` publicado no Core e presente no OpenAPI de produção |
 | Realtime na UI | ✅ atualização pontual da conversa/mensagens/notas e eventos de tags; sem recarga total da lista |
 | Responsividade | ✅ lista/conversa em navegação mobile e lista, conversa e painel contextual em desktop |
-| Smoke autenticado com Core | ⬜ pendente; API pública ainda não oferece roster e o hostname `chat.wapphub.com.br` serve o app legado em `~/homelab/apps/chat` |
+| Container de produção | ✅ imagem `wapphub-chat:1e18744`, Nginx estático na porta 3000, fallback SPA, somente `cloudflare_ingress`, sem porta publicada |
+| Hostname público | ✅ `https://chat.wapphub.com.br` serve o bundle da imagem `wapphub-chat:1e18744`; `/login` e rota profunda respondem 200 |
+| Smoke autenticado com Core | ⬜ pendente; requer credencial de teste autorizada e navegador headless com bibliotecas gráficas disponíveis |
 
 ## Contratos REST conferidos
 
@@ -63,4 +65,4 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Round-robin | ⬜ milestone posterior |
 | Android nativo | ⛔ pós-MVP |
 
-Lint, typecheck, 31 testes e build passaram após a integração local do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. A definição do container de produção do frontend usa build estático Vite + Nginx, porta interna 3000, fallback SPA e somente a rede `cloudflare_ingress`; a imagem foi validada localmente, e `/login` e refresh em rota profunda retornaram 200. O smoke autenticado depende de conta de teste autorizada.
+Lint, typecheck, 31 testes e build passaram após a integração do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. CORS autoriza somente `https://chat.wapphub.com.br`: preflight permitido retornou 204, POST de origem inválida foi rejeitado com 403 e POST permitido chegou à validação de payload. O WebSocket de realtime rejeitou Origin inválida (403) e exigiu sessão para Origin autorizada (401). O app legado foi removido da rede pública; seu banco e volume foram preservados em rede privada. O smoke autenticado de login, conversas, mensagens, replay e ações operacionais ainda depende de credencial de teste e browser funcional no host.
