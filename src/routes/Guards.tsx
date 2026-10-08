@@ -12,3 +12,7 @@ export function RequireOrganization() { const { session } = useSession();
   if (!currentOrganization(session)) return <Navigate to="/organizations" replace />;
   return <Outlet />;
 }
+export function RequirePermission({ permission }: { permission: string }) { const { session } = useSession();
+  if (!session?.permissions.includes(permission)) return <section className="access-denied" role="alert"><h1>Acesso indisponível</h1><p>Seu contexto atual não tem a permissão necessária para esta área.</p></section>;
+  return <Outlet />;
+}

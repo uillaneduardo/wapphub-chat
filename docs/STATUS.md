@@ -15,7 +15,7 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Definição de escopo, rotas e UX | ✅ documentadas |
 | Contratos REST do Core M1 | ✅ conferidos no OpenAPI público |
 | Estrutura React/TypeScript/Vite | ✅ criada |
-| BrowserRouter e rotas previstas | ✅ criados; áreas de produto usam placeholders |
+| BrowserRouter e rotas previstas | ✅ criados; conversas implementadas |
 | Design tokens e shell responsivo | ✅ criados |
 | API client, credentials e CSRF | ✅ alinhados ao contrato do Core |
 | Erros HTTP | ✅ interpreta `{ error: { code, requestId } }` |
@@ -23,8 +23,13 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Seleção de Organization | ✅ path, payload e resposta alinhados; smoke autenticado pendente |
 | Tipos Contacts/Conversations/Messages/Tags/Notes | ✅ alinhados aos schemas consultados |
 | Cursor pagination | ✅ tipos refletem `nextCursor`; mensagens usam `before` |
-| WebSocket, replay e checkpoint | ✅ protocolo alinhado; teste unitário, integração live pendente |
-| UI de conversas e mensagens | ⬜ não iniciada |
+| WebSocket, replay e checkpoint | ✅ protocolo alinhado; conexão ligada à UI, integração live pendente |
+| Caixa de conversas | ✅ Minhas, Não atribuídas, Todas (com `conversations.supervise`), Arquivadas, filtro de tags e paginação |
+| Conversa e mensagens | ✅ histórico com cursor, carregamento anterior, envio otimista e retry idempotente |
+| Ações operacionais | ✅ arquivar/reabrir, atribuir, transferir, tags e notas internas, conforme permissões |
+| Realtime na UI | ✅ atualização pontual da conversa/mensagens/notas e eventos de tags; sem recarga total da lista |
+| Responsividade | ✅ lista/conversa em navegação mobile e lista, conversa e painel contextual em desktop |
+| Smoke autenticado com Core | ⬜ pendente |
 
 ## Contratos REST conferidos
 
@@ -56,4 +61,4 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Round-robin | ⬜ milestone posterior |
 | Android nativo | ⛔ pós-MVP |
 
-Lint, typecheck, testes e build foram executados após o alinhamento do contrato. Os testes não substituem o smoke autenticado contra Core; nenhum fluxo de UI de conversations/messages foi iniciado.
+Lint, typecheck, 29 testes e build foram executados após a implementação da experiência operacional. O smoke autenticado contra Core permanece pendente. O Core e sua configuração de produção não foram alterados.
