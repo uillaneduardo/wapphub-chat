@@ -5,123 +5,175 @@
 O Chat deve ter comportamento fluido próximo de um aplicativo nativo de mensagens, sem copiar identidade visual do WhatsApp.
 
 Requisitos transversais:
-- realtime;
+
+- realtime-first;
 - UI otimista;
 - reconexão;
+- replay de eventos perdidos;
 - rotas reais;
-- histórico incremental;
-- mídia integrada à conversa;
-- interface neutra e personalizável por accentColor.
+- histórico incremental por cursor;
+- interface neutra e personalizável por `accentColor`;
+- isolamento completo ao trocar Organization.
 
 Detalhes:
+
 - `docs/UX_REALTIME.md`
 - `docs/DESIGN_SYSTEM.md`
 - `docs/MEDIA_EXPERIENCE.md`
 
-## Perfis
+## Autoridade de domínio
 
-- Owner
-- Supervisor
-- Atendente
+O `wapphub-core` é a autoridade para:
 
-Capacidades são resolvidas por permissions da Membership.
+- autenticação;
+- Organization Context;
+- Membership;
+- permissions;
+- isolamento multi-tenant;
+- regras de Conversation/Message;
+- assignment/transfer;
+- auditoria;
+- realtime.
 
-## MVP
+O frontend não infere autorização por nome de perfil e não cria regra de domínio exclusiva.
+
+Perfis padrão podem ser Owner, Supervisor e Atendente, mas capacidades efetivas são resolvidas por permissions da Membership.
+
+## M1 — escopo atual do frontend
 
 ### Identidade/contexto
-- login;
-- aceite de convite;
-- seleção de organização;
-- alternância de organização;
-- troca completa do contexto de cache/realtime.
 
-### Equipe
-- listar membros;
-- convidar por e-mail;
-- escolher perfil;
-- reenviar/cancelar convite;
-- alterar perfil;
-- suspender/reativar vínculo conforme assentos.
+- login via sessão server-side do Core;
+- seleção de Organization;
+- alternância de Organization;
+- invalidar cache e subscriptions tenant-scoped ao trocar contexto;
+- operações mutáveis seguindo Origin/CSRF do Core.
+
+Aceite comercial de convite e gestão completa de equipe não fazem parte desta etapa.
 
 ### Contatos
+
 - listar;
 - visualizar;
-- nome/número;
-- histórico de conversas;
-- observação básica.
+- criar/editar conforme contrato disponível;
+- navegar para conversas relacionadas quando suportado.
 
 ### Conversas
+
 - minhas;
 - não atribuídas;
-- todas conforme permissão;
+- todas conforme permission;
 - arquivadas;
 - abrir;
 - arquivar;
 - reabrir;
-- atribuir;
+- atribuir manualmente;
 - transferir;
 - tags;
 - notas internas;
-- atualização realtime.
+- atualização incremental realtime.
 
 ### Mensagens
+
+No M1 atual:
+
 - texto;
-- imagem;
-- áudio;
 - envio otimista;
-- estados de envio/entrega/leitura/falha;
-- retry;
-- clientMessageId.
+- `clientMessageId`;
+- retry idempotente;
+- estados suportados pelo Core;
+- histórico por cursor.
+
+Imagem e áudio pertencem ao milestone de mídia e não devem ser implementados no M1.
 
 ### Transferência
-- histórico completo;
-- últimas X mensagens;
-- sem histórico;
-- nota interna opcional.
 
-Histórico real não é apagado.
+- `FULL`: histórico autorizado completo;
+- `LIMITED`: últimas N mensagens;
+- `NONE`: novo atendente sem histórico anterior;
+- nota opcional quando suportada.
+
+O histórico persistido nunca é apagado ou copiado pelo frontend para implementar visibilidade.
 
 ### Atribuição
-- manual;
-- automática round-robin no MVP final.
 
-### Mídia
-- imagens;
-- áudios;
-- conteúdo multimídia por conversa;
-- filtros básicos;
-- download autorizado;
-- imagem ampliada;
-- ir para mensagem;
-- gravação/player de áudio.
+M1:
+- manual.
+
+Round-robin permanece para etapa posterior do MVP.
 
 ### Supervisão
-Owner/Supervisor autorizados podem:
-- ver todas as conversas;
-- filtrar por atendente;
-- assumir/transferir;
-- consultar histórico completo.
 
-### Configuração
-- empresa;
-- aparência básica/accentColor;
-- conversas;
-- atribuição;
-- canal WhatsApp;
-- diagnóstico.
+Usuários com permissions apropriadas podem:
+
+- ver todas as conversas da Organization;
+- filtrar por responsável quando o contrato permitir;
+- assumir/transferir;
+- consultar o histórico administrativo permitido.
+
+O frontend não usa nome de role como substituto de permission.
+
+### Realtime
+
+Contratos atuais do Core:
+
+- WebSocket: `/api/v1/realtime`;
+- replay/sync: `/api/v1/realtime/events`.
+
+A UI deve usar WebSocket como mecanismo primário, reconectar automaticamente, deduplicar eventos e recuperar eventos perdidos sem polling frequente.
+
+## Rotas reservadas
+
+As rotas documentadas em `docs/ROUTES.md` permanecem estáveis.
+
+Rotas de equipe, arquivos, configurações comerciais ou WhatsApp podem existir inicialmente como placeholders. Placeholder não significa funcionalidade implementada.
+
+## Milestones posteriores
+
+### M2 — SaaS/Entitlements
+
+- Product/Plan/Feature;
+- Subscription;
+- assentos;
+- entitlements;
+- recursos comerciais relacionados.
+
+### M3 — Meta/WhatsApp
+
+- integração Meta por Organization;
+- canais WhatsApp;
+- webhook/provider;
+- diagnóstico e capabilities.
+
+### M4 — mídia
+
+- imagem;
+- áudio;
+- gravação;
+- player;
+- galeria;
+- object storage autorizado.
+
+### Fechamento do MVP
+
+- round-robin;
+- refinamentos operacionais/comerciais;
+- demais itens definidos no roadmap do Core.
 
 ## Interface
 
 Direção:
+
 - branco/cinza;
 - texto escuro;
 - uma cor de destaque por Organization;
 - hierarquia visual discreta;
-- tema claro no MVP.
+- tema claro inicialmente;
+- design tokens preparados para evolução de tema.
 
 ## Android futuro
 
-O app Android nativo é pós-MVP, mas o Chat Web não deve introduzir regras que impeçam o mesmo domínio/API de ser usado por ele.
+O app Android nativo é pós-MVP. O Chat Web não deve introduzir regras que impeçam o mesmo domínio/API de ser usado por ele.
 
 ## Fora do MVP
 
@@ -130,7 +182,7 @@ O app Android nativo é pós-MVP, mas o Chat Web não deve introduzir regras que
 - chamadas;
 - marketing;
 - chatbot/IA;
-- CRM;
+- CRM amplo;
 - automações avançadas;
 - BI/SLA avançado;
 - app Android nativo.
