@@ -6,6 +6,7 @@ export interface Conversation { id: string; contactId: string; tagIds: string[];
 export type MessageStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
 export interface InternalTextMessage { id: string; conversationId: string; senderUserId: string | null; clientMessageId: string | null; direction: 'INTERNAL'; type: 'TEXT'; body: string | null; status: MessageStatus; createdAt: string; updatedAt: string }
 export interface Tag { id: string; name: string }
+export interface TeamMember { userId: string; name: string; email: string; status: 'ACTIVE'; canReceiveAssignment: boolean }
 export interface InternalNote { id: string; authorUserId: string; body: string; createdAt: string }
 export interface SendMessageRequest { body: string; clientMessageId: string }
 export interface TransferRequest { userId: string; visibility: HistoryVisibility; lastN?: number; note?: string }

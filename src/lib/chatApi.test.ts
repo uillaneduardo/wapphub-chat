@@ -16,4 +16,10 @@ describe('chat API Core paths', () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/v1/conversations/conv%2F1/messages');
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', body: JSON.stringify({ body: 'Olá', clientMessageId: 'stable-id' }), credentials: 'include' });
   });
+  it('loads the tenant-scoped assignment roster with cursor pagination', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], nextCursor: null }), { status: 200 })); vi.stubGlobal('fetch', fetchMock);
+    await chatApi.listTeamMembers('signed-cursor');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/v1/team/members?limit=100&cursor=signed-cursor');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: 'include' });
+  });
 });

@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, SendMessageRequest, Tag, TransferRequest } from '../types/chat';
+import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
 
 export type ConversationScope = 'mine' | 'unassigned' | 'all';
 export interface ConversationQuery { scope: ConversationScope; archived?: boolean; tagId?: string; cursor?: string; limit?: number }
@@ -17,6 +17,7 @@ export const chatApi = {
   listMessages: (conversationId: string, before?: string) => apiRequest<CursorPage<InternalTextMessage>>(`/conversations/${idPath(conversationId)}/messages${queryString({ limit: 50, before })}`),
   sendMessage: (conversationId: string, body: SendMessageRequest) => apiRequest<InternalTextMessage>(`/conversations/${idPath(conversationId)}/messages`, { method: 'POST', body: JSON.stringify(body) }),
   listTags: (cursor?: string) => apiRequest<CursorPage<Tag>>(`/tags${queryString({ limit: 100, cursor })}`),
+  listTeamMembers: (cursor?: string) => apiRequest<CursorPage<TeamMember>>(`/team/members${queryString({ limit: 100, cursor })}`),
   listNotes: (conversationId: string, cursor?: string) => apiRequest<CursorPage<InternalNote>>(`/conversations/${idPath(conversationId)}/notes${queryString({ limit: 50, cursor })}`),
   createNote: (conversationId: string, body: string) => apiRequest<InternalNote>(`/conversations/${idPath(conversationId)}/notes`, { method: 'POST', body: JSON.stringify({ body }) }),
   archive: (conversationId: string, archived: boolean) => apiRequest<Conversation>(`/conversations/${idPath(conversationId)}/${archived ? 'archive' : 'unarchive'}`, { method: 'POST' }),
