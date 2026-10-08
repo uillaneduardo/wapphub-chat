@@ -1,5 +1,7 @@
 # Status do WappHub Chat
 
+> **Atualização operacional 2026-10-08:** a imagem publicada reportada é `wapphub-chat:lucide-nav-3e23452`, não a imagem histórica citada abaixo. Consulte [reconciliação de produção M1](M1_PRODUCTION_RECONCILIATION_20261008.md). Commits locais publicados ainda precisam ser reconciliados com o remoto. Testes visuais devem ocorrer manualmente no notebook, nunca em navegador instalado no Homelab.
+
 **Milestone ativo do ecossistema:** M1 — frontend operacional do chat interno.
 
 O backend M1 do `wapphub-core` está implantado. A fundação frontend foi criada nesta branch; as telas de produto e a validação autenticada ponta a ponta continuam pendentes.
