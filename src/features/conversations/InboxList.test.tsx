@@ -6,13 +6,13 @@ import { chatApi } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation } from '../../types/chat';
 
-const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read'] } }));
+const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'] } }));
 vi.mock('../session/SessionContext', () => ({ useSession: () => ({ session: state.session }) }));
 const row = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'conv-1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', lastMessageAt: '2026-10-01T00:00:00.000Z', visibility: 'FULL', ...overrides });
 function renderInbox() { return render(<MemoryRouter initialEntries={['/app/conversations']}><InboxList /></MemoryRouter>); }
 
 describe('InboxList', () => {
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; });
   it('sends scope, tag filter, and next cursor to the Core endpoint', async () => {
     const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValueOnce({ items: [row()], nextCursor: 'cursor-1' }).mockResolvedValueOnce({ items: [row({ id: 'conv-2', assignedUserId: null })], nextCursor: 'cursor-2' }).mockResolvedValueOnce({ items: [], nextCursor: 'cursor-3' }).mockResolvedValueOnce({ items: [row({ id: 'conv-3', tagIds: ['tag-1'] })], nextCursor: null });
     vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [{ id: 'tag-1', name: 'Urgente' }], nextCursor: null });
@@ -33,4 +33,25 @@ describe('InboxList', () => {
     await waitFor(() => expect(screen.queryByText('Contato contact-')).not.toBeInTheDocument());
     expect(chatApi.getConversation).toHaveBeenCalledWith(activeConversation.id); expect(list).toHaveBeenCalledTimes(1);
   });
+  it.each(['FULL', 'LIMITED', 'NONE'] as const)('shows an authorized preview for %s, including future messages after NONE', async (visibility) => {
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ visibility, lastMessagePreview: 'Texto autorizado' })], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox(); expect(await screen.findByText('Texto autorizado')).toBeInTheDocument();
+  });
+  it('hides legacy or cached previews without messages.read, including after a realtime refresh', async () => {
+    state.session.permissions = ['conversations.read', 'conversations.supervise'];
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ lastMessagePreview: 'Prévia restrita' })], nextCursor: null });
+    const refresh = vi.spyOn(chatApi, 'getConversation').mockResolvedValue(row({ lastMessagePreview: 'Texto restrito atualizado' }));
+    renderInbox(); await screen.findByText('Contato contact-'); expect(screen.queryByText('Prévia restrita')).not.toBeInTheDocument();
+    realtimeBus.emit({ version: 1, eventId: '8', organizationId: 'org-1', type: 'conversation.updated', entityId: 'conv-1', occurredAt: '2026-10-08T00:00:00.000Z', payload: { resourceId: 'conv-1' } });
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(screen.queryByText('Texto restrito atualizado')).not.toBeInTheDocument();
+  });
+  it('keeps a null preview empty without replacing it with older message content', async () => {
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ visibility: 'NONE', lastMessagePreview: null })], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox(); const label = await screen.findByText('Contato contact-');
+    expect(label.closest('a')?.querySelector('.conversation-preview')).toBeEmptyDOMElement();
+  });
+
 });

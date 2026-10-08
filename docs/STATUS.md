@@ -1,5 +1,11 @@
 # Status do WappHub Chat
 
+> Atualização P0: defesa de prévias implementada e validada **localmente**
+> (91 testes Chat; Core58), ver [relatório P0](P0_PREVIEW_AUTHORIZATION.md).
+> Produção continua Chat3e23452/Core72d05aa; não houve deploy. A1 está corrigido
+> nas branches locais, mas permanece na versão publicada. A2 e demais aceites
+> M1 continuam pendentes; M2 não foi iniciado.
+
 ## Estado verificado — 2026-10-08
 
 M1 operacional, homologações informadas de Demo/texto e melhorias visuais; **sem
