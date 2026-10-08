@@ -11,7 +11,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); }, [refresh]);
   const login = useCallback(async (email: string, password: string) => { setLoading(true); try { setSession(await sessionApi.login(email, password)); setError(null); } finally { setLoading(false); } }, []);
   const logout = useCallback(async () => { try { await sessionApi.logout(); } finally { setSession(null); } }, []);
-  const selectOrganization = useCallback(async (id: string) => { setLoading(true); try { setSession(await sessionApi.selectOrganization(id)); } finally { setLoading(false); } }, []);
+  const selectOrganization = useCallback(async (id: string) => { setLoading(true); try { const context = await sessionApi.selectOrganization(id); setSession((previous) => previous ? { ...previous, currentOrganizationId: context.organization.id, ...context } : previous); } finally { setLoading(false); } }, []);
   const value = useMemo(() => ({ session, loading, error, login, logout, selectOrganization }), [session, loading, error, login, logout, selectOrganization]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

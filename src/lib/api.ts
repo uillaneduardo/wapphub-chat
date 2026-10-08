@@ -1,13 +1,16 @@
 export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'conflict' | 'validation' | 'rate_limit' | 'server' | 'http' | 'network';
 export class ApiError extends Error {
-  constructor(public status: number, public kind: ApiErrorKind, message: string, public details?: unknown) { super(message); this.name = 'ApiError'; }
+  constructor(public status: number, public kind: ApiErrorKind, message: string, public code?: string, public requestId?: string, public details?: unknown) { super(message); this.name = 'ApiError'; }
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const CSRF_COOKIE = 'csrf_token';
+const API_PREFIX = '/api/v1';
+const CSRF_COOKIE = 'wapphub_csrf';
+let csrfMemoryToken: string | undefined;
+export function setCsrfToken(token: string | null | undefined): void { csrfMemoryToken = token || undefined; }
 function csrfToken(): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  return document.cookie.split('; ').find((part) => part.startsWith(`${CSRF_COOKIE}=`))?.split('=').slice(1).join('=');
+  const cookie = typeof document === 'undefined' ? undefined : document.cookie.split('; ').find((part) => part.startsWith(`${CSRF_COOKIE}=`))?.split('=').slice(1).join('=');
+  return cookie ? decodeURIComponent(cookie) : csrfMemoryToken;
 }
 function errorKind(status: number): ApiErrorKind {
   if (status === 401) return 'unauthorized'; if (status === 403) return 'forbidden'; if (status === 409) return 'conflict';
@@ -19,16 +22,20 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const method = (init.method ?? 'GET').toUpperCase();
   const token = csrfToken();
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && token) headers.set('X-CSRF-Token', decodeURIComponent(token));
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && token) headers.set('x-csrf-token', token);
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`, { ...init, method, headers, credentials: 'include' });
-  } catch (error) { throw new ApiError(0, 'network', 'Não foi possível conectar à API.', error); }
+    response = await fetch(`${API_BASE_URL}${API_PREFIX}${path.startsWith('/') ? path : `/${path}`}`, { ...init, method, headers, credentials: 'include' });
+  } catch (error) { throw new ApiError(0, 'network', 'Não foi possível conectar à API.', undefined, undefined, error); }
   if (!response.ok) {
     const payload: unknown = await response.json().catch(() => undefined);
-    const message = typeof payload === 'object' && payload !== null && 'message' in payload && typeof payload.message === 'string' ? payload.message : `Falha na requisição (${response.status}).`;
-    throw new ApiError(response.status, errorKind(response.status), message, payload);
+    const errorPayload = typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'object' && payload.error !== null ? payload.error : undefined;
+    const code = errorPayload && 'code' in errorPayload && typeof errorPayload.code === 'string' ? errorPayload.code : undefined;
+    const requestId = errorPayload && 'requestId' in errorPayload && typeof errorPayload.requestId === 'string' ? errorPayload.requestId : undefined;
+    throw new ApiError(response.status, errorKind(response.status), code ?? `Falha na requisição (${response.status}).`, code, requestId, payload);
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  const payload: unknown = await response.json();
+  if (typeof payload === 'object' && payload !== null && 'csrfToken' in payload && typeof payload.csrfToken === 'string') setCsrfToken(payload.csrfToken);
+  return payload as T;
 }

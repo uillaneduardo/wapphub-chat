@@ -1,31 +1,59 @@
 # Status do WappHub Chat
 
-**Milestone ativo do ecossistema:** M1 — frontend (fundação em andamento).
+**Milestone ativo do ecossistema:** M1 — frontend operacional do chat interno.
 
-## Fundação frontend
+O backend M1 do `wapphub-core` está implantado. A fundação frontend foi criada nesta branch; as telas de produto e a validação autenticada ponta a ponta continuam pendentes.
 
-| Item | Estado |
-|---|---:|
-| React + TypeScript + Vite | ✅ criado e build validado |
-| ESLint, typecheck e Vitest | ✅ configurados; verificações executadas |
-| Design tokens e shell responsivo | ✅ base criada |
-| BrowserRouter e rotas previstas | ✅ criadas; áreas de produto são placeholders |
-| API client (cookies, CSRF e erros HTTP) | ✅ criado; integração com contrato Core pendente |
-| Login/logout/sessão e guardas | 🟡 fluxo frontend conectado a endpoints candidatos; validar contrato |
-| Contexto e seleção de Organization | 🟡 base criada; validar payload e endpoint com Core |
-| WebSocket, backoff e checkpoint | ✅ cliente e testes unitários; validar protocolo com backend |
-| UI funcional de conversas/mensagens | ⬜ pendente |
+API pública atual do Core: `https://api.wapphub.com.br`.
+Contrato consultado em 2026-10-08: `https://api.wapphub.com.br/api/v1/openapi.json`.
+Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 1).
 
-O cliente HTTP usa `VITE_API_BASE_URL` e os caminhos de autenticação estão centralizados em `src/lib/session.ts`. O endpoint `/openapi.json` da API informada não está publicado (resposta 404); portanto paths, formato do cookie CSRF e payloads ainda precisam ser conferidos com o contrato oficial antes de considerar a sessão integrada. O CSRF envia o cookie `csrf_token` no header `X-CSRF-Token`.
-
-## Escopo ainda pendente
+## M1 — estado do frontend
 
 | Item | Estado |
 |---|---:|
-| Conversas, mensagens e atualização incremental na UI | ⬜ |
-| Equipe/convites, contatos, tags/notas e configurações | ⬜ |
-| Seleção/alternância organizacional validada ponta a ponta | ⬜ |
-| Integração Meta, mídia e áudio | ⬜ fora desta fundação |
+| Definição de escopo, rotas e UX | ✅ documentadas |
+| Contratos REST do Core M1 | ✅ conferidos no OpenAPI público |
+| Estrutura React/TypeScript/Vite | ✅ criada |
+| BrowserRouter e rotas previstas | ✅ criados; áreas de produto usam placeholders |
+| Design tokens e shell responsivo | ✅ criados |
+| API client, credentials e CSRF | ✅ alinhados ao contrato do Core |
+| Erros HTTP | ✅ interpreta `{ error: { code, requestId } }` |
+| Login, logout e sessão | ✅ paths/métodos/payloads alinhados; smoke autenticado pendente |
+| Seleção de Organization | ✅ path, payload e resposta alinhados; smoke autenticado pendente |
+| Tipos Contacts/Conversations/Messages/Tags/Notes | ✅ alinhados aos schemas consultados |
+| Cursor pagination | ✅ tipos refletem `nextCursor`; mensagens usam `before` |
+| WebSocket, replay e checkpoint | ✅ protocolo alinhado; teste unitário, integração live pendente |
+| UI de conversas e mensagens | ⬜ não iniciada |
+
+## Contratos REST conferidos
+
+- Sessão: `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/me`, `GET /api/v1/me/organizations`, `POST /api/v1/session/organization`, `GET /api/v1/app/bootstrap`.
+- Dados M1: `contacts`, `conversations`, mensagens em `/conversations/{id}/messages`, `tags`, notas em `/conversations/{id}/notes`, assignment em `/conversations/{id}/assign` e transfer em `/conversations/{id}/transfer`.
+- Listas usam `limit` e `cursor` com resposta `{ items, nextCursor }`, exceto mensagens, que recebem `before` e também retornam `nextCursor`.
+- Erros de API usam `{ error: { code, requestId } }`.
+
+## Sessão e segurança conferidas
+
+- Sessão server-side pelo cookie `__Host-wapphub_session` em produção; o navegador envia com `credentials: include` e o frontend não mantém JWT.
+- CSRF: cookie legível `wapphub_csrf`, token retornado em login/`/me` e header `x-csrf-token` em operações mutáveis.
+- Os contratos de login, logout e seleção de organização estão centralizados em `src/lib/session.ts`.
+
+## Realtime conferido
+
+- WebSocket read-only: `GET /api/v1/realtime?lastEventId=0`, autenticado pelo cookie e validado por Origin; contexto Organization vem da sessão, sem `organizationId` na URL.
+- Frames de domínio usam `version`, `eventId` decimal string, `organizationId`, `type`, `entityId`, `occurredAt` e `payload` com IDs. Tipos aceitos estão restritos aos eventos listados no contrato do Core.
+- `sync.checkpoint` confirma `lastEventId` e `hasMore`; reconnect retoma do último checkpoint confirmado. A alternativa REST é `GET /api/v1/realtime/events?lastEventId=...&limit=...`.
+- O cliente rejeita eventos de outra organização, deduplica por `eventId` e persiste checkpoint por Organization; só confirma checkpoint após aplicar os eventos anteriores.
+
+## Fora do escopo frontend M1 atual
+
+| Domínio | Estado |
+|---|---:|
+| Entitlements/planos/assentos | ⬜ M2 |
+| Meta/WhatsApp | ⬜ M3 |
+| Imagem/áudio/gravação/galeria | ⬜ M4 |
+| Round-robin | ⬜ milestone posterior |
 | Android nativo | ⛔ pós-MVP |
 
-Os testes atuais cobrem API client, guarda de rota, carregamento de sessão e reconexão realtime. Eles não substituem validação de integração com o backend.
+Lint, typecheck, testes e build foram executados após o alinhamento do contrato. Os testes não substituem o smoke autenticado contra Core; nenhum fluxo de UI de conversations/messages foi iniciado.
