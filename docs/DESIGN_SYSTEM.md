@@ -101,3 +101,24 @@ pendente neste ambiente.
 - controles inconsistentes;
 - CSS específico por cliente;
 - hardcode de cor de marca em componentes.
+
+## Atendimento — rolagem e compositor
+
+Na rota de conversas, `chat-app-shell` limita a altura à viewport dinâmica e o
+main reserva linhas para status realtime e workspace. Histórico fica entre o
+cabeçalho e o compositor, com rolagem vertical própria e foco visível por teclado.
+Nas resoluções menores, detalhes preservam até 40% do corpo disponível e também
+rolam. A navegação mobile mantém sua reserva de 62px; outras rotas não herdam a
+restrição de altura do atendimento. O body não recebe bloqueio de overflow.
+
+Ferramentas do compositor usam SVGs de 20px, viewBox de 24px, traço de 1.8 e
+`currentColor`. Áreas de 40px (44px no mobile), espaçamento de 4px, borda e fundo
+com tokens existentes. Wrappers focáveis anunciam indisponibilidade e descrevem
+os botões nativamente desabilitados. O tooltip fica acima da barra e limitado à
+largura dela. Ferramentas/Enviar quebram linha quando necessário, com envio
+alinhado à direita. O indicador de novas mensagens usa superfície discreta e
+um link de ação para voltar ao final, sem sobrepor mensagens ou campo de texto.
+
+Validação desta revisão é unitária/integração em jsdom, sem renderização de layout.
+Homologação visual manual será feita no notebook após deploy autorizado; não
+executar navegador ou screenshots automatizados no Homelab.
