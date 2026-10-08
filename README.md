@@ -52,6 +52,6 @@ A interface pode ocultar ações sem permissão ou entitlement, porém toda auto
 
 ## Estado atual
 
-**Fase:** documentação e definição pré-implementação.
+**Fase:** M1 — fundação do frontend iniciada.
 
 Consulte `docs/STATUS.md` antes de assumir qualquer funcionalidade como existente.

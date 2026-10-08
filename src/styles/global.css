@@ -1,0 +1,39 @@
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--background); color: var(--text); font-size: 14px; }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+.app-shell { min-height: 100vh; display: flex; }
+.sidebar { width: 248px; flex: 0 0 248px; min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 16px 16px; }
+.brand { display: flex; align-items: center; gap: 11px; color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: -.3px; padding: 2px 9px 32px; }
+.brand small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 9px; letter-spacing: 1.6px; }
+.brand-mark { width: 33px; height: 33px; display: grid; place-items: center; border-radius: 10px; background: var(--accent); color: var(--accent-contrast); font-size: 17px; }
+.sidebar nav { display: grid; gap: 5px; }
+.sidebar nav a { color: var(--text-muted); padding: 11px 12px; border-radius: 8px; font-weight: 550; }
+.sidebar nav a:hover, .sidebar nav a.active { background: var(--surface-muted); color: var(--text); }
+.sidebar nav a.active { box-shadow: inset 3px 0 var(--accent); }
+.sidebar-user { margin-top: auto; border-top: 1px solid var(--border); padding: 17px 4px 0; display: flex; align-items: center; gap: 10px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: #dce9e5; color: var(--accent); display: grid; place-items: center; font-weight: 700; }
+.user-label { min-width: 0; flex: 1; font-size: 12px; font-weight: 600; }.user-label small { display: block; color: var(--text-muted); font-weight: 400; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-button { border: 0; background: transparent; color: var(--text-muted); padding: 8px; cursor: pointer; }
+.main-content { flex: 1; min-width: 0; padding: 32px; }
+.page-placeholder { min-height: calc(100vh - 64px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.page-placeholder h1, .auth-card h1 { margin: 5px 0 8px; font-size: 26px; letter-spacing: -.8px; }
+.page-icon { display: grid; place-items: center; width: 54px; height: 54px; margin-bottom: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--accent); font-size: 27px; }
+.eyebrow { color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: 1.25px; }
+.muted { color: var(--text-muted); line-height: 1.6; }
+.detail-pill { padding: 7px 12px; margin-top: 12px; border-radius: 99px; background: var(--surface-muted); color: var(--text-muted); font-size: 12px; }
+.auth-layout { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.auth-card { width: min(100%, 420px); padding: 34px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: 0 12px 36px #20252b0a; }
+.auth-card .brand { padding: 0 0 28px; }.auth-card .eyebrow { margin-top: 0; }
+.auth-card form { display: grid; gap: 16px; margin: 24px 0 18px; }
+.auth-card label { display: grid; gap: 7px; font-size: 12px; font-weight: 600; }
+.auth-card input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); outline: none; }
+.auth-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.primary-button { height: 42px; margin-top: 5px; border: 0; border-radius: 7px; background: var(--accent); color: var(--accent-contrast); font-weight: 650; cursor: pointer; }
+.primary-button:hover { background: var(--accent-hover); }.primary-button:disabled { opacity: .65; cursor: wait; }
+.error-text { color: var(--danger); }.organization-list { display: grid; gap: 10px; margin-top: 24px; }
+.organization-option { display: flex; justify-content: space-between; padding: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
+.organization-option:hover { border-color: var(--accent); }
+@media (max-width: 720px) { .app-shell { display: block; padding-bottom: 62px; }.sidebar { position: fixed; z-index: 2; inset: auto 0 0; width: 100%; min-height: 0; height: 62px; padding: 0 6px; border: 0; border-top: 1px solid var(--border); }.brand, .sidebar-user { display: none; }.sidebar nav { height: 100%; display: flex; justify-content: space-around; align-items: center; gap: 0; }.sidebar nav a { padding: 10px 8px; font-size: 11px; }.sidebar nav a.active { box-shadow: inset 0 -2px var(--accent); }.main-content { padding: 22px 16px; }.page-placeholder { min-height: calc(100vh - 106px); }.auth-card { padding: 26px 22px; } }
