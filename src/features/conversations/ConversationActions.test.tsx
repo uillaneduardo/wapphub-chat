@@ -21,17 +21,20 @@ describe('conversation actions', () => {
   it('assigns the selected active team member by name', async () => {
     const assign = vi.spyOn(chatApi, 'assign').mockResolvedValue({ ...baseConversation, assignedUserId: 'user-2' });
     renderActions();
-    await screen.findByRole('option', { name: /Rafa Lima · rafa@example\.test/ });
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Atribuir a uma pessoa|Transferir para/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole('combobox', { name: /Atribuir a uma pessoa|Transferir para/ }));
     expect(screen.queryByPlaceholderText(/UUID/i)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Atribuir a uma pessoa'), { target: { value: 'user-2' } });
+    fireEvent.click(screen.getByRole('option', { name: /Rafa Lima/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Atribuir' }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith('conv-1', 'user-2'));
   });
   it('disables team members who cannot receive an assignment', async () => {
     renderActions();
-    const ineligible = await screen.findByRole('option', { name: /Convidado.*sem permissão para receber/ });
-    expect(ineligible).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Atribuir a uma pessoa'), { target: { value: 'user-3' } });
+    await waitFor(() => expect(screen.getByLabelText('Atribuir a uma pessoa')).toBeEnabled());
+    fireEvent.click(screen.getByLabelText('Atribuir a uma pessoa'));
+    const ineligible = screen.getByRole('option', { name: /Convidado/ });
+    expect(ineligible).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(ineligible);
     expect(screen.getByRole('button', { name: 'Atribuir' })).toBeDisabled();
   });
   it('transfers to a selected member with visibility and optional note', async () => {
@@ -39,8 +42,9 @@ describe('conversation actions', () => {
     const transfer = vi.spyOn(chatApi, 'transfer').mockResolvedValue({ ...conversation, assignedUserId: 'user-2' });
     renderActions(conversation);
     fireEvent.click(screen.getByRole('button', { name: 'Transferir conversa' }));
-    await screen.findByRole('option', { name: /Rafa Lima · rafa@example\.test/ });
-    fireEvent.change(screen.getByLabelText('Transferir para'), { target: { value: 'user-2' } });
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Atribuir a uma pessoa|Transferir para/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole('combobox', { name: /Atribuir a uma pessoa|Transferir para/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Rafa Lima/ }));
     fireEvent.change(screen.getByLabelText('Histórico visível'), { target: { value: 'LIMITED' } });
     fireEvent.change(screen.getByLabelText('Quantidade de mensagens'), { target: { value: '12' } });
     fireEvent.change(screen.getByLabelText('Nota de transferência (opcional)'), { target: { value: 'Contexto para assumir' } });

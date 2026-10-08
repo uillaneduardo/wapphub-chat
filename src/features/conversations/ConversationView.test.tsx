@@ -28,6 +28,30 @@ describe('ConversationView', () => {
     const firstPayload = send.mock.calls[0]![1]; const retryPayload = send.mock.calls[1]![1]; expect(firstPayload.clientMessageId).toBe(retryPayload.clientMessageId); expect(retryPayload).toMatchObject({ body: 'Olá', clientMessageId: firstPayload.clientMessageId });
     await screen.findByText('Enviada'); expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
   });
+  it('keeps future tools disabled with explanatory tooltips', async () => {
+    mockBase(); renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
+    for (const name of ['Negrito', 'Itálico', 'Anexos', 'Imagem', 'Áudio', 'Emojis']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+      expect(screen.getByLabelText(`${name}: indisponível nesta versão`)).toHaveAttribute('tabindex', '0');
+    }
+    expect(screen.getByRole('textbox', { name: 'Escrever mensagem' })).toHaveAttribute('maxlength', '8000');
+  });
+  it('preserves IME and Shift+Enter and blocks duplicate pending sends', async () => {
+    mockBase(); let resolve!: (value: InternalTextMessage) => void;
+    const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(() => new Promise((done) => { resolve = done; }));
+    renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); const input = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    fireEvent.change(input, { target: { value: 'Olá' } });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true }); fireEvent.keyDown(input, { key: 'Enter', shiftKey: true }); expect(send).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Enter' }); fireEvent.change(input, { target: { value: 'Olá' } }); fireEvent.keyDown(input, { key: 'Enter' });
+    expect(send).toHaveBeenCalledTimes(1); expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeDisabled();
+    resolve(message('m', send.mock.calls[0]![1].clientMessageId, 'Olá'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeEnabled());
+  });
+  it('blocks archived conversations including keyboard sends', async () => {
+    mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, status: 'ARCHIVED' }); const send = vi.spyOn(chatApi, 'sendMessage');
+    renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); const input = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    expect(input).toBeDisabled(); fireEvent.change(input, { target: { value: 'Olá' } }); fireEvent.keyDown(input, { key: 'Enter' }); expect(send).not.toHaveBeenCalled();
+  });
   it('adds an internal note with the Core contract', async () => {
     mockBase(); const note: InternalNote = { id: 'note-1', authorUserId: 'user-1', body: 'Retornar amanhã', createdAt: '2026-10-08T00:00:00Z' }; const createNote = vi.spyOn(chatApi, 'createNote').mockResolvedValue(note);
     renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); fireEvent.change(screen.getByRole('textbox', { name: 'Nova nota interna' }), { target: { value: note.body } }); fireEvent.click(screen.getByRole('button', { name: 'Adicionar nota' }));

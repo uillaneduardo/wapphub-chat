@@ -25,6 +25,8 @@ export function ConversationView() {
   const permissions = session?.permissions ?? noPermissions; const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const [messageCursors, setMessageCursors] = useState<(string | undefined)[]>([undefined]); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
+  const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
+  const [sending, setSending] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null); const shouldScrollBottom = useRef(false); const sessionUserId = session?.user.id ?? '';
 
   useEffect(() => {
@@ -85,17 +87,27 @@ export function ConversationView() {
     finally { setLoadingOlder(false); }
   }
   async function submitMessage(body: string, retryClientMessageId?: string) {
-    if (!body.trim() || !can('messages.send')) return;
+    if (!body.trim() || body.trim().length > 8000 || !can('messages.send') || conversation?.status === 'ARCHIVED') return;
     const clientMessageId = retryClientMessageId ?? createClientMessageId();
     const failedMessage = retryClientMessageId ? messages.find((message) => message.clientMessageId === retryClientMessageId) : undefined;
-    if (retryClientMessageId && !failedMessage) return;
+    if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && failedMessage?.status !== 'FAILED')) return;
+    pendingSends.current.add(clientMessageId);
     const optimistic = failedMessage ? { ...failedMessage, status: 'PENDING' as const, updatedAt: new Date().toISOString() } : createOptimisticMessage(conversationId, sessionUserId, body.trim(), clientMessageId);
     shouldScrollBottom.current = true; setDetailError(''); setMessages((current) => mergeMessages(current, [optimistic]));
     try { const saved = await chatApi.sendMessage(conversationId, { body: body.trim(), clientMessageId }); setMessages((current) => mergeMessages(current, [saved])); }
     catch (reason) { setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId ? { ...message, status: 'FAILED' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
+    finally { pendingSends.current.delete(clientMessageId); }
   }
-  function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = draft; if (!body.trim()) return; setDraft(''); void submitMessage(body); }
-  function composerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (draft.trim()) { const body = draft; setDraft(''); void submitMessage(body); } } }
+  function sendDraft() {
+    if (composerBusy.current || !draft.trim() || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send')) return;
+    composerBusy.current = true; setSending(true); const body = draft; setDraft('');
+    void submitMessage(body).finally(() => { composerBusy.current = false; setSending(false); });
+  }
+  function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); sendDraft(); }
+  function composerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendDraft(); }
+  }
   async function submitNote(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = noteDraft.trim(); if (!body || !can('notes.create')) return; setActionBusy(true); setDetailError(''); try { const created = await chatApi.createNote(conversationId, body); setNotes((current) => [...current, created]); setNoteDraft(''); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível criar a nota.'); } finally { setActionBusy(false); } }
   async function removeTag(tagId: string) { setActionBusy(true); setDetailError(''); try { await chatApi.removeTag(conversationId, tagId); setConversation((current) => current ? { ...current, tagIds: current.tagIds.filter((id) => id !== tagId) } : current); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível remover a tag.'); } finally { setActionBusy(false); } }
   async function loadMoreNotes() { if (!notesCursor || loadingMoreNotes) return; setLoadingMoreNotes(true); try { const page = await chatApi.listNotes(conversationId, notesCursor); setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); } finally { setLoadingMoreNotes(false); } }
@@ -114,7 +126,7 @@ export function ConversationView() {
           {message.direction !== 'INTERNAL' && <strong className="message-author">{message.direction === 'INBOUND' ? contactName : session?.user.name}</strong>}<p>{message.body}</p><footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
         </article>)}
       </div>}
-      {can('messages.send') && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><button className="primary-button" disabled={!draft.trim() || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">Enviar</button></form>}
+      {can('messages.send') && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer"><div className="composer-tools" role="group" aria-label="Recursos indisponíveis">{[['Negrito', 'B'], ['Itálico', 'I'], ['Anexos', '↗'], ['Imagem', '▧'], ['Áudio', '♫'], ['Emojis', '☺']].map(([label, icon]) => <span key={label} className="tool-tip" tabIndex={0} aria-label={`${label}: indisponível nesta versão`}><button type="button" disabled aria-label={label}>{icon}</button><span role="tooltip">{label}: indisponível nesta versão.</span></span>)}</div><button className="primary-button" disabled={sending || !draft.trim() || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button></div></form>}
     </section><aside className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
       <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{contact?.primaryIdentifier ?? conversation.contactId}</span></div>
       <div className="context-section"><h2>Responsável</h2><span>{conversation.assignedUserId ? conversation.assignedUserId === sessionUserId ? `${session?.user.name} (você)` : conversation.assignedUserId : 'Não atribuída'}</span></div>
