@@ -3,11 +3,11 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { preferenceKey } from '../hooks/useUiPreference';
 import { AppShell } from './AppShell';
-const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, permissions: ['conversations.read', 'providers.manage'] }, logout: vi.fn() }));
+const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, permissions: ['conversations.read', 'contacts.read', 'providers.manage'] }, logout: vi.fn() }));
 vi.mock('../features/session/SessionContext', () => ({ useSession: () => state }));
 vi.mock('../lib/realtime', async (importOriginal) => ({ ...await importOriginal<typeof import('../lib/realtime')>(), createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
 describe('conversation shell scope and navigation', () => {
-  beforeEach(() => { localStorage.clear(); state.session.user.id = 'u'; state.session.permissions = ['conversations.read', 'providers.manage']; state.logout.mockReset(); });
+  beforeEach(() => { localStorage.clear(); state.session.user.id = 'u'; state.session.permissions = ['conversations.read', 'contacts.read', 'providers.manage']; state.logout.mockReset(); });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   it.each(['/app/conversations', '/app/conversations/conv-1'])('bounds the shell only for the inbox route %s', (route) => {
     render(<MemoryRouter initialEntries={[route]}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations/*" element={<p>Atendimento</p>} /></Route></Routes></MemoryRouter>);

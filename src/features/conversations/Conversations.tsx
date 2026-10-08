@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
-import { Link, Outlet, useMatch, useNavigate, useParams } from 'react-router-dom';
+import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -33,11 +33,13 @@ export function ConversationView() {
 }
 
 function ConversationViewContent() {
-  const { conversationId = '' } = useParams(); const navigate = useNavigate(); const { session } = useSession();
+  const { conversationId = '' } = useParams(); const navigate = useNavigate(); const location = useLocation(); const { session } = useSession();
   const permissions = session?.permissions ?? noPermissions; const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
   const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
+  const contactNameRef = useRef(contact?.name);
+  contactNameRef.current = contact?.name;
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
@@ -113,6 +115,7 @@ function ConversationViewContent() {
         const updated = await chatApi.getConversation(conversationId, signal);
         if (signal.aborted) return;
         setConversation(updated); setError('');
+        if (!reset && can('contacts.read') && updated.contactName !== null && updated.contactName !== contactNameRef.current) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
         if (reset) {
           if (can('contacts.read')) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
           await refreshVisibleMessages(signal, true); await refreshNotes(signal, true);
@@ -184,7 +187,7 @@ function ConversationViewContent() {
   const canSeeMessages = can('messages.read'); const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
-    <header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{contact?.primaryIdentifier ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
+    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{contact?.primaryIdentifier ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
     <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
       {detailError && <p className="inline-error" role="alert">{detailError}</p>}
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>

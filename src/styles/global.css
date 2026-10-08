@@ -189,3 +189,26 @@ a:hover { color: var(--accent-hover); }
   .sidebar-footer .error-text { position: fixed; bottom: 62px; left: 8px; right: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--border); }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar, .context-separator, .nav-flyout { transition: none; animation: none; } }
+
+/* M1 contacts and internal conversation creation */
+.contacts-page, .new-conversation { min-width: 0; max-width: 960px; width: 100%; }
+.contacts-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.contacts-heading h1, .new-conversation h1 { display: flex; gap: 10px; align-items: center; margin: 8px 0; overflow-wrap: anywhere; }
+.contacts-heading button, .contact-form-actions button, .new-conversation > button { padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.contact-card { padding: 20px; margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.contact-form { display: grid; gap: 14px; }
+.contact-form label, .contact-search label { display: grid; gap: 7px; font-weight: 600; }
+.contact-form input, .contact-search input { min-width: 0; width: 100%; min-height: 44px; padding: 9px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; }
+.contact-form input:focus-visible, .contact-search input:focus-visible, .contact-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.contact-form-actions, .contact-search > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.contact-search > div input { flex: 1 1 160px; }
+.contact-search button { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.contact-results { margin: 14px 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.contact-row { width: 100%; min-height: 60px; display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; text-align: left; cursor: pointer; }
+.contact-row svg { flex-shrink: 0; }.contact-row span { min-width: 0; }.contact-row strong, .contact-row small { display: block; overflow-wrap: anywhere; }.contact-row small { margin-top: 4px; color: var(--text-muted); }
+.contact-row:hover, .contact-row[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-muted); }
+.contact-identifier, .contact-selection { overflow-wrap: anywhere; }.contact-create-link { display: inline-flex; padding: 0 16px; align-items: center; min-height: 44px; }
+.new-conversation { height: 100%; overflow-y: auto; min-height: 0; padding: 20px; }.new-conversation .contact-results { max-height: 320px; overflow-y: auto; padding: 2px; }
+.inbox-new-conversation { margin: 0 14px 10px; min-height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.conversation-creation-notice { margin: 0; padding: 10px 16px; flex-shrink: 0; background: var(--surface-muted); color: var(--text-muted); font-size: 12px; }
+@media (max-width: 720px) { .contact-card, .new-conversation { padding: 14px; }.contacts-heading { align-items: flex-start; }.contact-form-actions button { flex: 1; justify-content: center; } }

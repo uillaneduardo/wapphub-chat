@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useMatch } from 'react-router-dom';
+import { Link, useMatch, useSearchParams } from 'react-router-dom';
 import { useSession } from '../session/SessionContext';
 import { chatApi, type ConversationScope } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -21,7 +21,9 @@ export function InboxList() {
   const canSupervise = session?.permissions.includes('conversations.supervise') ?? false;
   const canReadMessages = session?.permissions.includes('messages.read') ?? false;
   const canReadTags = session?.permissions.includes('tags.read') ?? false;
+  const [searchParams] = useSearchParams(); const requestedScope = searchParams.get('scope');
   const [tab, setTab] = useState<InboxTab>('mine');
+  useEffect(() => { if (requestedScope === 'mine' || requestedScope === 'unassigned' || (requestedScope === 'all' && canSupervise)) setTab(requestedScope); }, [requestedScope, canSupervise]);
   const [tagId, setTagId] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
   const [items, setItems] = useState<Conversation[]>([]);
@@ -92,6 +94,7 @@ export function InboxList() {
 
   return <aside className={`inbox-panel${selected ? ' inbox-panel-hidden-mobile' : ''}`} aria-label="Caixa de conversas">
     <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><span className="inbox-count">{items.length}</span></div>
+    {session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new">Nova conversa</Link>}
     <div className="inbox-tabs" role="tablist" aria-label="Filtro de conversas">
       {tabs.filter((item) => item.id !== 'all' || canSupervise).map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'selected' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
     </div>

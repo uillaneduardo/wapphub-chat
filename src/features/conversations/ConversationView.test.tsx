@@ -153,4 +153,14 @@ describe('ConversationView', () => {
     state.session.permissions = ['conversations.read']; mockBase(); renderDetail(); await screen.findByRole('heading', { name: /Contato contact-/ });
     expect(screen.queryByRole('textbox', { name: 'Escrever mensagem' })).not.toBeInTheDocument(); expect(screen.queryByRole('textbox', { name: 'Nova nota interna' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Arquivar conversa' })).not.toBeInTheDocument();
   });
+  it('reconciles a renamed contact without aborting the P1 history refresh on rerender', async () => {
+    mockBase(); renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
+    vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, contactName: 'Nome atualizado' });
+    vi.mocked(chatApi.getContact).mockResolvedValue({ ...contact, name: 'Nome atualizado' });
+    vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [message('renamed-message', 'renamed-client', 'Histórico reconciliado')], nextCursor: null });
+    await act(async () => { await realtimeBus.reconcile('org-1'); });
+    expect(await screen.findByRole('heading', { name: 'Nome atualizado' })).toBeInTheDocument();
+    expect(screen.getByText('Histórico reconciliado')).toBeInTheDocument();
+  });
+
 });

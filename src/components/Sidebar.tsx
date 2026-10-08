@@ -9,7 +9,7 @@ import { NavHint } from './NavHint';
 
 const links: { to: string; label: string; icon: AppIconName; permission?: string }[] = [
   { to: '/app/conversations', label: 'Conversas', icon: 'conversations', permission: 'conversations.read' },
-  { to: '/app/contacts', label: 'Contatos', icon: 'contacts' },
+  { to: '/app/contacts', label: 'Contatos', icon: 'contacts', permission: 'contacts.read' },
   { to: '/app/files', label: 'Arquivos', icon: 'files' },
   { to: '/app/team', label: 'Equipe', icon: 'team' },
   { to: '/app/tags', label: 'Tags', icon: 'tags' },

@@ -1,5 +1,5 @@
 export interface CursorPage<T> { items: T[]; nextCursor: string | null }
-export interface Contact { id: string; name: string; primaryIdentifier: string; createdAt: string; updatedAt: string }
+export interface Contact { providers?: ('DEMO' | 'META')[]; id: string; name: string; primaryIdentifier: string; createdAt: string; updatedAt: string }
 export type ConversationStatus = 'OPEN' | 'PENDING' | 'ARCHIVED';
 export type HistoryVisibility = 'FULL' | 'LIMITED' | 'NONE';
 export interface Conversation { id: string; contactId: string; contactName: string | null; lastMessagePreview: string | null; provider: 'DEMO' | 'META' | null; tagIds: string[]; status: ConversationStatus; assignedUserId: string | null; archivedAt: string | null; createdAt: string; updatedAt: string; lastMessageAt: string; visibility: HistoryVisibility }
@@ -17,3 +17,5 @@ export type ChatEventType = 'conversation.created' | 'conversation.updated' | 'c
 export interface ChatEvent { version: 1; eventId: string; organizationId: string; type: ChatEventType; entityId: string; occurredAt: string; payload: { resourceId: string; conversationId?: string } }
 export interface SyncCheckpoint { version: 1; type: 'sync.checkpoint'; lastEventId: string; hasMore: boolean }
 export interface RealtimeEventsPage { events: ChatEvent[]; lastEventId: string; hasMore: boolean }
+
+export interface CreateConversationResult extends Conversation { reused?: boolean }

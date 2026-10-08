@@ -165,4 +165,13 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     expect(screen.queryByText('Resposta Demo antiga')).not.toBeInTheDocument();
   });
 
+  it('applies a new conversation event through authorized REST without duplicating its inbox row', async () => {
+    vi.mocked(chatApi.listConversations).mockResolvedValueOnce({ items: [], nextCursor: null }).mockResolvedValue({ items: [conversation], nextCursor: null });
+    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Nenhuma conversa');
+    const connection = client(); act(() => { emit('conversation.created'); emit('conversation.created'); });
+    await screen.findByRole('link', { name: /Contato sintético/ }); await waitFor(() => expect(connection.lastEventId).toBe('1'));
+    expect(screen.getAllByRole('link', { name: /Contato sintético/ })).toHaveLength(1);
+    expect(chatApi.getConversation).toHaveBeenCalledWith('c-1', expect.any(AbortSignal));
+  });
+
 });
