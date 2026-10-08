@@ -190,3 +190,20 @@ As seis ferramentas permanecem desabilitadas. Ícones SVG locais de negrito,
 itálico, anexo, imagem/vídeo, microfone e emoji substituem caracteres dependentes
 de fonte; não adicionam suporte a mídia/vídeo. Tooltips explicam a indisponibilidade
 por hover/foco, com descrição acessível. Botão Enviar mantém o payload vigente.
+
+## Preferências locais do atendimento (UI Polish 3)
+
+Recolher/expandir navegação não muda rota nem subscriptions. Preferências cosméticas
+são isoladas por User no localStorage, sem sessão/token/textos. Largura do contexto
+usa limites dinâmicos para preservar o histórico. Nenhuma transição de largura
+foi adicionada; a política de ancoragem/ResizeObserver já existente mantém a leitura.
+
+Compositores principal e Demo usam o mesmo hook para Enter/Shift+Enter. Padrão:
+Enter envia, Shift+Enter é newline nativo. Modo alternativo: Shift+Enter envia,
+Enter é newline nativo. IME e Ctrl/Alt/Meta não são capturados. Botão, limite,
+permissions, payload e retry principal permanecem; Demo tem lock síncrono para
+bloquear duplicação pelo novo atalho. Não há consulta de API para preferências.
+
+Ver `M1_UI_POLISH_3.md` para navegação, splitter, armazenamento e critérios de
+homologação. Não instalar/executar navegador gráfico ou screenshot no Homelab;
+validar visualmente no notebook após deploy explicitamente autorizado.

@@ -32,7 +32,7 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Responsividade | ✅ lista/conversa em navegação mobile e lista, conversa e painel contextual em desktop |
 | Container de produção | ✅ imagem `wapphub-chat:1e18744`, Nginx estático na porta 3000, fallback SPA, somente `cloudflare_ingress`, sem porta publicada |
 | Hostname público | ✅ `https://chat.wapphub.com.br` serve o bundle da imagem `wapphub-chat:1e18744`; `/login` e rota profunda respondem 200 |
-| Smoke autenticado com Core | ⬜ pendente; requer credencial de teste autorizada e navegador headless com bibliotecas gráficas disponíveis |
+| Smoke autenticado com Core | ⬜ pendente; manual pelo usuário no notebook; navegador gráfico proibido no Homelab |
 
 ## Contratos REST conferidos
 
@@ -65,7 +65,7 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Round-robin | ⬜ milestone posterior |
 | Android nativo | ⛔ pós-MVP |
 
-Lint, typecheck, 31 testes e build passaram após a integração do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. CORS autoriza somente `https://chat.wapphub.com.br`: preflight permitido retornou 204, POST de origem inválida foi rejeitado com 403 e POST permitido chegou à validação de payload. O WebSocket de realtime rejeitou Origin inválida (403) e exigiu sessão para Origin autorizada (401). O app legado foi removido da rede pública; seu banco e volume foram preservados em rede privada. O smoke autenticado de login, conversas, mensagens, replay e ações operacionais ainda depende de credencial de teste e browser funcional no host.
+Lint, typecheck, 31 testes e build passaram após a integração do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. CORS autoriza somente `https://chat.wapphub.com.br`: preflight permitido retornou 204, POST de origem inválida foi rejeitado com 403 e POST permitido chegou à validação de payload. O WebSocket de realtime rejeitou Origin inválida (403) e exigiu sessão para Origin autorizada (401). O app legado foi removido da rede pública; seu banco e volume foram preservados em rede privada. O smoke autenticado de login, conversas, mensagens, replay e ações operacionais deve ser realizado manualmente pelo usuário no notebook, conforme política permanente de homologação; não executar browser no Homelab.
 
 ## Branch de revisão `feat/m1-demo-provider-ui`
 
