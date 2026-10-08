@@ -1,5 +1,7 @@
 # Integração Git proposta — sem execução remota
 
+> Registro histórico intermediário preservado. Fotografia e estratégia atuais: [M1_FINAL_GIT_CONSOLIDATION.md](M1_FINAL_GIT_CONSOLIDATION.md), aceite: [M1_FINAL_ACCEPTANCE.md](M1_FINAL_ACCEPTANCE.md). Etapas P0/P1/contatos mencionadas como futuras abaixo já foram publicadas/homologadas.
+
 Ver `GIT_PRODUCTION_INVENTORY_20261008.md` para refs completas. main local e
 origin/main=9072267; produção=3e23452. Dez commits posteriores publicados estão
 somente locais. PR documental #3 é draft, não os contém e não foi mesclado.

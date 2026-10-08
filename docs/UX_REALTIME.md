@@ -10,10 +10,10 @@ O produto não pretende copiar visualmente o WhatsApp, mas deve oferecer intera�
 
 O M1 frontend opera sobre o backend M1 já disponível no Core.
 
-A correção local P1 usa confirmação assíncrona das projeções REST, checkpoint
+A correção P1 publicada e homologada usa confirmação assíncrona das projeções REST, checkpoint
 conservador isolado por User/Organization/aba, retry limitado e reconciliação após
 replay. Ver [P1_REALTIME_CONSISTENCY.md](P1_REALTIME_CONSISTENCY.md) para garantias,
-limites, testes e publicação pendente. P0 foi homologado; P1 não foi publicado.
+limites e testes. P0/P1 e funcionalidades finais foram publicados e homologados pelo usuário; ver M1_FINAL_ACCEPTANCE.md.
 
 Nesta etapa:
 

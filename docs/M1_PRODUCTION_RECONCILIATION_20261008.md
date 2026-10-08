@@ -1,5 +1,7 @@
 # Reconciliação de produção Chat M1 — 2026-10-08
 
+> Nota histórica preservada do PR remoto e conferência intermediária. Estado final: [aceite](M1_FINAL_ACCEPTANCE.md) e [consolidação](M1_FINAL_GIT_CONSOLIDATION.md). Não interpretar versões/prévias/checkpoints pendentes abaixo como estado corrente.
+
 > **Evidências de execução e homologação reportadas pelo operador/Codex.** Este documento não significa que os commits locais foram enviados ao GitHub. A branch `main` remota ainda pode conter versões anteriores do frontend.
 
 ## Linha de publicação reportada

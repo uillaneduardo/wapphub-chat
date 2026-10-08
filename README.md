@@ -1,5 +1,7 @@
 # WappHub Chat
 
+> **M1 funcionalmente homologado; consolidação administrativa Git pendente.** [Aceite formal](docs/M1_FINAL_ACCEPTANCE.md) e [STATUS](docs/STATUS.md). Nenhuma nova função/M2 ou publicação nesta auditoria.
+
 Frontend operacional de atendimento do ecossistema WappHub.
 
 ## Responsabilidade
@@ -12,50 +14,9 @@ O WappHub Core é a autoridade de domínio, segurança, persistência, permissõ
 
 ## Estado atual
 
-**Milestone ativo:** M1 — frontend operacional do chat interno.
+M1 funcionalmente homologado pelo usuário; encerramento administrativo Git pendente. Frontend publicado `6b04e65`, Core/API/Worker `a45fb33`. P0/P1 e contatos/criação manual passaram na homologação informada. Fontes/evidências atuais conferidas; main remota ainda anterior à produção. Não iniciar M2 sem nova execução autorizada.
 
-O backend M1 já está implantado no WappHub Core e expõe, em `/api/v1`:
-
-- sessão web por cookie revogável;
-- Organization Context;
-- permissions da Membership;
-- Contacts;
-- Conversations;
-- mensagens internas de texto;
-- `clientMessageId` e idempotência;
-- Tags;
-- Internal Notes;
-- archive/unarchive;
-- assignment manual;
-- transferência `FULL`, `LIMITED` e `NONE`;
-- supervisão;
-- cursor pagination;
-- WebSocket realtime;
-- replay/sincronização por event stream.
-
-API pública atual do Core:
-
-`https://api.wapphub.com.br`
-
-Frontend operacional publicado em `d93efc576bd560fcbab0146343fb98bbbc1d0b69`,
-imagem `wapphub-chat:p0-preview-d93efc5`, Core/API/Worker compatível `cbaf50c`.
-P0 de prévias publicado e homologado manualmente; [registro operacional](docs/DEPLOY_P0_20261008.md).
-Demo, melhorias anteriores e P0 homologados pelo usuário.
-P1 realtime corrigido localmente, 129 testes aprovados; publicação/homologação P1
-pendentes. Ver [relatório P1](docs/P1_REALTIME_CONSISTENCY.md).
-M1 não formalmente encerrado: checkpoint A2 e demais aceites permanecem.
-Contacts/criação manual continuam incompletos. Commits publicados ainda exigem
-integração Git revisada; nenhum push ou merge realizado.
-
-Ver [inventário](docs/GIT_PRODUCTION_INVENTORY_20261008.md),
-[matriz/arquitetura](docs/M1_ARCHITECTURE_ACCEPTANCE_20261008.md) e
-[estratégia Git](docs/GIT_INTEGRATION_STRATEGY_20261008.md). M2 foi planejado somente
-em wapphub-core/docs/M2_TECHNICAL_PLAN.md, preservando o roadmap original.
-
-O branch de revisão `feat/m1-demo-provider-ui` acrescenta Configurações →
-Provedores e o simulador autenticado DEMO. Ele depende dos endpoints do branch
-Core `feat/m1-demo-provider`; ambos já foram publicados, embora esses commits
-ainda não tenham sido integrados à main remota.
+[Aceite e matriz](docs/M1_FINAL_ACCEPTANCE.md), [STATUS](docs/STATUS.md), [consolidação Git](docs/M1_FINAL_GIT_CONSOLIDATION.md), [releases](docs/M1_RELEASE_HISTORY.md). API: https://api.wapphub.com.br; Chat: https://chat.wapphub.com.br.
 
 ## Escopo do frontend M1
 
@@ -115,6 +76,6 @@ O realtime usa os contratos atuais do Core:
 
 Consulte `docs/STATUS.md`, `docs/SCOPE.md` e `docs/UX_REALTIME.md` antes de assumir uma funcionalidade como disponível.
 
-## Finalização funcional M1 — implementação local
+## Finalização funcional M1
 
-Contatos e criação manual interna validados localmente, ainda sem publicação/homologação. [Relatório e evidências](docs/M1_CONTACTS_CONVERSATION_CREATION.md). Produção informada: Core P0 `cbaf50c`, Chat P1 `6bbc1c4`, ambos homologados pelo usuário. M1 permanece sem encerramento formal.
+Contatos e criação manual interna publicados e homologados pelo usuário. [Relatório e evidências](docs/M1_CONTACTS_CONVERSATION_CREATION.md). Fonte de estado vigente: [aceite final](docs/M1_FINAL_ACCEPTANCE.md); encerramento administrativo Git pendente.
