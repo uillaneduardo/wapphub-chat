@@ -1,32 +1,42 @@
-# Validação da UI operacional M1
+# Homologação M1 — Chat e Demo Provider
 
-Validado localmente em 2026-10-08 na branch `feat/m1-chat-ui`.
+## Estado desta revisão
 
-## Escopo exercitado
+- Frontend revisado em `feat/m1-demo-provider-ui` (`b1b4c31ad91bac29d68188acb824de1931da6aaf`); Core compatível em `feat/m1-demo-provider` (`72d05aa8c0a3c9f12a8c17abb25ad737b88c65af`).
+- `npm run lint`, `npm run typecheck`, `npm test` (11 arquivos, 36 testes) e `npm run build`: passaram.
+- Os testes Vitest cobrem estados e interações da tela de provedores e simulador com API mockada. Smoke HTTP/WebSocket separado no Core isolado passou em ativação, provisionamento, mensagens nos dois sentidos, bloqueio após desativação, reativação idempotente e replay.
+- A inspeção visual real continua pendente. O Chromium em cache no Homelab não inicia por falta de `libatk-1.0.so.0`; não foram instalados pacotes nem navegador no host. Não existe configuração/dependência Playwright neste repositório. Por isso a homologação visual deve ser executada em estação de desenvolvimento ou CI com navegador disponível.
 
-- Caixa: escopos Minhas, Não atribuídas e Todas (condicionada a `conversations.supervise`), arquivadas, filtro por tag e paginação via `cursor`.
-- Conversa: resumo e contato, responsável, tags, histórico paginado por `before`, notas internas paginadas e envio de texto.
-- Envio: mensagem otimista, estado de erro e retry com o mesmo `clientMessageId` para preservar idempotência no Core.
-- Ações: arquivar/reabrir, atribuição manual, transferência `FULL`/`LIMITED`/`NONE`, adicionar/remover tags e criar notas.
-- Equipe: assignment e transferência usam seletor de pessoas com nome e email; opções sem `conversations.read` e `messages.read` ficam desabilitadas. Estados de carregamento, erro/retry e roster vazio foram testados.
-- Realtime: eventos de conversa, mensagem, nota e tags atualizam dados pontuais; eventos de mensagem/notas atualizam a conversa aberta sem recarregar toda a caixa.
-- Autorização: controles são derivados de `chatPermissions` retornadas pelo Core, sem inferência pelo nome da role.
-- Layout: painel de caixa e conversa com contexto em desktop; navegação lista → conversa e retorno em mobile.
+## Compatibilidade e pré-requisitos
 
-## Verificações executadas
+O frontend depende de `GET /api/v1/providers`, `PUT /api/v1/providers/demo`, `GET /api/v1/providers/demo/contacts` e `POST /api/v1/providers/demo/messages`, além das rotas M1 de conversas, mensagens, equipe e realtime. Publique primeiro o Core com migrations e depois o Chat. O frontend desta branch não funciona com o Core anterior.
 
-```text
-npm run lint       passou
-npm run typecheck  passou
-npm test           passou — 10 arquivos, 31 testes
-npm run build      passou
-```
+Use somente uma API e banco descartáveis. Para o Compose de teste do Core, siga `wapphub-core/docs/M1_VALIDATION.md` e `wapphub-core/docs/LOCAL_DEVELOPMENT.md`; confirme que `scripts/m1-test.sh` aponta ao projeto `wapphub-m1-test`, volume `wapphub-m1-test_test-db`, rede isolada e API local `127.0.0.1:3101`. Configure a origem permitida como `http://127.0.0.1:4173`. Nunca use `https://api.wapphub.com.br` neste teste.
 
-## Limites e pendências validados
+O teste de atribuição/transferência precisa de dois membros ativos na mesma Organization: Owner e uma pessoa destinatária com `conversations.read` e `messages.read`. O bootstrap local cria o Owner; este repositório não possui um provisionador visual de membros. Prepare o destinatário apenas no banco descartável, usando as regras oficiais de hash de senha, Membership e RBAC do Core. Guarde as credenciais fora do repositório e com permissão restrita.
 
-- Falta smoke autenticado no navegador contra a versão correta do frontend e Core.
-- A API pública ainda não oferece roster. O novo `GET /api/v1/team/members` está validado na branch Core `feat/m1-team-roster`, mas ainda não foi integrado nem implantado.
-- O hostname `chat.wapphub.com.br` responde 200, porém o serviço apontado pelo homelab é o app legado de `~/homelab/apps/chat`, não este repositório `wapphub-chat`.
-- O resumo da caixa não inclui dados do contato; o nome e telefone são carregados no detalhe somente com `contacts.read`.
-- Não foram testadas credenciais de produção nem efetuadas alterações de produção.
-- `WEB_ORIGINS` não foi alterado.
+## Execução em estação de desenvolvimento
+
+1. Checkout das branches acima. No Core, prepare o Compose de teste com os comandos de `docs/M1_VALIDATION.md`; execute migrations apenas nesse banco descartável. Bootstrap de Owner e destinatário de teste deve usar identidades sintéticas e credenciais temporárias.
+2. No Chat, instale as dependências do lockfile e inicie o servidor local apontando exclusivamente ao API de teste:
+
+   ```sh
+   npm ci
+   VITE_API_BASE_URL=http://127.0.0.1:3101 npm run dev -- --host 127.0.0.1 --port 4173
+   ```
+
+3. Abra `http://127.0.0.1:4173/login` em Chromium/Firefox com DevTools. Confirme no painel Network que as chamadas vão a `127.0.0.1:3101`, nunca ao hostname público.
+4. No modo responsivo, execute o fluxo abaixo em cada viewport e salve evidência local: `1920×1080`, `1366×768`, `1024×768`, `768×1024`, `390×844`.
+
+## Fluxo e critérios visuais
+
+1. Faça login como Owner e confirme a Organization de teste.
+2. Abra Configurações → Provedores. Ative Demo e confirme estado Ativo, dois contatos e duas conversas com as mensagens iniciais recebidas.
+3. Abra uma conversa na Inbox, responda como atendente e confirme a mensagem enviada e o indicador DEMO.
+4. Abra o simulador, escolha o contato, envie uma mensagem e confirme sua chegada na conversa do atendente em tempo real. Responda novamente e confirme a chegada no simulador.
+5. Atribua a conversa a uma pessoa elegível; transfira para outra com `FULL`, `LIMITED` e `NONE`, confirmando que os controles mostram nomes e respeitam as permissões. Recarregue a conversa após cada transferência.
+6. Desative Demo. Confirme que novos envios ficam bloqueados, o histórico permanece acessível e o estado não exibe sucesso antes da resposta da API.
+7. Em todos os tamanhos, inspecione sidebar, lista, painel de mensagens, painel contextual, dropdowns, compositor, simulator, estados de loading/erro, foco por teclado, rolagem e overflow horizontal. No mobile, valide lista → conversa → voltar e seleção de contato no simulador.
+8. Salve screenshots sem dados pessoais, identificando viewport e rota. Registre falhas e navegador/versão; não marque esta validação como aprovada antes de revisar as evidências.
+
+O projeto ainda não tem runner Playwright nem fixture reutilizável de usuário/Organization. Esta revisão não adicionou uma dependência E2E que não pôde ser executada no host; o procedimento manual acima é a alternativa reproduzível. A cobertura automatizada existente continua em Vitest, com 36 testes.
