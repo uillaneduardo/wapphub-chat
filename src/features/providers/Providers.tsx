@@ -32,12 +32,18 @@ export function DemoSimulatorPage() {
   const bootstrap = useRef<Promise<void>>(Promise.resolve());
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; selection.current += 1; }; }, []);
-  const refreshMessages = useCallback(async (signal?: AbortSignal) => {
-    if (selectedConversationRef.current !== selectedConversationId) return;
-    if (!selectedConversationId || !canSimulate) { setMessages([]); return; }
-    const generation = selection.current;
-    const page = await chatApi.listMessages(selectedConversationId, undefined, signal);
-    if (!signal?.aborted && mounted.current && selection.current === generation && selectedConversationRef.current === selectedConversationId) setMessages([...page.items].reverse());
+  const messageQueue = useRef<Promise<void>>(Promise.resolve());
+  const refreshMessages = useCallback((signal?: AbortSignal) => {
+    const refresh = messageQueue.current.then(async () => {
+      if (signal?.aborted) return;
+      if (selectedConversationRef.current !== selectedConversationId) return;
+      if (!selectedConversationId || !canSimulate) { setMessages([]); return; }
+      const generation = selection.current;
+      const page = await chatApi.listMessages(selectedConversationId, undefined, signal);
+      if (!signal?.aborted && mounted.current && selection.current === generation && selectedConversationRef.current === selectedConversationId) setMessages([...page.items].reverse());
+    });
+    messageQueue.current = refresh.catch(() => undefined);
+    return refresh;
   }, [selectedConversationId, canSimulate]);
   const loadContacts = useCallback(async (signal?: AbortSignal) => { setLoading(true); setError(''); try { const result = await chatApi.listDemoContacts(signal); if (signal?.aborted || !mounted.current) return; setEnabled(result.enabled); setContacts(result.items); setSelectedId((current) => result.items.some((contact) => contact.contactId === current) ? current : result.items[0]?.contactId ?? ''); } catch (reason) { if (!signal?.aborted && mounted.current) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o simulador.'); } finally { if (!signal?.aborted && mounted.current) setLoading(false); } }, []);
   useEffect(() => { const controller = new AbortController(); if (canSimulate) void loadContacts(controller.signal); return () => controller.abort(); }, [canSimulate, loadContacts]);

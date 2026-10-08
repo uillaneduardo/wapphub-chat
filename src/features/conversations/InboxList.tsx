@@ -45,9 +45,11 @@ export function InboxList() {
   useEffect(() => { if (!canReadTags) { setTags([]); return; } let active = true; const controller = new AbortController(); tagBootstrap.current = chatApi.listTags(undefined, controller.signal).then((page) => { if (active) setTags(page.items); }).catch(() => { if (active) setTags([]); }); return () => { active = false; controller.abort(); }; }, [canReadTags, organizationId, userId]);
 
   useEffect(() => {
+    const invalidatePagination = () => { epoch.current += 1; pagination.current?.abort(); setLoadingMore(false); };
     const refresh = async (signal: AbortSignal) => {
       await bootstrap.current; await tagBootstrap.current;
       if (signal.aborted) return;
+      invalidatePagination();
       const page = await chatApi.listConversations(query, signal);
       const tagPage = canReadTags ? await chatApi.listTags(undefined, signal) : null;
       if (signal.aborted) return;
@@ -66,6 +68,7 @@ export function InboxList() {
       if (!conversationEvents.has(event.type)) return;
       const id = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (!id) return;
+      invalidatePagination();
       try {
         const conversation = await chatApi.getConversation(id, signal);
         if (!signal.aborted) setItems((current) => upsertInboxConversation(current, conversation, filter, userId));

@@ -138,4 +138,31 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     expect(chatApi.listMessages).toHaveBeenCalledTimes(3);
   });
 
+  it('does not resurrect revoked inbox previews from a late pagination response', async () => {
+    let finish!: (value: CursorPage<Conversation>) => void;
+    vi.mocked(chatApi.listConversations).mockResolvedValueOnce({ items: [conversation], nextCursor: 'older' }).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; })).mockResolvedValue({ items: [], nextCursor: null });
+    vi.mocked(chatApi.getConversation).mockRejectedValue({ status: 403 });
+    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' })); await waitFor(() => expect(finish).toBeTypeOf('function'));
+    const connection = client(); act(() => emit('conversation.transferred'));
+    await waitFor(() => expect(connection.lastEventId).toBe('1'));
+    await act(async () => finish({ items: [{ ...conversation, lastMessagePreview: 'Prévia obsoleta' }], nextCursor: null }));
+    expect(screen.queryByText('Prévia inicial')).not.toBeInTheDocument(); expect(screen.queryByText('Prévia obsoleta')).not.toBeInTheDocument();
+  });
+
+  it('serializes the Demo post-send read with realtime so an old response cannot overwrite new content', async () => {
+    vi.spyOn(chatApi, 'listDemoContacts').mockResolvedValue({ enabled: true, items: [{ contactId: 'contact-1', name: 'Contato Demo', conversationId: 'c-1' }] });
+    vi.spyOn(chatApi, 'sendDemoMessage').mockResolvedValue(message('Envio Demo'));
+    let finish!: (value: CursorPage<InternalTextMessage>) => void;
+    const reads = vi.mocked(chatApi.listMessages).mockResolvedValueOnce({ items: [message('Histórico inicial')], nextCursor: null }).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; })).mockResolvedValue({ items: [message('Estado Demo novo')], nextCursor: null });
+    render(<MemoryRouter><DemoSimulatorPage /></MemoryRouter>); await screen.findByText('Histórico inicial');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Mensagem como contato externo' }), { target: { value: 'Envio Demo' } }); fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    await waitFor(() => expect(finish).toBeTypeOf('function')); const connection = client(); act(() => emit('message.created'));
+    await act(async () => { for (let i = 0; i < 8; i += 1) await Promise.resolve(); });
+    expect(reads).toHaveBeenCalledTimes(2); expect(connection.lastEventId).toBe('0');
+    await act(async () => finish({ items: [message('Resposta Demo antiga')], nextCursor: null }));
+    await screen.findByText('Estado Demo novo'); await waitFor(() => expect(connection.lastEventId).toBe('1'));
+    expect(screen.queryByText('Resposta Demo antiga')).not.toBeInTheDocument();
+  });
+
 });
