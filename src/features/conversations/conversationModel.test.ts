@@ -20,3 +20,13 @@ describe('conversation state helpers', () => {
     expect(reconciled).toEqual([message()]); expect(reconciled).toHaveLength(1);
   });
 });
+
+describe('P1 stale response reconciliation', () => {
+  it('keeps newer message state when an older REST reply arrives after a local update', () => {
+    const base = createOptimisticMessage('conversation-1', 'user-1', 'Mesmo texto', 'stable-id');
+    const latest = { ...base, id: 'saved-1', status: 'READ' as const, updatedAt: '2026-10-08T15:00:02Z' };
+    const old = { ...latest, status: 'SENT' as const, updatedAt: '2026-10-08T15:00:01Z' };
+    expect(mergeMessages([latest], [old])).toEqual([latest]);
+    expect(mergeMessages([old], [latest])).toEqual([latest]);
+  });
+});

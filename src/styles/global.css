@@ -40,9 +40,9 @@ a:hover { color: var(--accent-hover); }
 
 /* M1 conversation workspace */
 .main-content { display: flex; flex-direction: column; }
-.realtime-status { min-height: 19px; margin: -16px 0 12px auto; display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 11px; }
+.realtime-status { max-width: 100%; flex-wrap: wrap; min-height: 19px; margin: -16px 0 12px auto; display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 11px; }
 .realtime-status > span { width: 7px; height: 7px; border-radius: 50%; background: #a6afb8; }
-.realtime-open > span { background: var(--success); }.realtime-reconnecting > span, .realtime-connecting > span { background: var(--warning); }
+.realtime-open > span { background: var(--success); }.realtime-reconnecting > span, .realtime-connecting > span, .realtime-stale > span { background: var(--warning); }
 .conversation-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(270px, 320px) minmax(0, 1fr); overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .inbox-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
 .inbox-heading { display: flex; align-items: center; justify-content: space-between; padding: 21px 19px 15px; }.inbox-heading .eyebrow { margin: 0 0 5px; }.inbox-heading h1 { margin: 0; font-size: 21px; letter-spacing: -.5px; }.inbox-count { min-width: 27px; padding: 5px 8px; border-radius: 20px; background: var(--surface-muted); color: var(--text-muted); font-size: 11px; text-align: center; }

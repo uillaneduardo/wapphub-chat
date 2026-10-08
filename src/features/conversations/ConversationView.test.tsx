@@ -15,7 +15,7 @@ const message = (id: string, clientMessageId: string, body: string): InternalTex
 function renderDetail() { return render(<MemoryRouter initialEntries={['/app/conversations/conv-1']}><Link to="/app/conversations/conv-2">Outra conversa</Link><Routes><Route path="/app/conversations/:conversationId" element={<ConversationView />} /><Route path="/app/conversations" element={<p>Inbox</p>} /></Routes></MemoryRouter>); }
 const historyMessages = Array.from({ length: 6 }, (_, i) => ({ ...message(`history-${i}`, `history-client-${i}`, `Histórico ${i}`), direction: 'INBOUND' as const }));
 function emitMessage(conversationId = 'conv-1', type: ChatEventType = 'message.created', organizationId = 'org-1') {
-  act(() => realtimeBus.emit({ version: 1, eventId: 'scroll-event', organizationId, type, entityId: 'new-message', occurredAt: '2026-10-08T00:00:02Z', payload: { resourceId: 'new-message', conversationId } }));
+  act(() => { void realtimeBus.emit({ version: 1, eventId: 'scroll-event', organizationId, type, entityId: 'new-message', occurredAt: '2026-10-08T00:00:02Z', payload: { resourceId: 'new-message', conversationId } }); });
 }
 function mockBase() {
   vi.spyOn(chatApi, 'getConversation').mockResolvedValue(conversation); vi.spyOn(chatApi, 'getContact').mockResolvedValue(contact);
@@ -125,7 +125,7 @@ describe('ConversationView', () => {
     const list = vi.spyOn(chatApi, 'listMessages').mockResolvedValueOnce({ items: historyMessages, nextCursor: 'older-cursor' }).mockResolvedValueOnce({ items: older, nextCursor: null });
     renderDetail(); const history = await screen.findByRole('region', { name: 'Histórico de mensagens' }); history.scrollTop = 100; fireEvent.scroll(history);
     fireEvent.click(screen.getByRole('button', { name: 'Carregar mensagens anteriores' })); await screen.findByText('Antiga 1');
-    expect(list).toHaveBeenLastCalledWith('conv-1', 'older-cursor'); expect(history.scrollTop).toBe(300);
+    expect(list).toHaveBeenLastCalledWith('conv-1', 'older-cursor', expect.any(AbortSignal)); expect(history.scrollTop).toBe(300);
     expect(screen.queryByRole('button', { name: 'Carregar mensagens anteriores' })).not.toBeInTheDocument(); expect(screen.queryByText('Nova mensagem')).not.toBeInTheDocument();
   });
   it('resets unread, scroll and drafts when changing conversations', async () => {
@@ -142,7 +142,7 @@ describe('ConversationView', () => {
   it('resets the same conversation on organization change and ignores an old in-flight refresh', async () => {
     mockScrollGeometry(); mockBase(); let resolveOld!: (value: { items: InternalTextMessage[]; nextCursor: null }) => void;
     vi.spyOn(chatApi, 'listMessages').mockResolvedValueOnce({ items: historyMessages, nextCursor: null }).mockResolvedValueOnce({ items: [...historyMessages, message('new', 'new-client', 'Nova anterior')], nextCursor: null }).mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; })).mockResolvedValue({ items: [message('new-org', 'new-org-client', 'Histórico da outra organização')], nextCursor: null });
-    const view = renderDetail(); const oldHistory = await screen.findByRole('region', { name: 'Histórico de mensagens' }); oldHistory.scrollTop = 100; fireEvent.scroll(oldHistory); emitMessage(); await screen.findByText('Nova mensagem'); emitMessage();
+    const view = renderDetail(); const oldHistory = await screen.findByRole('region', { name: 'Histórico de mensagens' }); oldHistory.scrollTop = 100; fireEvent.scroll(oldHistory); emitMessage(); await screen.findByText('Nova mensagem'); emitMessage(); await waitFor(() => expect(resolveOld).toBeTypeOf('function'));
     state.session.currentOrganizationId = 'org-2';
     view.rerender(<MemoryRouter initialEntries={['/app/conversations/conv-1']}><Link to="/app/conversations/conv-2">Outra conversa</Link><Routes><Route path="/app/conversations/:conversationId" element={<ConversationView />} /><Route path="/app/conversations" element={<p>Inbox</p>} /></Routes></MemoryRouter>);
     await screen.findByText('Histórico da outra organização'); await act(async () => resolveOld({ items: [message('old-late', 'old-late-client', 'Resposta atrasada do tenant anterior')], nextCursor: null }));

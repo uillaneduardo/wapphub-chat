@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useMatch } from 'react-router-dom';
 import { useSession } from '../session/SessionContext';
 import { chatApi, type ConversationScope } from '../../lib/chatApi';
@@ -12,6 +12,11 @@ const conversationEvents = new Set(['conversation.created', 'conversation.update
 
 export function InboxList() {
   const { session } = useSession();
+  const bootstrap = useRef<Promise<void>>(Promise.resolve());
+  const tagBootstrap = useRef<Promise<void>>(Promise.resolve());
+  const epoch = useRef(0);
+  const pagination = useRef<AbortController | null>(null);
+  const organizationId = session?.currentOrganizationId;
   const userId = session?.user.id ?? '';
   const canSupervise = session?.permissions.includes('conversations.supervise') ?? false;
   const canReadMessages = session?.permissions.includes('messages.read') ?? false;
@@ -30,30 +35,56 @@ export function InboxList() {
   const query = useMemo(() => ({ ...filter, limit: 50 }), [filter]);
 
   useEffect(() => {
-    let active = true;
+    let active = true; const controller = new AbortController(); epoch.current += 1;
+    pagination.current?.abort(); setLoadingMore(false);
     setLoading(true); setError(null); setItems([]); setNextCursor(null);
-    chatApi.listConversations(query).then((page) => { if (active) { setItems(page.items); setNextCursor(page.nextCursor); } }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar as conversas.'); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [query, reloadKey]);
+    bootstrap.current = chatApi.listConversations(query, controller.signal).then((page) => { if (active) { setItems(page.items); setNextCursor(page.nextCursor); } }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar as conversas.'); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; epoch.current += 1; controller.abort(); pagination.current?.abort(); };
+  }, [query, reloadKey, organizationId, userId]);
 
-  useEffect(() => { if (!canReadTags) { setTags([]); return; } let active = true; chatApi.listTags().then((page) => { if (active) setTags(page.items); }).catch(() => { if (active) setTags([]); }); return () => { active = false; }; }, [canReadTags]);
+  useEffect(() => { if (!canReadTags) { setTags([]); return; } let active = true; const controller = new AbortController(); tagBootstrap.current = chatApi.listTags(undefined, controller.signal).then((page) => { if (active) setTags(page.items); }).catch(() => { if (active) setTags([]); }); return () => { active = false; controller.abort(); }; }, [canReadTags, organizationId, userId]);
 
-  useEffect(() => realtimeBus.subscribe((event) => {
-    if (event.type.startsWith('tag.') && canReadTags) { void chatApi.listTags().then((page) => setTags(page.items)).catch(() => undefined); return; }
-    if (!conversationEvents.has(event.type)) return;
-    const id = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
-    if (!id) return;
-    void chatApi.getConversation(id).then((conversation) => setItems((current) => upsertInboxConversation(current, conversation, filter, userId))).catch((reason: unknown) => {
-      if (reason && typeof reason === 'object' && 'status' in reason && (reason.status === 403 || reason.status === 404)) setItems((current) => current.filter((conversation) => conversation.id !== id));
-    });
-  }), [filter, canReadTags, userId]);
+  useEffect(() => {
+    const refresh = async (signal: AbortSignal) => {
+      await bootstrap.current; await tagBootstrap.current;
+      if (signal.aborted) return;
+      const page = await chatApi.listConversations(query, signal);
+      const tagPage = canReadTags ? await chatApi.listTags(undefined, signal) : null;
+      if (signal.aborted) return;
+      setItems(page.items); setNextCursor(page.nextCursor); setError(null);
+      if (tagPage) setTags(tagPage.items);
+    };
+    return realtimeBus.subscribe(async (event, signal) => {
+      if (organizationId && event.organizationId !== organizationId) return;
+      await bootstrap.current; await tagBootstrap.current;
+      if (signal.aborted) return;
+      if (event.type.startsWith('tag.') && canReadTags) {
+        const page = await chatApi.listTags(undefined, signal);
+        if (!signal.aborted) setTags(page.items);
+        return;
+      }
+      if (!conversationEvents.has(event.type)) return;
+      const id = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
+      if (!id) return;
+      try {
+        const conversation = await chatApi.getConversation(id, signal);
+        if (!signal.aborted) setItems((current) => upsertInboxConversation(current, conversation, filter, userId));
+      } catch (reason) {
+        if (signal.aborted) return;
+        if (reason && typeof reason === 'object' && 'status' in reason && (reason.status === 403 || reason.status === 404)) setItems((current) => current.filter((conversation) => conversation.id !== id));
+        else throw reason;
+      }
+    }, { organizationId: organizationId ?? undefined, reconcile: refresh });
+  }, [filter, query, canReadTags, userId, organizationId]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
+    const requestEpoch = epoch.current;
+    const controller = new AbortController(); pagination.current = controller;
     setLoadingMore(true); setError(null);
-    try { const page = await chatApi.listConversations({ ...query, cursor: nextCursor }); setItems((current) => { const known = new Set(current.map((item) => item.id)); return [...current, ...page.items.filter((item) => !known.has(item.id))]; }); setNextCursor(page.nextCursor); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais conversas.'); }
-    finally { setLoadingMore(false); }
+    try { const page = await chatApi.listConversations({ ...query, cursor: nextCursor }, controller.signal); if (requestEpoch !== epoch.current) return; setItems((current) => { const known = new Set(current.map((item) => item.id)); return [...current, ...page.items.filter((item) => !known.has(item.id))]; }); setNextCursor(page.nextCursor); }
+    catch (reason) { if (requestEpoch !== epoch.current) return; setError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais conversas.'); }
+    finally { if (requestEpoch === epoch.current) setLoadingMore(false); }
   }, [nextCursor, loadingMore, query]);
 
   return <aside className={`inbox-panel${selected ? ' inbox-panel-hidden-mobile' : ''}`} aria-label="Caixa de conversas">

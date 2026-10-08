@@ -5,7 +5,7 @@ import { preferenceKey } from '../hooks/useUiPreference';
 import { AppShell } from './AppShell';
 const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, permissions: ['conversations.read', 'providers.manage'] }, logout: vi.fn() }));
 vi.mock('../features/session/SessionContext', () => ({ useSession: () => state }));
-vi.mock('../lib/realtime', () => ({ createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
+vi.mock('../lib/realtime', async (importOriginal) => ({ ...await importOriginal<typeof import('../lib/realtime')>(), createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
 describe('conversation shell scope and navigation', () => {
   beforeEach(() => { localStorage.clear(); state.session.user.id = 'u'; state.session.permissions = ['conversations.read', 'providers.manage']; state.logout.mockReset(); });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

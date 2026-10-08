@@ -17,11 +17,11 @@ describe('InboxList', () => {
     const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValueOnce({ items: [row()], nextCursor: 'cursor-1' }).mockResolvedValueOnce({ items: [row({ id: 'conv-2', assignedUserId: null })], nextCursor: 'cursor-2' }).mockResolvedValueOnce({ items: [], nextCursor: 'cursor-3' }).mockResolvedValueOnce({ items: [row({ id: 'conv-3', tagIds: ['tag-1'] })], nextCursor: null });
     vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [{ id: 'tag-1', name: 'Urgente' }], nextCursor: null });
     renderInbox(); await screen.findByText('Contato contact-');
-    expect(list).toHaveBeenNthCalledWith(1, { scope: 'mine', archived: false, limit: 50 });
+    expect(list).toHaveBeenNthCalledWith(1, { scope: 'mine', archived: false, limit: 50 }, expect.any(AbortSignal));
     fireEvent.click(screen.getByRole('tab', { name: 'Não atribuídas' })); await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
     fireEvent.change(screen.getByLabelText('Filtrar por tag'), { target: { value: 'tag-1' } }); await waitFor(() => expect(list).toHaveBeenCalledTimes(3));
     fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' })); await waitFor(() => expect(list).toHaveBeenCalledTimes(4));
-    expect(list).toHaveBeenLastCalledWith({ scope: 'unassigned', archived: false, tagId: 'tag-1', limit: 50, cursor: 'cursor-3' });
+    expect(list).toHaveBeenLastCalledWith({ scope: 'unassigned', archived: false, tagId: 'tag-1', limit: 50, cursor: 'cursor-3' }, expect.any(AbortSignal));
   });
 
   it('applies realtime changes to one conversation without reloading the inbox', async () => {
@@ -31,7 +31,7 @@ describe('InboxList', () => {
     renderInbox(); await screen.findByText('Contato contact-');
     realtimeBus.emit({ version: 1, eventId: '7', organizationId: 'org-1', type: 'conversation.archived', entityId: activeConversation.id, occurredAt: '2026-10-08T00:00:00.000Z', payload: { resourceId: activeConversation.id } });
     await waitFor(() => expect(screen.queryByText('Contato contact-')).not.toBeInTheDocument());
-    expect(chatApi.getConversation).toHaveBeenCalledWith(activeConversation.id); expect(list).toHaveBeenCalledTimes(1);
+    expect(chatApi.getConversation).toHaveBeenCalledWith(activeConversation.id, expect.any(AbortSignal)); expect(list).toHaveBeenCalledTimes(1);
   });
   it.each(['FULL', 'LIMITED', 'NONE'] as const)('shows an authorized preview for %s, including future messages after NONE', async (visibility) => {
     vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ visibility, lastMessagePreview: 'Texto autorizado' })], nextCursor: null });

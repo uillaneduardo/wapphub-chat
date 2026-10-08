@@ -5,7 +5,7 @@ import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import { InboxList } from './InboxList';
-import type { Contact, Conversation, InternalNote, InternalTextMessage, Tag } from '../../types/chat';
+import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, Tag } from '../../types/chat';
 import { createClientMessageId, createOptimisticMessage, mergeMessages } from './conversationModel';
 import { ComposerTools } from './ComposerTools';
 import { useMessageScroll, messageScrollKey } from './useMessageScroll';
@@ -35,25 +35,30 @@ export function ConversationView() {
 function ConversationViewContent() {
   const { conversationId = '' } = useParams(); const navigate = useNavigate(); const { session } = useSession();
   const permissions = session?.permissions ?? noPermissions; const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
-  const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const [messageCursors, setMessageCursors] = useState<(string | undefined)[]>([undefined]); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
+  const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
+  const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
+  const contentEpoch = useRef(0);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const reads = useRef(new Set<AbortController>());
   const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { const requests = reads.current; mounted.current = true; return () => { mounted.current = false; requests.forEach((read) => read.abort()); }; }, []);
 
   useEffect(() => {
-    let active = true; setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); setMessageCursors([undefined]); setNotes([]); setNotesCursor(null); setTags([]);
-    chatApi.getConversation(conversationId).then(async (current) => {
+    let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); setNotesCursor(null); setTags([]);
+    bootstrap.current = chatApi.getConversation(conversationId, controller.signal).then(async (current) => {
       if (!active) return; setConversation(current);
       const tasks = await Promise.allSettled([
-        can('contacts.read') ? chatApi.getContact(current.contactId) : Promise.resolve(null),
-        can('messages.read') ? chatApi.listMessages(conversationId) : Promise.resolve(null),
-        can('tags.read') ? chatApi.listTags() : Promise.resolve(null),
-        can('notes.read') ? chatApi.listNotes(conversationId) : Promise.resolve(null),
+        can('contacts.read') ? chatApi.getContact(current.contactId, controller.signal) : Promise.resolve(null),
+        can('messages.read') ? chatApi.listMessages(conversationId, undefined, controller.signal) : Promise.resolve(null),
+        can('tags.read') ? chatApi.listTags(undefined, controller.signal) : Promise.resolve(null),
+        can('notes.read') ? chatApi.listNotes(conversationId, undefined, controller.signal) : Promise.resolve(null),
       ]);
       if (!active) return;
       const [contactResult, messagesResult, tagsResult, notesResult] = tasks;
@@ -63,43 +68,87 @@ function ConversationViewContent() {
       if (notesResult.status === 'fulfilled' && notesResult.value) { setNotes(notesResult.value.items); setNotesCursor(notesResult.value.nextCursor); }
       setLoading(false);
     }).catch((reason: unknown) => { if (active) { setError(reason instanceof Error ? reason.message : 'Não foi possível abrir esta conversa.'); setLoading(false); } });
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); contentEpoch.current += 1; };
   }, [conversationId, sessionUserId, can]);
 
-  const refreshVisibleMessages = useCallback(async () => {
-    if (!can('messages.read')) return;
-    const cursors = messageCursors;
-    const pages = await Promise.all(cursors.map((cursor) => chatApi.listMessages(conversationId, cursor)));
-    if (mounted.current) setMessages((current) => mergeMessages(current, pages.flatMap((page) => page.items)));
-  }, [conversationId, messageCursors, can]);
-  const refreshNotes = useCallback(async () => {
-    if (!can('notes.read')) return;
-    const page = await chatApi.listNotes(conversationId);
-    setNotes((current) => [...page.items, ...current.filter((note) => !page.items.some((incoming) => incoming.id === note.id))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  const refreshVisibleMessages = useCallback(async (signal?: AbortSignal, reset = false) => {
+    if (!can('messages.read')) { setMessages([]); return; }
+    // Rewalk contiguous pages: old cursors are not snapshots and can hide shifted boundaries.
+    const pages: CursorPage<InternalTextMessage>[] = []; const cursors: (string | undefined)[] = [];
+    let cursor: string | undefined;
+    const requestEpoch = contentEpoch.current;
+    const previousIds = new Set(messagesRef.current.map((message) => message.id));
+    const count = reset ? 1 : messageCursors.current.length;
+    for (let i = 0; i < count; i += 1) {
+      cursors.push(cursor);
+      const page = await chatApi.listMessages(conversationId, cursor, signal);
+      if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
+      pages.push(page);
+      if (!page.nextCursor) break;
+      cursor = page.nextCursor;
+    }
+    if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
+    messageCursors.current = cursors;
+    setMessageCursor(pages.at(-1)?.nextCursor ?? null);
+    const incoming = pages.flatMap((page) => page.items);
+    const authorizedIds = new Set(incoming.map((message) => message.id));
+    setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
+  }, [conversationId, can]);
+  const refreshNotes = useCallback(async (signal?: AbortSignal, reset = false) => {
+    if (!can('notes.read')) { setNotes([]); return; }
+    const requestEpoch = contentEpoch.current;
+    const page = await chatApi.listNotes(conversationId, undefined, signal);
+    if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
+    setNotes((current) => [...page.items, ...(reset ? [] : current.filter((note) => !page.items.some((incoming) => incoming.id === note.id)))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
     setNotesCursor(page.nextCursor);
   }, [conversationId, can]);
-  const refreshTags = useCallback(async () => { if (can('tags.read')) { const page = await chatApi.listTags(); setTags(page.items); } }, [can]);
+  const refreshTags = useCallback(async (signal?: AbortSignal) => {
+    if (can('tags.read')) { const page = await chatApi.listTags(undefined, signal); if (!signal?.aborted && mounted.current) setTags(page.items); }
+  }, [can]);
 
-  useEffect(() => realtimeBus.subscribe((event) => {
-    if (!chatEventTypes.has(event.type) || event.organizationId !== session?.currentOrganizationId) return;
-    if (event.type.startsWith('tag.')) { void refreshTags().catch(() => undefined); return; }
-    const relatedConversationId = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
-    if (relatedConversationId !== conversationId) return;
-    if (event.type === 'message.created' || event.type === 'message.updated') { void refreshVisibleMessages().catch(() => undefined); return; }
-    if (event.type === 'note.created') { void refreshNotes().catch(() => undefined); return; }
-    void chatApi.getConversation(conversationId).then((updated) => { if (mounted.current) setConversation(updated); }).catch((reason: unknown) => {
-      if (!mounted.current) return;
-      if (reason && typeof reason === 'object' && 'status' in reason && (reason.status === 403 || reason.status === 404)) { setConversation(null); setMessages([]); setNotes([]); setDetailError('O acesso a esta conversa foi alterado.'); navigate('/app/conversations', { replace: true }); }
-    });
-  }), [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags]);
+  useEffect(() => {
+    const refreshConversation = async (signal: AbortSignal, reset: boolean) => {
+      if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
+      try {
+        const updated = await chatApi.getConversation(conversationId, signal);
+        if (signal.aborted) return;
+        setConversation(updated); setError('');
+        if (reset) {
+          if (can('contacts.read')) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
+          await refreshVisibleMessages(signal, true); await refreshNotes(signal, true);
+        }
+      } catch (reason) {
+        if (signal.aborted) return;
+        if (reason && typeof reason === 'object' && 'status' in reason && (reason.status === 403 || reason.status === 404)) {
+          setConversation(null); setMessages([]); setNotes([]); setDetailError('O acesso a esta conversa foi alterado.'); navigate('/app/conversations', { replace: true });
+        } else throw reason;
+      }
+    };
+    return realtimeBus.subscribe(async (event, signal) => {
+      if (!chatEventTypes.has(event.type) || event.organizationId !== session?.currentOrganizationId) return;
+      await bootstrap.current;
+      if (signal.aborted) return;
+      if (event.type.startsWith('tag.')) { await refreshTags(signal); return; }
+      const related = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
+      if (related !== conversationId) return;
+      if (event.type.startsWith('message.')) { await refreshVisibleMessages(signal); return; }
+      if (event.type === 'note.created') { await refreshNotes(signal); return; }
+      await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
+    }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
+      await bootstrap.current;
+      if (!signal.aborted) { await refreshConversation(signal, true); await refreshTags(signal); }
+    } });
+  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can]);
 
   async function loadOlderMessages() {
     if (!messageCursor || loadingOlder) return;
+    const requestEpoch = contentEpoch.current;
+    const controller = new AbortController(); reads.current.add(controller);
     const cursor = messageCursor;
     setLoadingOlder(true);
-    try { const page = await chatApi.listMessages(conversationId, cursor); if (!mounted.current) return; scroll.preparePrepend(); setMessages((current) => mergeMessages(page.items, current)); setMessageCursor(page.nextCursor); setMessageCursors((current) => [...current, cursor]); }
-    catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar o histórico.'); }
-    finally { setLoadingOlder(false); }
+    try { const page = await chatApi.listMessages(conversationId, cursor, controller.signal); if (!mounted.current || requestEpoch !== contentEpoch.current) return; scroll.preparePrepend(); setMessages((current) => mergeMessages(page.items, current)); setMessageCursor(page.nextCursor); messageCursors.current = [...messageCursors.current, cursor]; }
+    catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar o histórico.'); }
+    finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
   async function submitMessage(body: string, retryClientMessageId?: string) {
     if (!body.trim() || body.trim().length > 8000 || !can('messages.send') || conversation?.status === 'ARCHIVED') return;
@@ -121,7 +170,14 @@ function ConversationViewContent() {
   function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); sendDraft(); }
   async function submitNote(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = noteDraft.trim(); if (!body || !can('notes.create')) return; setActionBusy(true); setDetailError(''); try { const created = await chatApi.createNote(conversationId, body); setNotes((current) => [...current, created]); setNoteDraft(''); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível criar a nota.'); } finally { setActionBusy(false); } }
   async function removeTag(tagId: string) { setActionBusy(true); setDetailError(''); try { await chatApi.removeTag(conversationId, tagId); setConversation((current) => current ? { ...current, tagIds: current.tagIds.filter((id) => id !== tagId) } : current); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível remover a tag.'); } finally { setActionBusy(false); } }
-  async function loadMoreNotes() { if (!notesCursor || loadingMoreNotes) return; setLoadingMoreNotes(true); try { const page = await chatApi.listNotes(conversationId, notesCursor); setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); } finally { setLoadingMoreNotes(false); } }
+  async function loadMoreNotes() {
+    if (!notesCursor || loadingMoreNotes) return;
+    const requestEpoch = contentEpoch.current; const controller = new AbortController(); reads.current.add(controller);
+    setLoadingMoreNotes(true);
+    try { const page = await chatApi.listNotes(conversationId, notesCursor, controller.signal); if (controller.signal.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return; setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); }
+    catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); }
+    finally { reads.current.delete(controller); if (mounted.current) setLoadingMoreNotes(false); }
+  }
 
   if (loading) return <div className="detail-state" role="status"><span className="spinner" />Abrindo conversa…</div>;
   if (error || !conversation) return <div className="detail-state error-state" role="alert"><p>{detailError || error || 'Conversa indisponível.'}</p><Link to="/app/conversations">Voltar para conversas</Link></div>;
