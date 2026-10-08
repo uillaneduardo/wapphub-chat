@@ -1,0 +1,30 @@
+services:
+  wapphub-chat:
+    image: wapphub-chat:${CHAT_IMAGE_TAG:-899c5db}
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: https://api.wapphub.com.br
+    restart: unless-stopped
+    networks:
+      ingress:
+        aliases:
+          - wapphub-chat
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  ingress:
+    external: true
+    name: cloudflare_ingress

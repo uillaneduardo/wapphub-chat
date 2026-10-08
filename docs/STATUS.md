@@ -27,7 +27,7 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Caixa de conversas | ✅ Minhas, Não atribuídas, Todas (com `conversations.supervise`), Arquivadas, filtro de tags e paginação |
 | Conversa e mensagens | ✅ histórico com cursor, carregamento anterior, envio otimista e retry idempotente |
 | Ações operacionais | ✅ arquivar/reabrir, atribuir, transferir, tags e notas internas, conforme permissões |
-| Seletor de equipe para assignment/transfer | 🟡 frontend implementado contra `GET /api/v1/team/members`; endpoint está na branch Core `feat/m1-team-roster`, ainda não integrado nem implantado |
+| Seletor de equipe para assignment/transfer | ✅ frontend integrado; `GET /api/v1/team/members` publicado no Core e presente no OpenAPI de produção |
 | Realtime na UI | ✅ atualização pontual da conversa/mensagens/notas e eventos de tags; sem recarga total da lista |
 | Responsividade | ✅ lista/conversa em navegação mobile e lista, conversa e painel contextual em desktop |
 | Smoke autenticado com Core | ⬜ pendente; API pública ainda não oferece roster e o hostname `chat.wapphub.com.br` serve o app legado em `~/homelab/apps/chat` |
@@ -63,4 +63,4 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Round-robin | ⬜ milestone posterior |
 | Android nativo | ⛔ pós-MVP |
 
-Lint, typecheck, 31 testes e build passaram após a integração local do seletor de equipe. O smoke autenticado segue bloqueado até integrar/publicar o endpoint de roster e publicar este frontend no serviço correto. O Core de produção e sua configuração não foram alterados.
+Lint, typecheck, 31 testes e build passaram após a integração local do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. A definição do container de produção do frontend usa build estático Vite + Nginx, porta interna 3000, fallback SPA e somente a rede `cloudflare_ingress`; a imagem foi validada localmente, e `/login` e refresh em rota profunda retornaram 200. O smoke autenticado depende de conta de teste autorizada.
