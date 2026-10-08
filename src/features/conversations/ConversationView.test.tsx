@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ConversationView } from './Conversations';
@@ -23,7 +23,8 @@ function mockBase() {
 }
 
 describe('ConversationView', () => {
-  afterEach(() => { vi.restoreAllMocks(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
+  afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
   it('shows an optimistic send and retries with the same clientMessageId', async () => {
     mockBase(); const send = vi.spyOn(chatApi, 'sendMessage').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(message('message-1', 'client-stable', 'Olá'));
     renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); fireEvent.change(screen.getByRole('textbox', { name: 'Escrever mensagem' }), { target: { value: 'Olá' } }); fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
@@ -53,6 +54,26 @@ describe('ConversationView', () => {
     expect(send).toHaveBeenCalledTimes(1); expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeDisabled();
     resolve(message('m', send.mock.calls[0]![1].clientMessageId, 'Olá'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeEnabled());
+  });
+  it('integrates the splitter and restore control without replacing the history', async () => {
+    mockScrollGeometry(900); vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    mockBase(); vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: historyMessages, nextCursor: null }); renderDetail();
+    const handle = await screen.findByRole('separator'); const history = screen.getByRole('region', { name: 'Histórico de mensagens' }); history.scrollTop = 100; fireEvent.scroll(history);
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' }); expect(handle).toHaveAttribute('aria-valuenow', '316'); expect(history).toBe(screen.getByRole('region', { name: 'Histórico de mensagens' })); expect(history.scrollTop).toBe(100);
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar largura padrão' })); expect(handle).toHaveAttribute('aria-valuenow', '300'); expect(history.scrollTop).toBe(100);
+  });
+  it('uses the account preference for Shift+Enter while preserving IME, empty and duplicate guards', async () => {
+    mockBase(); let resolve!: (value: InternalTextMessage) => void;
+    const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(() => new Promise((done) => { resolve = done; }));
+    renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); const input = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Atalho de envio' }), { target: { value: 'shift-enter' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true }); expect(send).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: 'Texto pelo atalho' } });
+    expect(fireEvent.keyDown(input, { key: 'Enter' })).toBe(true);
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true, isComposing: true }); fireEvent.keyDown(input, { key: 'Enter', shiftKey: true, keyCode: 229 }); expect(send).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true }); fireEvent.change(input, { target: { value: 'Texto pelo atalho' } }); fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    expect(send).toHaveBeenCalledTimes(1); expect(send.mock.calls[0]![1]).toMatchObject({ body: 'Texto pelo atalho', clientMessageId: expect.any(String) });
+    await act(async () => resolve(message('saved-shortcut', send.mock.calls[0]![1].clientMessageId, 'Texto pelo atalho')));
   });
   it('blocks archived conversations including keyboard sends', async () => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, status: 'ARCHIVED' }); const send = vi.spyOn(chatApi, 'sendMessage');

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 // jsdom has no layout engine. Model scroll geometry explicitly; this tests behavior, not CSS rendering.
-export function mockScrollGeometry() {
+export function mockScrollGeometry(bodyWidth = 300) {
   const tops = new WeakMap<HTMLElement, number>();
   const height = (node: HTMLElement) => node.textContent === 'Tall' ? 200 : 100;
   const items = (node: HTMLElement) => [...node.querySelectorAll<HTMLElement>('[data-message-key]')];
@@ -11,6 +11,7 @@ export function mockScrollGeometry() {
   vi.spyOn(HTMLElement.prototype, 'scrollTop', 'get').mockImplementation(function (this: HTMLElement) { return tops.get(this) ?? 0; });
   vi.spyOn(HTMLElement.prototype, 'scrollTop', 'set').mockImplementation(function (this: HTMLElement, value) { tops.set(this, Math.max(0, Math.min(value, this.scrollHeight - this.clientHeight))); });
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.classList.contains('conversation-detail-body')) return { top: 0, bottom: viewportHeight, left: 0, right: bodyWidth, width: bodyWidth, height: viewportHeight, x: 0, y: 0, toJSON: () => ({}) };
     const history = this.closest<HTMLElement>('.message-history');
     let top = 0; let elementHeight = viewportHeight;
     if (history && this.hasAttribute('data-message-key')) {

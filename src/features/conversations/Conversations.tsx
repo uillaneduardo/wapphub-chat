@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FormEvent, KeyboardEvent } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams } from 'react-router-dom';
 import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
@@ -9,6 +9,11 @@ import type { Contact, Conversation, InternalNote, InternalTextMessage, Tag } fr
 import { createClientMessageId, createOptimisticMessage, mergeMessages } from './conversationModel';
 import { ComposerTools } from './ComposerTools';
 import { useMessageScroll, messageScrollKey } from './useMessageScroll';
+import { useComposerShortcut } from '../../hooks/useComposerShortcut';
+import { useContextPanel } from '../../hooks/useContextPanel';
+import { SendPreference } from '../../components/SendPreference';
+import { ContextSeparator } from '../../components/ContextSeparator';
+import { Icon } from '../../components/Icon';
 import { ConversationActions } from './ConversationActions';
 
 export function ConversationsLayout() {
@@ -35,6 +40,8 @@ function ConversationViewContent() {
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
+  const composerShortcut = useComposerShortcut(session?.user.id);
+  const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
@@ -112,10 +119,6 @@ function ConversationViewContent() {
     void submitMessage(body).finally(() => { composerBusy.current = false; setSending(false); });
   }
   function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); sendDraft(); }
-  function composerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendDraft(); }
-  }
   async function submitNote(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = noteDraft.trim(); if (!body || !can('notes.create')) return; setActionBusy(true); setDetailError(''); try { const created = await chatApi.createNote(conversationId, body); setNotes((current) => [...current, created]); setNoteDraft(''); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível criar a nota.'); } finally { setActionBusy(false); } }
   async function removeTag(tagId: string) { setActionBusy(true); setDetailError(''); try { await chatApi.removeTag(conversationId, tagId); setConversation((current) => current ? { ...current, tagIds: current.tagIds.filter((id) => id !== tagId) } : current); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível remover a tag.'); } finally { setActionBusy(false); } }
   async function loadMoreNotes() { if (!notesCursor || loadingMoreNotes) return; setLoadingMoreNotes(true); try { const page = await chatApi.listNotes(conversationId, notesCursor); setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); } finally { setLoadingMoreNotes(false); } }
@@ -125,8 +128,8 @@ function ConversationViewContent() {
   const canSeeMessages = can('messages.read'); const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
-    <header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{contact?.primaryIdentifier ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className="mobile-details-button" onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
-    <div className="conversation-detail-body"><section className="message-column">
+    <header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{contact?.primaryIdentifier ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
+    <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
       {detailError && <p className="inline-error" role="alert">{detailError}</p>}
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
@@ -135,8 +138,9 @@ function ConversationViewContent() {
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
-      {can('messages.send') && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer"><ComposerTools /><button className="primary-button" disabled={sending || !draft.trim() || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button></div></form>}
-    </section><aside className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
+      {can('messages.send') && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer"><ComposerTools /><div className="composer-send-controls"><button className="primary-button" disabled={sending || !draft.trim() || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
+    </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
+      {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}
       <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{contact?.primaryIdentifier ?? conversation.contactId}</span></div>
       <div className="context-section"><h2>Responsável</h2><span>{conversation.assignedUserId ? conversation.assignedUserId === sessionUserId ? `${session?.user.name} (você)` : conversation.assignedUserId : 'Não atribuída'}</span></div>
       {can('tags.read') && <div className="context-section"><h2>Tags</h2>{appliedTags.length ? <ul className="applied-tags">{appliedTags.map((tag) => <li key={tag.id}><span>{tag.name}</span>{can('tags.manage') && <button type="button" aria-label={`Remover tag ${tag.name}`} disabled={actionBusy} onClick={() => void removeTag(tag.id)}>×</button>}</li>)}</ul> : <span className="muted">Sem tags</span>}</div>}
