@@ -1,19 +1,38 @@
 # Deploy de produção
 
-O frontend é compilado pelo Docker e servido como arquivos estáticos por Nginx. O Nginx usa a porta interna `3000` e faz fallback de rotas SPA para `index.html`. O serviço participa apenas da rede externa `cloudflare_ingress`; não publica porta no host nem acessa banco ou Redis.
+> Atualização de produção — 2026-10-08, 15:00 Recife: P0 publicado em Core/API/Worker
+> `cbaf50c5eedd6731e1ca3a674c1d9b0b20005a7d` (`wapphub-core:p0-preview-cbaf50c`)
+> e Chat `d93efc576bd560fcbab0146343fb98bbbc1d0b69` (`wapphub-chat:p0-preview-d93efc5`).
+> Todos os cinco serviços healthy; HTTP, assets e integridade aprovados.
+> Validação funcional isolada anterior reaproveitada: 58 Core + 91 Chat; não reexecutada.
+> Homologação visual desta publicação pendente. A2 e demais aceites M1 permanecem;
+> M1 não formalmente encerrado. M2/P1 não iniciados.
+> [Registro de publicação e contingência](DEPLOY_P0_20261008.md).
 
-O Tunnel existente está documentado pelo serviço legado com origin `http://wapphub-chat:3000`. O serviço novo conserva esse nome DNS e porta.
+O frontend é compilado pelo Dockerfile existente e servido pelo Nginx na porta
+interna 3000, com fallback SPA. O serviço usa a rede externa cloudflare_ingress;
+não publica porta no host nem acessa banco/Redis. Configuração API de build:
+https://api.wapphub.com.br. Nenhum segredo integra o bundle.
 
-Para publicar uma revisão, use a tag do commit da `main`:
+A main não representa necessariamente produção. Antes de qualquer publicação,
+confirmar revisão aprovada, validações e autorização específica. Construir imagem
+versionada pelo Dockerfile existente, preservando configuração de API e imagem anterior.
+Após build e gates, atualizar somente o serviço, com dependências preservadas:
 
 ```sh
-CHAT_IMAGE_TAG=$(git rev-parse --short HEAD) docker compose -f compose.yml up -d --build --wait
+CHAT_IMAGE_TAG=<tag-aprovada-construida> docker compose -f compose.yml up -d --no-deps --no-build --pull never --wait --wait-timeout 60 wapphub-chat
 ```
 
-Para reverter dentro do novo stack, selecione a tag de commit anterior e recrie somente o serviço:
+A publicação P0 utilizou CHAT_IMAGE_TAG=p0-preview-d93efc5. O default Compose não
+foi alterado; informar explicitamente a tag em operações futuras.
+
+Rollback frontend somente se seguro, mantendo Core P0 corrigido saudável:
 
 ```sh
-CHAT_IMAGE_TAG=<tag-do-commit-anterior> docker compose -f compose.yml up -d --no-deps --wait wapphub-chat
+CHAT_IMAGE_TAG=lucide-nav-3e23452 docker compose -f compose.yml up -d --no-deps --no-build --pull never --wait --wait-timeout 60 wapphub-chat
 ```
 
-Mantenha as imagens versionadas localmente até a revisão seguinte ser validada. O build recebe `VITE_API_BASE_URL=https://api.wapphub.com.br`; nenhum segredo faz parte da imagem.
+Preservar imagens/volumes. Verificar health, login/SPA, JS/CSS e hashes do bundle,
+readiness API e logs. Não executar migrations, suites mutáveis de produção ou
+browsers no Homelab. Homologação manual pelo notebook após publicação autorizada.
+Core não pode retornar automaticamente ao artefato vulnerável demo-72d05aa.

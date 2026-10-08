@@ -37,13 +37,13 @@ API pública atual do Core:
 
 `https://api.wapphub.com.br`
 
-Frontend operacional publicado em `3e234522673023a64f6bd7c827ca1adef35aaa0b`,
-imagem `wapphub-chat:lucide-nav-3e23452`, Core compatível 72d05aa. Demo e melhorias
-visuais homologados pelo usuário. M1 não formalmente encerrado: auditoria encontrou
-lacuna de prévia/autorização Core e checkpoint/aplicação REST no Chat. Contacts e
-criação manual de conversa no frontend continuam incompletos; placeholders não
-significam telas implementadas. main remota 9072267 não contém os dez commits
-posteriores publicados, que permanecem nas branches locais.
+Frontend operacional publicado em `d93efc576bd560fcbab0146343fb98bbbc1d0b69`,
+imagem `wapphub-chat:p0-preview-d93efc5`, Core/API/Worker compatível `cbaf50c`.
+P0 de prévias publicado; [registro operacional](docs/DEPLOY_P0_20261008.md).
+Demo e melhorias anteriores homologados; homologação visual desta publicação pendente.
+M1 não formalmente encerrado: checkpoint A2 e demais aceites permanecem.
+Contacts/criação manual continuam incompletos. Commits publicados ainda exigem
+integração Git revisada; nenhum push ou merge realizado.
 
 Ver [inventário](docs/GIT_PRODUCTION_INVENTORY_20261008.md),
 [matriz/arquitetura](docs/M1_ARCHITECTURE_ACCEPTANCE_20261008.md) e
