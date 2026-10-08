@@ -1,5 +1,12 @@
 # Navegação com Lucide React
 
+> Atualização documental 2026-10-08: esta entrega foi publicada e o usuário
+> confirmou funcionamento das melhorias visuais. Produção atual: Chat3e23452,
+> Core72d05aa. Evidência manual não confirma cada viewport/touch/leitor de tela.
+> Comandos e pendências de deploy descritos abaixo são históricos da entrega;
+> estado corrente e bloqueadores globais M1 em M1_ARCHITECTURE_ACCEPTANCE_20261008.md.
+> Nenhum browser/visual automatizado foi executado no Homelab nesta reconciliação.
+
 Base publicada: `e0fbec0c759c9f3260a6f37474da948655dbc20a`.
 Branch: `fix/m1-lucide-navigation`. Entrega sem deploy, merge ou push.
 

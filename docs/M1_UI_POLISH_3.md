@@ -1,5 +1,12 @@
 # M1 UI Polish 3 — navegação, contexto e preferências
 
+> Atualização documental 2026-10-08: esta entrega foi publicada e o usuário
+> confirmou funcionamento das melhorias visuais. Produção atual: Chat3e23452,
+> Core72d05aa. Evidência manual não confirma cada viewport/touch/leitor de tela.
+> Comandos e pendências de deploy descritos abaixo são históricos da entrega;
+> estado corrente e bloqueadores globais M1 em M1_ARCHITECTURE_ACCEPTANCE_20261008.md.
+> Nenhum browser/visual automatizado foi executado no Homelab nesta reconciliação.
+
 Implementação: commit `5ff30ee`.
 
 Branch: `feat/m1-ui-polish-3`, criada da árvore limpa na versão publicada

@@ -1,5 +1,50 @@
 # Status do WappHub Chat
 
+## Estado verificado — 2026-10-08
+
+M1 operacional, homologações informadas de Demo/texto e melhorias visuais; **sem
+encerramento formal**. Produção 3e234522673023a64f6bd7c827ca1adef35aaa0b,
+imagem wapphub-chat:lucide-nav-3e23452; Core 72d05aa / wapphub-core:demo-72d05aa.
+Container Chat healthy, login/SPA/estáticos HTTP200 e hashes iguais à imagem.
+API/Worker/MariaDB/Redis healthy. main local/remota 9072267 contém versão anterior;
+dez commits posteriores publicados permanecem locais. PR #3 documental continua
+draft; conteúdo remoto preservado e confrontado com documentação local mais recente.
+
+| Item atual | Estado e evidência |
+| --- | --- |
+| Sessão/Organization/REST/CSRF/rotas | Implementado; sessão/testes e operação informada; troca multi-org integrada requer aceite específico |
+| Inbox/histórico/compositor/otimista/retry | Implementado e validado na cobertura de 86 testes; texto/IME/duplicação preservados |
+| Atribuição/transferência/roster | UI testada; roster publicado; preview Core ignora visibilidade/permission (A1) |
+| Tags/notas/archive no contexto | Implementados e testados; catálogo Tags separado é placeholder |
+| Demo/Providers/simulador | Publicados e homologados para texto; retry UI incerto não preserva key (A3) |
+| Scroll/compositor/toolbar desabilitada | Testados e homologação visual informada |
+| Sidebar/AppIcon/Lucide/flyout/logout | lucide-react1.53.0,22px,traço2,44px; testes/manual informados |
+| Contexto redimensionável/preferências conta | Testados e homologação informada; hooks/controles compartilhados |
+| Realtime integrado | Parcial: transporte funciona, checkpoint não aguarda leitura REST (A2) |
+| Contacts/criação manual de conversa | Parcial/pendente; placeholders e comandos ausentes no cliente |
+| Viewports/touch/leitor de tela completos | Sem evidência específica de cobertura integral, não inferir do relato geral |
+| Entitlements/seats/Admin/Minha Conta/Meta/mídia | Não implementados; M2/M3/M4 preservados |
+
+Lint/typecheck, **86 testes em 16 arquivos** e build reexecutados em jsdom/local;
+Core isolado revalidado com 56 testes e OpenAPI. Suites verdes não cobrem as
+contraprovas A1/A2. Browser gráfico/Playwright/screenshots automatizados não
+executados no Homelab. Homologação manual das melhorias foi confirmada pelo usuário;
+roteiro final de multi-org/permissão/transfer/reconnect ainda precisa evidência.
+
+Detalhes: [inventário](GIT_PRODUCTION_INVENTORY_20261008.md),
+[matriz e reutilização](M1_ARCHITECTURE_ACCEPTANCE_20261008.md),
+[nota remota preservada](M1_PRODUCTION_RECONCILIATION_20261008.md),
+[integração](GIT_INTEGRATION_STRATEGY_20261008.md).
+Não houve mudança funcional, deploy, merge ou push nesta reconciliação.
+
+## Histórico anterior preservado
+
+Abaixo, snapshots das entregas originais (31/36 testes e imagens antigas).
+Afirmações de “não publicado”, smoke pendente ou roster apenas em branch são do
+momento original, superadas pela seção atual e matriz. A publicação e homologação
+posteriores não apagam essas evidências nem comprovam critérios não testados.
+
+
 **Milestone ativo do ecossistema:** M1 — frontend operacional do chat interno.
 
 O backend M1 do `wapphub-core` está implantado. A fundação frontend foi criada nesta branch; as telas de produto e a validação autenticada ponta a ponta continuam pendentes.

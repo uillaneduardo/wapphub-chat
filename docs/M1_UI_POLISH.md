@@ -1,5 +1,12 @@
 # M1 — polish de interface para revisão
 
+> Atualização documental 2026-10-08: esta entrega foi publicada e o usuário
+> confirmou funcionamento das melhorias visuais. Produção atual: Chat3e23452,
+> Core72d05aa. Evidência manual não confirma cada viewport/touch/leitor de tela.
+> Comandos e pendências de deploy descritos abaixo são históricos da entrega;
+> estado corrente e bloqueadores globais M1 em M1_ARCHITECTURE_ACCEPTANCE_20261008.md.
+> Nenhum browser/visual automatizado foi executado no Homelab nesta reconciliação.
+
 Branch: `feat/m1-ui-polish`, criada da árvore limpa em `2d582682ca135f090fe6a184fb1b1802b11c1217` (Chat publicado).
 Core de referência informado: `72d05aa8c0a3c9f12a8c17abb25ad737b88c65af`; nenhum arquivo do Core foi alterado.
 

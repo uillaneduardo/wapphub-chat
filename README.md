@@ -37,11 +37,23 @@ API pública atual do Core:
 
 `https://api.wapphub.com.br`
 
-A fundação do frontend M1 já foi iniciada neste repositório; consulte `docs/STATUS.md` para o estado validado.
+Frontend operacional publicado em `3e234522673023a64f6bd7c827ca1adef35aaa0b`,
+imagem `wapphub-chat:lucide-nav-3e23452`, Core compatível 72d05aa. Demo e melhorias
+visuais homologados pelo usuário. M1 não formalmente encerrado: auditoria encontrou
+lacuna de prévia/autorização Core e checkpoint/aplicação REST no Chat. Contacts e
+criação manual de conversa no frontend continuam incompletos; placeholders não
+significam telas implementadas. main remota 9072267 não contém os dez commits
+posteriores publicados, que permanecem nas branches locais.
+
+Ver [inventário](docs/GIT_PRODUCTION_INVENTORY_20261008.md),
+[matriz/arquitetura](docs/M1_ARCHITECTURE_ACCEPTANCE_20261008.md) e
+[estratégia Git](docs/GIT_INTEGRATION_STRATEGY_20261008.md). M2 foi planejado somente
+em wapphub-core/docs/M2_TECHNICAL_PLAN.md, preservando o roadmap original.
 
 O branch de revisão `feat/m1-demo-provider-ui` acrescenta Configurações →
 Provedores e o simulador autenticado DEMO. Ele depende dos endpoints do branch
-Core `feat/m1-demo-provider` e ainda não foi publicado.
+Core `feat/m1-demo-provider`; ambos já foram publicados, embora esses commits
+ainda não tenham sido integrados à main remota.
 
 ## Escopo do frontend M1
 
