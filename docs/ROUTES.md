@@ -32,6 +32,8 @@ Refresh direto deve funcionar por configuração de fallback no servidor.
 - `/app/settings/assignment`
 - `/app/settings/channels`
 - `/app/settings/channels/whatsapp`
+- `/app/settings/providers`
+- `/app/providers/demo/simulator`
 
 ## Comportamento ao trocar Organization
 

@@ -39,6 +39,10 @@ API pública atual do Core:
 
 A fundação do frontend M1 já foi iniciada neste repositório; consulte `docs/STATUS.md` para o estado validado.
 
+O branch de revisão `feat/m1-demo-provider-ui` acrescenta Configurações →
+Provedores e o simulador autenticado DEMO. Ele depende dos endpoints do branch
+Core `feat/m1-demo-provider` e ainda não foi publicado.
+
 ## Escopo do frontend M1
 
 - Login e sessão compartilhada com o WappHub Core.

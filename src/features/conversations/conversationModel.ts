@@ -26,5 +26,5 @@ export function mergeMessages(existing: InternalTextMessage[], incoming: Interna
 export function createClientMessageId(): string { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 export function createOptimisticMessage(conversationId: string, senderUserId: string, body: string, clientMessageId = createClientMessageId()): InternalTextMessage {
   const now = new Date().toISOString();
-  return { id: `optimistic:${clientMessageId}`, conversationId, senderUserId, clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'PENDING', createdAt: now, updatedAt: now };
+  return { id: `optimistic:${clientMessageId}`, conversationId, senderUserId, senderContactId: null, clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'PENDING', createdAt: now, updatedAt: now };
 }

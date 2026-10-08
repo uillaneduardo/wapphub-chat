@@ -81,6 +81,17 @@ Componentes devem manter hierarquia consistente:
 - empty state;
 - loading/skeleton;
 - health/status indicator.
+- cards de provedores, estado de ativação e conversa simulada em duas colunas;
+  em viewport estreito, seletor de contatos vira faixa horizontal e o histórico
+  mantém rolagem própria.
+
+## Responsividade revisada no branch Demo
+
+O shell e a área de atendimento usam limites flexíveis de altura/largura para
+preservar rolagem da inbox e do histórico em resoluções baixas. Dropdowns e
+compositores mantêm foco visível e controles touch. A validação automatizada
+disponível é CSS/build e Testing Library; inspeção visual em browser real segue
+pendente neste ambiente.
 
 ## Evitar
 

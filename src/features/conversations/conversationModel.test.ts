@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createOptimisticMessage, matchesInboxFilter, mergeMessages, upsertInboxConversation } from './conversationModel';
 import type { Conversation, InternalTextMessage } from '../../types/chat';
 
-const conversation = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'c1', contactId: 'contact-1', tagIds: ['tag-1'], status: 'OPEN', assignedUserId: 'u1', archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL', ...overrides });
-const message = (overrides: Partial<InternalTextMessage> = {}): InternalTextMessage => ({ id: 'm1', conversationId: 'c1', senderUserId: 'u1', clientMessageId: 'client-1', direction: 'INTERNAL', type: 'TEXT', body: 'Oi', status: 'SENT', createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', ...overrides });
+const conversation = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'c1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: ['tag-1'], status: 'OPEN', assignedUserId: 'u1', archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL', ...overrides });
+const message = (overrides: Partial<InternalTextMessage> = {}): InternalTextMessage => ({ id: 'm1', conversationId: 'c1', senderUserId: 'u1', senderContactId: null, clientMessageId: 'client-1', direction: 'INTERNAL', type: 'TEXT', body: 'Oi', status: 'SENT', createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', ...overrides });
 
 describe('conversation state helpers', () => {
   it('matches ownership, unassigned, archive, and tag filters', () => {

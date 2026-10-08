@@ -4,7 +4,7 @@ import { ConversationActions } from './ConversationActions';
 import { chatApi } from '../../lib/chatApi';
 import type { Conversation, Tag, TeamMember } from '../../types/chat';
 
-const baseConversation: Conversation = { id: 'conv-1', contactId: 'contact-1', tagIds: [], status: 'OPEN', assignedUserId: null, archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL' };
+const baseConversation: Conversation = { id: 'conv-1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: null, archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL' };
 const tags: Tag[] = [{ id: 'tag-1', name: 'Urgente' }];
 const members: TeamMember[] = [
   { userId: 'user-1', name: 'Ana', email: 'ana@example.test', status: 'ACTIVE', canReceiveAssignment: true },

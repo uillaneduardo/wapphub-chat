@@ -8,9 +8,9 @@ import type { Contact, Conversation, InternalNote, InternalTextMessage } from '.
 
 const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer'] } }));
 vi.mock('../session/SessionContext', () => ({ useSession: () => ({ session: state.session }) }));
-const conversation: Conversation = { id: 'conv-1', contactId: 'contact-1', tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL' };
+const conversation: Conversation = { id: 'conv-1', contactId: 'contact-1', contactName: 'Contato teste', lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z', visibility: 'FULL' };
 const contact: Contact = { id: 'contact-1', name: 'Joana', primaryIdentifier: '+55 81 99999-0000', createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z' };
-const message = (id: string, clientMessageId: string, body: string): InternalTextMessage => ({ id, conversationId: 'conv-1', senderUserId: 'user-1', clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'SENT', createdAt: '2026-10-08T00:00:01Z', updatedAt: '2026-10-08T00:00:01Z' });
+const message = (id: string, clientMessageId: string, body: string): InternalTextMessage => ({ id, conversationId: 'conv-1', senderUserId: 'user-1', senderContactId: null, clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'SENT', createdAt: '2026-10-08T00:00:01Z', updatedAt: '2026-10-08T00:00:01Z' });
 function renderDetail() { return render(<MemoryRouter initialEntries={['/app/conversations/conv-1']}><Routes><Route path="/app/conversations/:conversationId" element={<ConversationView />} /><Route path="/app/conversations" element={<p>Inbox</p>} /></Routes></MemoryRouter>); }
 function mockBase() {
   vi.spyOn(chatApi, 'getConversation').mockResolvedValue(conversation); vi.spyOn(chatApi, 'getContact').mockResolvedValue(contact);

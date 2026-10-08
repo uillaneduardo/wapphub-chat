@@ -66,3 +66,9 @@ Contrato realtime consultado: `wapphub-core/docs/REALTIME_CONTRACT.md` (versão 
 | Android nativo | ⛔ pós-MVP |
 
 Lint, typecheck, 31 testes e build passaram após a integração do seletor de equipe. O Core M1 foi integrado e implantado sem migrations; health/readiness públicos retornam 200. CORS autoriza somente `https://chat.wapphub.com.br`: preflight permitido retornou 204, POST de origem inválida foi rejeitado com 403 e POST permitido chegou à validação de payload. O WebSocket de realtime rejeitou Origin inválida (403) e exigiu sessão para Origin autorizada (401). O app legado foi removido da rede pública; seu banco e volume foram preservados em rede privada. O smoke autenticado de login, conversas, mensagens, replay e ações operacionais ainda depende de credencial de teste e browser funcional no host.
+
+## Branch de revisão `feat/m1-demo-provider-ui`
+
+Adiciona a tela Provedores, estado DEMO/META (Meta apenas em desenvolvimento), ativação por permission, link para o simulador autenticado e interface responsiva de conversa externa simulada. Conversas do canal exibem contato, canal e prévia da última mensagem; histórico distingue recebidas e enviadas. O simulador usa as mensagens comuns, atualiza por WebSocket e não envia identidade de remetente.
+
+Validação local: **36 testes**, lint, typecheck e build passaram. O branch depende do Core `feat/m1-demo-provider`; não foi publicado nem testado contra produção. Inspeção visual em browser real nos viewports 1920×1080, 1366×768, 1024×768, 768×1024 e 390×844 continua pendente; regras responsivas e estados foram verificadas por código/build/Testing Library. Não houve deploy.

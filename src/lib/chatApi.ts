@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
+import type { Contact, Conversation, CursorPage, DemoContact, InternalNote, InternalTextMessage, Provider, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
 
 export type ConversationScope = 'mine' | 'unassigned' | 'all';
 export interface ConversationQuery { scope: ConversationScope; archived?: boolean; tagId?: string; cursor?: string; limit?: number }
@@ -11,6 +11,10 @@ function queryString(values: Record<string, string | number | boolean | undefine
 const idPath = (id: string) => encodeURIComponent(id);
 
 export const chatApi = {
+  listProviders: () => apiRequest<{ items: Provider[] }>('/providers'),
+  setDemoProvider: (enabled: boolean) => apiRequest<{ enabled: boolean }>('/providers/demo', { method: 'PUT', body: JSON.stringify({ enabled }) }),
+  listDemoContacts: () => apiRequest<{ enabled: boolean; items: DemoContact[] }>('/providers/demo/contacts'),
+  sendDemoMessage: (contactId: string, externalMessageId: string, body: string) => apiRequest<InternalTextMessage>('/providers/demo/messages', { method: 'POST', body: JSON.stringify({ contactId, externalMessageId, body }) }),
   listConversations: (query: ConversationQuery) => apiRequest<CursorPage<Conversation>>(`/conversations${queryString({ scope: query.scope, archived: query.archived, tagId: query.tagId, cursor: query.cursor, limit: query.limit ?? 50 })}`),
   getConversation: (id: string) => apiRequest<Conversation>(`/conversations/${idPath(id)}`),
   getContact: (id: string) => apiRequest<Contact>(`/contacts/${idPath(id)}`),

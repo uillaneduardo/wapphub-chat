@@ -93,6 +93,11 @@ Comportamento esperado:
 - atualizar apenas recursos afetados;
 - não usar polling frequente como estratégia principal.
 
+Mensagens de contato Demo e respostas do atendente usam os mesmos eventos
+`message.created`/`conversation.updated`; o simulador atualiza apenas a conversa
+selecionada por realtime. Histórico, autores e texto são consultados na API
+autorizada, nunca no envelope de eventos.
+
 ## Segurança do realtime
 
 O upgrade WebSocket respeita o Origin autorizado e a sessão do Core.
