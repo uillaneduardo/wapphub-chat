@@ -23,7 +23,15 @@ describe('conversation shell scope and navigation', () => {
   }
   it('renders consistent icons, nested providers and active ancestor routes', () => {
     renderNav(); const nav = screen.getByRole('navigation', { name: 'Navegação principal' });
-    for (const name of ['Conversas', 'Contatos', 'Arquivos', 'Equipe', 'Tags', 'Configurações', 'Provedores']) expect(within(nav).getByRole('link', { name }).querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    for (const [name, glyph] of Object.entries({ Conversas: 'messages-square', Contatos: 'contact-round', Arquivos: 'file-text', Equipe: 'users-round', Tags: 'tags', Configurações: 'settings', Provedores: 'plug' })) {
+      const icon = within(nav).getByRole('link', { name }).querySelector('svg');
+      expect(icon).toHaveClass('lucide', `lucide-${glyph}`, 'app-icon');
+      expect(icon).toHaveAttribute('width', '22'); expect(icon).toHaveAttribute('height', '22');
+      expect(icon).toHaveAttribute('stroke-width', '2'); expect(icon).toHaveAttribute('aria-hidden', 'true');
+    }
+    expect(screen.getByRole('button', { name: 'Recolher menu' }).querySelector('svg')).toHaveClass('lucide-panel-left-close');
+    expect(screen.getByRole('button', { name: 'Recolher subitens de Configurações' }).querySelector('svg')).toHaveClass('lucide-chevron-down');
+    expect(screen.getByRole('button', { name: 'Sair da conta' }).querySelector('svg')).toHaveClass('lucide-log-out');
     expect(within(nav).getByRole('link', { name: 'Configurações' })).toHaveClass('active');
     expect(within(nav).getByRole('link', { name: 'Provedores' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Provedores' }).closest('ul')).toHaveClass('nav-children');
@@ -33,10 +41,11 @@ describe('conversation shell scope and navigation', () => {
   it('collapses without navigation and exposes keyboard-accessible flyout links and tooltips', () => {
     renderNav(); fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }));
     expect(screen.getByText('Destino Provedores')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Expandir menu' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Expandir menu' }).querySelector('svg')).toHaveClass('lucide-panel-left-open');
     const contacts = screen.getByRole('link', { name: 'Contatos' }); fireEvent.focus(contacts); expect(screen.getByRole('tooltip', { name: 'Contatos' })).toBeInTheDocument(); fireEvent.blur(contacts);
     const trigger = screen.getByRole('button', { name: 'Configurações' }); expect(trigger).toHaveClass('active'); fireEvent.click(trigger);
     const flyout = screen.getByRole('region', { name: 'Submenu de Configurações' }); const overview = within(flyout).getByRole('link', { name: 'Visão geral' }); expect(overview).toHaveFocus();
-    fireEvent.keyDown(overview, { key: 'ArrowDown' }); const providers = within(flyout).getByRole('link', { name: 'Provedores' }); expect(providers).toHaveFocus();
+    fireEvent.keyDown(overview, { key: 'ArrowDown' }); const providers = within(flyout).getByRole('link', { name: 'Provedores' }); expect(providers).toHaveFocus(); expect(providers.querySelector('svg')).toHaveClass('lucide-plug'); expect(overview.querySelector('svg')).toHaveClass('lucide-settings');
     fireEvent.keyDown(providers, { key: 'Escape' }); expect(trigger).toHaveFocus(); expect(screen.queryByRole('region', { name: 'Submenu de Configurações' })).not.toBeInTheDocument();
     fireEvent.click(trigger); within(screen.getByRole('region')).getByRole('link', { name: 'Provedores' }).focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
     fireEvent.click(trigger); fireEvent.pointerDown(screen.getByText('Destino Provedores')); expect(screen.queryByRole('region', { name: 'Submenu de Configurações' })).not.toBeInTheDocument();
