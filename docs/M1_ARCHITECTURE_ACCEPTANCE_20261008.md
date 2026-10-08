@@ -1,5 +1,11 @@
 # Auditoria Chat M1 e reutilização — 2026-10-08
 
+> P1 corrigido e validado **localmente** na branch fix/m1-realtime-consistency:
+> 129 testes/19 arquivos, lint, typecheck e build aprovados.
+> [Estratégia, evidências e limites](P1_REALTIME_CONSISTENCY.md).
+> Produção permanece P0 (Core cbaf50c / Chat d93efc5), homologado pelo usuário.
+> P1 ainda não publicado/homologado; demais aceites M1 permanecem, M2 não iniciado.
+
 > Atualização de produção — 2026-10-08, 15:00 Recife: P0 publicado em Core/API/Worker
 > `cbaf50c5eedd6731e1ca3a674c1d9b0b20005a7d` (`wapphub-core:p0-preview-cbaf50c`)
 > e Chat `d93efc576bd560fcbab0146343fb98bbbc1d0b69` (`wapphub-chat:p0-preview-d93efc5`).

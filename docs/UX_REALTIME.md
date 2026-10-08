@@ -10,6 +10,11 @@ O produto não pretende copiar visualmente o WhatsApp, mas deve oferecer intera�
 
 O M1 frontend opera sobre o backend M1 já disponível no Core.
 
+A correção local P1 usa confirmação assíncrona das projeções REST, checkpoint
+conservador isolado por User/Organization/aba, retry limitado e reconciliação após
+replay. Ver [P1_REALTIME_CONSISTENCY.md](P1_REALTIME_CONSISTENCY.md) para garantias,
+limites, testes e publicação pendente. P0 foi homologado; P1 não foi publicado.
+
 Nesta etapa:
 
 - mensagens operacionais são de texto;

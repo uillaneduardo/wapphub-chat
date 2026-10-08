@@ -1,0 +1,17 @@
+
+> wapphub-chat@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.3 /home/uillan/homelab/apps/wapphub-chat
+
+
+ Test Files  19 passed (19)
+      Tests  129 passed (129)
+   Start at  15:38:28
+   Duration  35.93s (environment 43%, tests 35%, setup 12%, import 5%, transform 5%, worker 1%)
+
+Environment  jsdom was created 19 times · 38.17s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

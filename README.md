@@ -39,8 +39,10 @@ API pública atual do Core:
 
 Frontend operacional publicado em `d93efc576bd560fcbab0146343fb98bbbc1d0b69`,
 imagem `wapphub-chat:p0-preview-d93efc5`, Core/API/Worker compatível `cbaf50c`.
-P0 de prévias publicado; [registro operacional](docs/DEPLOY_P0_20261008.md).
-Demo e melhorias anteriores homologados; homologação visual desta publicação pendente.
+P0 de prévias publicado e homologado manualmente; [registro operacional](docs/DEPLOY_P0_20261008.md).
+Demo, melhorias anteriores e P0 homologados pelo usuário.
+P1 realtime corrigido localmente, 129 testes aprovados; publicação/homologação P1
+pendentes. Ver [relatório P1](docs/P1_REALTIME_CONSISTENCY.md).
 M1 não formalmente encerrado: checkpoint A2 e demais aceites permanecem.
 Contacts/criação manual continuam incompletos. Commits publicados ainda exigem
 integração Git revisada; nenhum push ou merge realizado.
