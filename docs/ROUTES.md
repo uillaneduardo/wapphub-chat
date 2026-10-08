@@ -48,3 +48,7 @@ A troca de Organization:
 ## Visibilidade
 
 Menu e rotas podem variar por permission/entitlement, porém o backend continua sendo a autoridade de segurança.
+
+## Rotas funcionais adicionadas nesta entrega local
+
+`/app/contacts` e `/app/contacts/:id`: lista/detalhe reais protegidos por `contacts.read`; escrita condicionada a `contacts.write`. `/app/conversations/new`: seleção/cadastro de contato e criação interna, exige `conversations.read`, `conversations.create` e `contacts.read`. A abertura usa o filtro de inbox correspondente à atribuição. Publicação/homologação pendentes.

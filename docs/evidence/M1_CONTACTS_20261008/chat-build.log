@@ -1,0 +1,13 @@
+
+> wapphub-chat@0.1.0 build
+> tsc -b && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 1957 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.45 kB │ gzip:   0.29 kB
+dist/assets/index-CMrFcu90.css   35.63 kB │ gzip:   6.94 kB
+dist/assets/index-B0WaxpKD.js   352.71 kB │ gzip: 109.37 kB
+✓ built in 7.34s
