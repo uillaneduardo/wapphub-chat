@@ -1,5 +1,13 @@
 # Status do WappHub Chat
 
+> P1 publicado em 2026-10-08: Chat `6bbc1c474f6f5b8f321bd957f8e904bb9016147a`,
+> imagem `wapphub-chat:p1-realtime-6bbc1c4`, healthy. HTTP/SPA/assets/hashes aprovados.
+> Core/API/Worker permanecem P0 cbaf50c; MariaDB/Redis preservados.
+> 129 testes anteriores reaproveitados, sem repetição. Homologação P1 manual pendente.
+> [Registro da publicação](DEPLOY_P1_20261008.md). Demais aceites M1 permanecem.
+
+## Registro anterior / procedimentos
+
 > P1 corrigido e validado **localmente** na branch fix/m1-realtime-consistency:
 > 129 testes/19 arquivos, lint, typecheck e build aprovados.
 > [Estratégia, evidências e limites](P1_REALTIME_CONSISTENCY.md).

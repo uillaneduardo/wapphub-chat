@@ -1,5 +1,13 @@
 # Deploy de produção
 
+> P1 publicado em 2026-10-08: Chat `6bbc1c474f6f5b8f321bd957f8e904bb9016147a`,
+> imagem `wapphub-chat:p1-realtime-6bbc1c4`, healthy. HTTP/SPA/assets/hashes aprovados.
+> Core/API/Worker permanecem P0 cbaf50c; MariaDB/Redis preservados.
+> 129 testes anteriores reaproveitados, sem repetição. Homologação P1 manual pendente.
+> [Registro da publicação](DEPLOY_P1_20261008.md). Demais aceites M1 permanecem.
+
+## Registro anterior / procedimentos
+
 > Atualização de produção — 2026-10-08, 15:00 Recife: P0 publicado em Core/API/Worker
 > `cbaf50c5eedd6731e1ca3a674c1d9b0b20005a7d` (`wapphub-core:p0-preview-cbaf50c`)
 > e Chat `d93efc576bd560fcbab0146343fb98bbbc1d0b69` (`wapphub-chat:p0-preview-d93efc5`).
@@ -29,7 +37,7 @@ foi alterado; informar explicitamente a tag em operações futuras.
 Rollback frontend somente se seguro, mantendo Core P0 corrigido saudável:
 
 ```sh
-CHAT_IMAGE_TAG=lucide-nav-3e23452 docker compose -f compose.yml up -d --no-deps --no-build --pull never --wait --wait-timeout 60 wapphub-chat
+CHAT_IMAGE_TAG=p0-preview-d93efc5 docker compose -f compose.yml up -d --no-deps --no-build --pull never --wait --wait-timeout 60 wapphub-chat
 ```
 
 Preservar imagens/volumes. Verificar health, login/SPA, JS/CSS e hashes do bundle,
