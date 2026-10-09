@@ -1,0 +1,24 @@
+.permissions-editor .permissions-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 20px 0; }
+.permissions-editor .permissions-toolbar label { display: grid; gap: 6px; flex: 1 1 320px; }
+.permissions-editor input { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.permissions-editor input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.permissions-editor .permissions-context { border: 1px solid var(--border); border-radius: 8px; margin: 12px 0; overflow: hidden; }
+.permissions-editor .permissions-context h2 { margin: 0; }
+.permissions-editor .permission-group-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 0; background: var(--surface-muted); color: var(--text); text-align: left; }
+.permissions-editor .permission-group-toggle small { margin-left: auto; color: var(--text-muted); font-weight: normal; }
+.permissions-editor .permission-group-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+.permissions-editor .permissions-context [role="group"] { padding: 0 12px; }
+.permissions-editor .permission-row + .permission-row { border-top: 1px solid var(--border); }
+.permissions-editor .permission-row code { display: block; margin-top: 4px; font-size: 11px; color: var(--text-muted); overflow-wrap: anywhere; }
+.permissions-editor .permission-description, .permissions-editor .permission-context-description { font-size: 12px; margin: 6px 0; }
+.permissions-editor .permission-actions { margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border); }
+.permissions-editor .permission-actions p { color: var(--text-muted); font-size: 13px; }
+.permissions-editor .permission-dialog-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--text) 25%, transparent); display: grid; place-items: center; padding: 16px; }
+.permissions-editor .permission-dialog { width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.permissions-editor .permission-dialog button + button { margin-left: 8px; }
+.permissions-editor .permission-sensitive { border-left: 3px solid var(--warning); padding-left: 12px; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .permissions-editor .permission-group-toggle { flex-wrap: wrap; }
+  .permissions-editor .permission-group-toggle small { flex-basis: calc(100% - 64px); margin-left: 32px; font-size: 11px; }
+  .permissions-editor .team-actions button { flex: 1 1 150px; }
+}

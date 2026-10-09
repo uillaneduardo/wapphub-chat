@@ -2,7 +2,7 @@ import type { Resource } from '../types/resources';
 import type { AppIconName } from './AppIcon';
 
 export type NavigationContext = 'Atendimento' | 'Produtividade' | 'Comunicação' | 'Gestão' | 'Preferências';
-export type Availability = 'AVAILABLE' | 'RESERVED_ROUTE' | 'PLACEHOLDER' | 'PLANNED' | 'RESEARCH' | 'UNSUPPORTED';
+export type Availability = 'AVAILABLE' | 'RESERVED_ROUTE' | 'PLACEHOLDER' | 'PLANNED' | 'RESEARCH' | 'UNSUPPORTED' | 'DEPRECATED';
 export interface NavigationItem {
   id: string;
   context: NavigationContext;
@@ -11,9 +11,11 @@ export interface NavigationItem {
   to?: string;
   permissions?: readonly string[];
   availability: Availability;
-  // Reserved for a real Core catalog. No inferred feature or entitlement codes.
+  // Core resource identifier. No inferred entitlement inclusion or permission codes.
   featureCode?: string;
   entitlement?: string;
+  navigable?: boolean;
+  disabledReason?: string;
 }
 export const navigationContexts: readonly NavigationContext[] = ['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências'];
 export const navigationItems: readonly NavigationItem[] = [
@@ -34,18 +36,22 @@ export const navigationItems: readonly NavigationItem[] = [
   { id: 'billing', featureCode: 'organization.subscription', context: 'Gestão', label: 'Plano e assinatura', icon: 'billing', availability: 'PLANNED' },
   { id: 'settings', featureCode: 'chat.settings', context: 'Preferências', label: 'Configurações', icon: 'settings', to: '/app/settings', availability: 'PLACEHOLDER' },
 ];
+export const availabilityLabels: Record<Resource['availability'], string> = {
+  AVAILABLE: 'Indisponível', PLANNED: 'Em breve', RESEARCH: 'Em estudo',
+  UNSUPPORTED: 'Indisponível', DEPRECATED: 'Descontinuado',
+};
 export function visibleNavigation(permissions: readonly string[], resources: readonly Resource[] = [], items: readonly NavigationItem[] = navigationItems) {
-  const visible = items.filter((item) => {
+  const resolved = items.map((item) => {
     const resource = resources.find((resource) => resource.code === item.featureCode);
-    return resource?.availability === 'AVAILABLE' && resource.navigation && (!item.permissions || item.permissions.every((permission) => permissions.includes(permission)));
+    const authorized = !item.permissions || item.permissions.every((permission) => permissions.includes(permission));
+    const navigable = Boolean(resource?.availability === 'AVAILABLE' && resource.navigation && authorized && item.to && (item.availability === 'AVAILABLE' || item.availability === 'RESERVED_ROUTE'));
+    // An entitlement identifier is not an entitlement decision. The current Core
+    // contract supplies no plan inclusion state, so never infer “Não incluído”.
+    const disabledReason = !resource ? 'Indisponível' : resource.availability !== 'AVAILABLE' ? availabilityLabels[resource.availability] : !authorized ? 'Acesso restrito' : 'Indisponível';
+    return { ...item, navigable, disabledReason: navigable ? undefined : disabledReason };
   });
-  // A simulation-only session retains the existing channels entry point.
-  const providers = visible.find((item) => item.id === 'providers');
-  const demo = visible.find((item) => item.id === 'demo');
-  const resolved = !providers && demo ? visible.map((item) => item.id === 'demo' ? { ...item, label: 'Canais e integrações' } : item) : visible;
   return navigationContexts.map((context) => ({ context, items: resolved.filter((item) => item.context === context) })).filter((group) => group.items.length > 0);
 }
-
 export function isNavigationLink(item: NavigationItem) {
-  return Boolean(item.to && (item.availability === 'AVAILABLE' || item.availability === 'RESERVED_ROUTE'));
+  return item.navigable === true && Boolean(item.to);
 }

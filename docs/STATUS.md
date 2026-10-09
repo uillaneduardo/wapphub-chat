@@ -1,3 +1,14 @@
+# M2.1 — editor refinado e recursos permanentes (2026-10-09)
+
+Busca local, agrupamento dinâmico recolhível, herança/overrides/acesso aplicado
+separados, contador e descarte de ajustes, confirmações sensíveis e proteção contra
+saída/troca de membro/organização implementados. Navegação mantém todos os recursos
+públicos nos cinco contextos, com motivos e bloqueio de recursos sem acesso.
+Contratos, autorização/persistência Core, sessões e realtime preservados.
+Validação: npm ci (0 vulnerabilidades), lint, typecheck, 227 testes em 24 arquivos e build.
+CI/merge/deploy seguem gates desta entrega. Homologação visual/funcional manual pendente.
+[Arquitetura e limites](PERMISSIONS_UI_POLISH.md). Registros abaixo são históricos.
+
 # M2.1 — atualização técnica de 2026-10-09
 
 Equipe/permissões funcional, editor persistido no Core, navegação por catálogo
