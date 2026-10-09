@@ -19,5 +19,5 @@ export function AppShell() { const { session, expireSession } = useSession(); co
     const online = () => client.retry(); window.addEventListener('online', online);
     return () => { window.removeEventListener('online', online); client.close(); clientRef.current = null; };
   }, [organizationId, userId, canReadConversations, expireSession]);
-  return <div className={`app-shell${inConversations ? ' chat-app-shell' : ''}`}><Sidebar key={session?.user.id ?? 'signed-out'} /><main className="main-content"><div className={`realtime-status realtime-${realtimeState}`} role="status"><span />{realtimeState === 'open' ? 'Conectado' : realtimeState === 'reconnecting' || realtimeState === 'connecting' ? 'Reconectando' : realtimeState === 'stale' ? 'Dados desatualizados — reconexão pausada' : 'Realtime indisponível'}{realtimeState === 'stale' && <button type="button" className="text-button" onClick={() => clientRef.current?.retry()}>Tentar novamente</button>}</div><Outlet key={`${userId}:${organizationId}`} /></main></div>;
+  return <div className={`app-shell${inConversations ? ' chat-app-shell' : ''}`}><Sidebar key={session?.user.id ?? 'signed-out'} realtimeState={realtimeState} onRealtimeRetry={() => clientRef.current?.retry()} /><main className="main-content"><Outlet key={`${userId}:${organizationId}`} /></main></div>;
 }

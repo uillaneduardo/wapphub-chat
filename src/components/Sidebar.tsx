@@ -1,3 +1,4 @@
+import { RotateCw } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -14,7 +15,9 @@ const links: { to: string; label: string; icon: AppIconName; permission?: string
   { to: '/app/team', label: 'Equipe', icon: 'team' },
   { to: '/app/tags', label: 'Tags', icon: 'tags' },
 ];
-export function Sidebar() {
+type RealtimeState = 'open' | 'connecting' | 'reconnecting' | 'stale' | 'closed';
+const realtimeLabels: Record<RealtimeState, string> = { open: 'Tempo real ativo', connecting: 'Conectando…', reconnecting: 'Reconectando…', closed: 'Tempo real indisponível', stale: 'Tempo real indisponível' };
+export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtimeState?: RealtimeState; onRealtimeRetry?: () => void }) {
   const { session, logout } = useSession(); const location = useLocation();
   const [collapsed, setCollapsed] = useUiPreference(session?.user.id, 'sidebarCollapsed');
   const mobile = useMediaQuery('(max-width: 720px)'); const compact = collapsed || mobile;
@@ -61,6 +64,10 @@ export function Sidebar() {
       </div>
     </nav>
     <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
+      <div className="sidebar-realtime">
+        <span className={`realtime-status realtime-${realtimeState}`} role="status" aria-live="polite" aria-atomic="true" tabIndex={0} title={`${realtimeLabels[realtimeState]} — conexão em tempo real com o servidor WappHub, não com o WhatsApp.${realtimeState === 'stale' ? ' Reconexão pausada; tente novamente.' : ''}`}><span className="realtime-dot" aria-hidden="true" /><span className="realtime-label">{realtimeLabels[realtimeState]}</span></span>
+        {realtimeState === 'stale' && <NavHint enabled={compact} label="Tentar reconexão novamente"><button type="button" className="realtime-retry" aria-label="Tentar reconexão novamente" onClick={onRealtimeRetry}><RotateCw size={16} aria-hidden="true" /><span className="realtime-retry-label">Tentar novamente</span></button></NavHint>}
+      </div>
       <NavHint label="Sair da conta" enabled={compact}><button ref={logoutButton} type="button" className="logout-button" aria-label="Sair da conta" disabled={loggingOut} onClick={() => void signOut()}><AppIcon name="logout" /><span className="nav-label">{loggingOut ? 'Saindo…' : 'Sair da conta'}</span></button></NavHint>
       {logoutError && <p role="alert" className="error-text">{logoutError}</p>}
     </footer>

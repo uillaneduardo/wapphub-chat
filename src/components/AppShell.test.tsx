@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { preferenceKey } from '../hooks/useUiPreference';
 import { AppShell } from './AppShell';
+import { Sidebar } from './Sidebar';
 const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, permissions: ['conversations.read', 'contacts.read', 'providers.manage'] }, logout: vi.fn() }));
 vi.mock('../features/session/SessionContext', () => ({ useSession: () => state }));
 vi.mock('../lib/realtime', async (importOriginal) => ({ ...await importOriginal<typeof import('../lib/realtime')>(), createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
@@ -72,6 +73,34 @@ describe('conversation shell scope and navigation', () => {
     const logout = screen.getByRole('button', { name: 'Sair da conta' }); fireEvent.focus(logout); expect(screen.getByRole('tooltip', { name: 'Sair da conta' })).toBeInTheDocument();
     fireEvent.click(logout); fireEvent.click(logout); expect(state.logout).toHaveBeenCalledTimes(1); expect(logout).toBeDisabled(); expect(screen.getByText('Destino Provedores')).toBeInTheDocument(); await act(async () => finish());
     await waitFor(() => expect(logout).toBeEnabled());
+  });
+
+  it('keeps realtime in the sidebar footer and leaves main with only its page', () => {
+    renderNav();
+    const status = screen.getByRole('status');
+    expect(status.closest('footer')).toHaveClass('sidebar-footer');
+    expect(within(screen.getByRole('main')).queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
+    expect(status.previousElementSibling).toBeNull();
+    expect(status.closest('.sidebar-realtime')?.previousElementSibling).toHaveClass('sidebar-user');
+    expect(status.closest('.sidebar-realtime')?.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'Sair da conta' }));
+  });
+  it.each([
+    ['open', 'Tempo real ativo'], ['connecting', 'Conectando…'], ['reconnecting', 'Reconectando…'], ['closed', 'Tempo real indisponível'], ['stale', 'Tempo real indisponível'],
+  ] as const)('represents %s without conflating WhatsApp status', (connection, label) => {
+    render(<MemoryRouter><Sidebar realtimeState={connection} /></MemoryRouter>);
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(label); expect(status).toHaveClass(`realtime-${connection}`);
+    expect(status).toHaveAttribute('aria-live', 'polite'); expect(status).toHaveAttribute('aria-atomic', 'true');
+    expect(status.title).toContain('servidor WappHub, não com o WhatsApp');
+    expect(status.querySelector('.realtime-dot')).toHaveAttribute('aria-hidden', 'true');
+  });
+  it('preserves paused recovery and accessible status when collapsed', () => {
+    const retry = vi.fn(); render(<MemoryRouter><Sidebar realtimeState="stale" onRealtimeRetry={retry} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Tempo real indisponível');
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar reconexão novamente' })); expect(retry).toHaveBeenCalledOnce();
+    expect(screen.getByRole('status').title).toContain('Reconexão pausada');
   });
 
 });
