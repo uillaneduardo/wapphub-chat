@@ -1,3 +1,4 @@
+import './navigation.css';
 import { RotateCw } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -16,8 +17,8 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
   const [collapsed, setCollapsed] = useUiPreference(session?.user.id, 'sidebarCollapsed');
   const mobile = useMediaQuery('(max-width: 720px)'); const compact = collapsed || mobile;
   const groups = visibleNavigation(session?.permissions ?? [], session?.resources ?? []);
-  const permittedLinks = groups.find((group) => group.context === 'Atendimento')?.items ?? [];
-  const primaryLinks = permittedLinks.filter((item) => ['conversations', 'contacts'].includes(item.id));
+  const operationalItems = groups.find((group) => group.context === 'Atendimento')?.items ?? [];
+  const primaryLinks = operationalItems.filter((item) => ['conversations', 'contacts'].includes(item.id));
   const secondaryGroups = groups.map((group) => ({ ...group, items: group.items.filter((item) => !primaryLinks.includes(item)) })).filter((group) => group.items.length);
   const [flyoutSection, setFlyoutSection] = useState<NavigationContext | 'Mais áreas' | null>(null);
   const [loggingOut, setLoggingOut] = useState(false); const logoutBusy = useRef(false); const [logoutError, setLogoutError] = useState('');
@@ -32,7 +33,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       const maxHeight = Math.min(420, window.innerHeight - 16); const height = Math.min(flyout.current?.scrollHeight || 320, maxHeight);
       setPosition({ left: Math.max(8, Math.min(rect.right + 8, window.innerWidth - width - 8)), top: Math.max(8, Math.min(mobile ? rect.top - height - 8 : rect.top, window.innerHeight - height - 8)), width, maxHeight });
     }
-    place(); (flyout.current?.querySelector<HTMLAnchorElement>('a') ?? flyout.current)?.focus();
+    place(); (flyout.current?.querySelector<HTMLElement>('a, .nav-disabled') ?? flyout.current)?.focus();
     window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
     return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
   }, [flyoutSection, mobile]);
@@ -48,13 +49,14 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
     finally { logoutBusy.current = false; setLoggingOut(false); }
   }
   function entry(link: NavigationItem, hint = compact) {
-    return <NavHint key={link.id} enabled={hint} label={!isNavigationLink(link) ? `${link.label} — indisponível` : link.label}>
-      {!isNavigationLink(link) ? <button type="button" className="nav-future-item" disabled aria-disabled="true" aria-label={link.label} title={link.availability === 'PLACEHOLDER' ? 'Área reservada — indisponível' : 'Recurso futuro — indisponível'}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span><small>{link.availability === 'PLACEHOLDER' ? 'Indisponível' : 'Futuro'}</small></button> : <NavLink to={link.to!} aria-label={link.label} title={link.availability === 'RESERVED_ROUTE' ? 'Rota M1 reservada; catálogo ainda indisponível' : undefined} onClick={() => closeFlyout()}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span></NavLink>}
+    const reason = link.disabledReason ?? 'Indisponível';
+    return <NavHint key={link.id} enabled={hint} label={!isNavigationLink(link) ? `${link.label} — ${reason}` : link.label}>
+      {!isNavigationLink(link) ? <span className="nav-disabled" role="group" tabIndex={0} aria-label={`${link.label} — ${reason}`}><button type="button" className="nav-future-item" disabled aria-disabled="true" aria-label={link.label} title={reason}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span><small>{reason}</small></button></span> : <NavLink to={link.to!} aria-label={link.label} onClick={() => closeFlyout()}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span></NavLink>}
     </NavHint>;
   }
   function sectionTrigger(section: NavigationContext | 'Mais áreas') {
     const group = groups.find((group) => group.context === section);
-    const active = (section === 'Mais áreas' ? secondaryGroups.flatMap((group) => group.items) : group?.items ?? []).some((item) => item.to && (location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)));
+    const active = (section === 'Mais áreas' ? secondaryGroups.flatMap((group) => group.items) : group?.items ?? []).some((item) => isNavigationLink(item) && item.to && (location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)));
     return <NavHint enabled={compact} label={section}><button type="button" className={`nav-group-trigger${active ? ' active' : ''}`} aria-label={section} aria-expanded={flyoutSection === section} aria-controls={flyoutSection === section ? groupId : undefined} onClick={(event) => { trigger.current = event.currentTarget; setFlyoutSection((current) => current === section ? null : section); }}><AppIcon name={group?.items[0]?.icon ?? 'settings'} /><span className="nav-label">{section === 'Mais áreas' ? 'Mais' : section}</span></button></NavHint>;
   }
   const flyoutGroups = flyoutSection === 'Mais áreas' ? secondaryGroups : groups.filter((group) => group.context === flyoutSection);
@@ -75,7 +77,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       {logoutError && <p role="alert" className="error-text">{logoutError}</p>}
     </footer>
     {flyoutSection && createPortal(<div ref={flyout} id={groupId} role="region" tabIndex={-1} aria-label={`Menu ${flyoutSection}`} className="nav-flyout" style={position} onKeyDown={(event) => {
-      const items = [...flyout.current!.querySelectorAll<HTMLAnchorElement>('a')]; const index = items.indexOf(document.activeElement as HTMLAnchorElement);
+      const items = [...flyout.current!.querySelectorAll<HTMLElement>('a, .nav-disabled')]; const index = items.indexOf(document.activeElement as HTMLElement);
       if (event.key === 'Escape') { event.preventDefault(); closeFlyout(true); }
       if (event.key === 'Tab' && (items.length === 0 || (!event.shiftKey && index === items.length - 1) || (event.shiftKey && index === 0))) { event.preventDefault(); closeFlyout(); if (event.shiftKey) trigger.current?.focus(); else logoutButton.current?.focus(); }
       if (items.length && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; items[next]?.focus(); }

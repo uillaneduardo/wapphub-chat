@@ -1,3 +1,7 @@
+> Refinamento M2.1: busca local, accordion, confirmação de alterações pendentes
+> e navegação permanente com estados de acesso. [Fluxos e limites](docs/PERMISSIONS_UI_POLISH.md).
+> Homologação visual/funcional manual pendente.
+
 # WappHub Chat
 
 > M2.1: equipe e permissões funcional sobre catálogo/RBAC do Core, validada localmente.

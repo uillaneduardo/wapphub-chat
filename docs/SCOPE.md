@@ -199,7 +199,8 @@ O app Android nativo é pós-MVP. O Chat Web não deve introduzir regras que imp
 ## Evolução M2.1
 
 Equipe/permissões passa a ser funcional e protegida por permissions efetivas.
-Navegação agora oculta recursos indisponíveis/grupos vazios pelo catálogo Core,
-superando a exibição anterior de placeholders desabilitados.
+Navegação mantém recursos públicos visíveis nos cinco contextos; disponibilidade
+e permissions efetivas do Core controlam links e motivos de bloqueio.
+Refinamento: [PERMISSIONS_UI_POLISH.md](PERMISSIONS_UI_POLISH.md).
 Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
 Homologação manual pelo usuário permanece pendente.

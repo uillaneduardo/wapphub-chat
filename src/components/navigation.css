@@ -1,0 +1,11 @@
+.nav-disabled { display: block; border-radius: 8px; }
+.nav-future-item { opacity: 1; }
+.nav-future-item .nav-label { min-width: 0; flex: 1; }
+.nav-future-item small { flex-shrink: 0; max-width: 62px; line-height: 1.2; }
+.sidebar.is-collapsed .nav-future-item { justify-content: center; padding: 10px; }
+.sidebar.is-collapsed .nav-future-item small { display: none; }
+@media (max-width: 720px) {
+  .sidebar nav .nav-future-item { flex-direction: column; justify-content: center; gap: 3px; height: 58px; padding: 5px 2px; font-size: 10px; }
+  .sidebar nav .nav-future-item small { display: none; }
+  .sidebar nav .nav-disabled { width: 100%; }
+}

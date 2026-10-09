@@ -18,14 +18,13 @@ somente leitura. Operações ausentes da autoridade do ator são desabilitadas;
 backend revalida essas regras. Recursos futuros são apresentados como informação,
 sem seletores para ativação. Conflito 409 orienta recarregar, sem sobrescrever estado.
 
-Navegação declarativa conserva contextos/ícones, mas só mostra itens autorizados
-com recursos AVAILABLE/navigation=true no catálogo Core. Grupos vazios somem:
-Produtividade/Comunicação/Preferências não oferecem links nesta etapa. Etiquetas
-funcionam dentro das conversas; a página de catálogo e Arquivos continuam reservados
-fora do menu. Não cria páginas novas para módulos futuros. Configurações cosméticas
-existentes permanecem nos controles atuais, sem duplicação em Gestão.
+Navegação declarativa conserva todos os contextos e itens públicos. Apenas
+recursos AVAILABLE/navigation=true autorizados são links; os demais são controles
+desabilitados com motivo acessível. Arquivos/Configurações continuam planejados,
+e a página reservada de Etiquetas não é ativada. Não cria páginas de módulos futuros.
+[Refinamento do editor e estados da navegação](PERMISSIONS_UI_POLISH.md).
 Rodapé, realtime/retry/logout, troca segura de Organization e menu recolhível preservados.
-Mobile mantém Conversas/Contatos e Mais para acesso secundário disponível, incluindo
+Mobile mantém Conversas/Contatos e Mais para todos os contextos secundários, incluindo
 troca de Organization mesmo quando não há recursos visíveis.
 
 Realtime close 4003 sinaliza alteração de permissões, sem exigir novo login.

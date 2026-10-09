@@ -46,9 +46,9 @@ describe('conversation shell scope and navigation', () => {
     const trigger = screen.getByRole('button', { name: 'Gestão' }); expect(trigger).toHaveClass('active'); fireEvent.click(trigger);
     const flyout = screen.getByRole('region', { name: 'Menu Gestão' }); const providers = within(flyout).getByRole('link', { name: 'Canais e integrações' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); providers.focus();
     fireEvent.keyDown(providers, { key: 'ArrowDown' }); const demo = within(flyout).getByRole('link', { name: 'Simulador Demo' }); expect(demo).toHaveFocus(); expect(providers.querySelector('svg')).toHaveClass('lucide-plug');
-    fireEvent.keyDown(demo, { key: 'Home' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); fireEvent.keyDown(providers, { key: 'End' }); expect(demo).toHaveFocus();
+    fireEvent.keyDown(demo, { key: 'Home' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); fireEvent.keyDown(providers, { key: 'End' }); expect(screen.getByRole('button', { name: 'Plano e assinatura' }).parentElement).toHaveFocus();
     fireEvent.keyDown(demo, { key: 'Escape' }); expect(trigger).toHaveFocus(); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
-    fireEvent.click(trigger); within(screen.getByRole('region', { name: 'Menu Gestão' })).getByRole('link', { name: 'Simulador Demo' }).focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
+    fireEvent.click(trigger); screen.getByRole('button', { name: 'Plano e assinatura' }).parentElement!.focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
     fireEvent.click(trigger); fireEvent.pointerDown(screen.getByText('Destino Provedores')); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
   });
   it('restores collapse on remount and keeps a second account expanded by default', () => {
@@ -56,11 +56,11 @@ describe('conversation shell scope and navigation', () => {
     const second = renderNav(); expect(screen.getByRole('button', { name: 'Expandir menu' })).toBeInTheDocument(); second.unmount();
     state.session.user.id = 'other-user'; renderNav(); expect(screen.getByRole('button', { name: 'Recolher menu' })).toBeInTheDocument();
   });
-  it('preserves permission-based item visibility in expanded and collapsed modes', () => {
+  it('preserves permission-based route blocking with visible items in expanded and collapsed modes', () => {
     state.session.permissions = []; renderNav(); expect(screen.queryByRole('link', { name: 'Conversas' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }));
-    expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Atendimento' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gestão' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Atendimento' })).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Conversas' })).toBeDisabled();
   });
   it('keeps organization, operational extras and logout accessible without a long mobile bar', () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
@@ -72,12 +72,12 @@ describe('conversation shell scope and navigation', () => {
     expect(screen.getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
   });
 
-  it('preserves context order while hiding unlaunched resources and empty groups', () => {
+  it('preserves context order and shows unlaunched resources without active links', () => {
     renderNav(); const nav = screen.getByRole('navigation', { name: 'Navegação principal' });
-    expect(within(nav).getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual(['Atendimento', 'Gestão']);
+    expect(within(nav).getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual(['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências']);
     expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Conversas', 'Contatos']);
     for (const name of ['Respostas rápidas', 'Automações', 'Bots de conversa', 'Campanhas', 'Status', 'Chamadas']) {
-      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name })).toBeDisabled(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
     }
   });
   it.each([false, true])('opens the existing organization flow without changing context (mobile=%s)', (mobile) => {
@@ -127,18 +127,43 @@ describe('conversation shell scope and navigation', () => {
 
   it('allows the Demo route only with effective simulation and message-read permissions', () => {
     state.session.permissions = ['providers.simulate', 'messages.read', 'team.read']; const view = renderNav();
-    expect(screen.getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('href', '/app/providers/demo/simulator');
+    expect(screen.getByRole('link', { name: 'Simulador Demo' })).toHaveAttribute('href', '/app/providers/demo/simulator'); expect(screen.getByRole('button', { name: 'Canais e integrações' })).toBeDisabled();
     view.unmount(); state.session.permissions = ['providers.simulate']; renderNav(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
   });
   it('updates permissions and closes the old organization flyout on context change', () => {
     const view = render(<MemoryRouter><Sidebar /></MemoryRouter>); fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' })); fireEvent.click(screen.getByRole('button', { name: 'Gestão' })); expect(screen.getByRole('link', { name: 'Canais e integrações' })).toBeInTheDocument();
     state.session.organization = { id: 'other-org', name: 'Outra empresa' }; state.session.permissions = ['conversations.read']; view.rerender(<MemoryRouter><Sidebar /></MemoryRouter>);
-    expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: 'Conversas' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Gestão' })).toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: 'Conversas' })).toBeInTheDocument();
   });
   it('keeps future commercial/admin controls disabled and never navigates on activation', () => {
-    renderNav(); for (const name of ['Uso e custos', 'Plano e assinatura', 'Configurações']) { expect(screen.queryByRole('button', { name })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument(); }
+    renderNav(); for (const name of ['Uso e custos', 'Plano e assinatura', 'Configurações']) { expect(screen.getByRole('button', { name })).toBeDisabled(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument(); }
     expect(screen.getByText('Destino Provedores')).toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Uso e custos' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('href', '/app/settings/providers'); expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('href', '/app/conversations'); expect(screen.getByRole('link', { name: 'Contatos' })).toHaveAttribute('href', '/app/contacts');
   });
 
+});
+
+describe('permanent navigation availability', () => {
+  beforeEach(() => { localStorage.clear(); state.session.resources = resourceFixture; state.session.permissions = []; state.session.organizations = []; });
+  afterEach(() => vi.unstubAllGlobals());
+  it('shows disabled generic labels with short accessible reasons and tooltips when collapsed', async () => {
+    render(<MemoryRouter><Sidebar /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: 'Conversas' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Conversas' })).toHaveAccessibleDescription('Acesso restrito');
+    expect(screen.getByRole('button', { name: 'Respostas rápidas' })).toHaveAccessibleDescription('Em breve'); expect(screen.getByRole('button', { name: 'Status' })).toHaveAccessibleDescription('Em estudo');
+    fireEvent.click(screen.getByRole('button', { name: 'Conversas' })); expect(screen.queryByRole('link', { name: 'Conversas' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' })); const wrapper = screen.getByRole('button', { name: 'Conversas' }).parentElement!; fireEvent.focus(wrapper); expect(await screen.findByRole('tooltip', { name: 'Conversas — Acesso restrito' })).toBeInTheDocument();
+    fireEvent.keyDown(wrapper, { key: 'Escape' }); expect(screen.queryByRole('tooltip', { name: 'Conversas — Acesso restrito' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Produtividade' })); const flyout = screen.getByRole('region', { name: 'Menu Produtividade' }); expect(within(flyout).getByRole('button', { name: 'Respostas rápidas' }).parentElement).toHaveFocus(); expect(within(flyout).queryAllByRole('link')).toHaveLength(0);
+    fireEvent.keyDown(document.activeElement!, { key: 'End' }); expect(within(flyout).getByRole('button', { name: 'Bots de conversa' }).parentElement).toHaveFocus(); fireEvent.keyDown(document.activeElement!, { key: 'Escape' }); expect(screen.getByRole('button', { name: 'Produtividade' })).toHaveFocus();
+  });
+  it('keeps mobile access compact while exposing all other contexts in More', () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<MemoryRouter><Sidebar /></MemoryRouter>); const nav = screen.getByRole('navigation'); expect(within(nav).getAllByRole('button')).toHaveLength(3); expect(within(nav).getByRole('button', { name: 'Conversas' })).toBeDisabled(); expect(within(nav).getByRole('button', { name: 'Contatos' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' })); const flyout = screen.getByRole('region', { name: 'Menu Mais áreas' });
+    expect(within(flyout).getAllByRole('region').map((element) => element.getAttribute('aria-label'))).toEqual(['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências']); expect(within(flyout).getByRole('button', { name: 'Plano e assinatura' })).toBeDisabled(); expect(within(flyout).getByRole('button', { name: 'Canais e integrações' })).toHaveAccessibleDescription('Acesso restrito'); expect(screen.getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
+  });
+  it('uses UNSUPPORTED from Core rather than a frontend assumption', () => {
+    state.session.resources = resourceFixture.map((resource) => resource.code === 'calling.audio' ? { ...resource, availability: 'UNSUPPORTED' as const } : resource);
+    render(<MemoryRouter><Sidebar /></MemoryRouter>); expect(screen.getByRole('button', { name: 'Chamadas' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Chamadas' })).toHaveAccessibleDescription('Indisponível');
+  });
 });

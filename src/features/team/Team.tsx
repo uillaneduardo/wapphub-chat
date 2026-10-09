@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useSession } from '../session/SessionContext';
 import { teamApi } from '../../lib/teamApi';
-import { ApiError } from '../../lib/api';
-import type { MemberPermissions, Permission, TeamMember } from '../../types/resources';
-const roleLabels: Record<string, string> = { OWNER: 'Owner', SUPERVISOR: 'Supervisor', AGENT: 'Atendente' };
-function errorMessage(reason: unknown) {
-  if (reason instanceof ApiError) {
-    const messages: Record<string, string> = { PERMISSION_VERSION_CONFLICT: 'As permissões foram alteradas por outra pessoa. Recarregue antes de salvar.', LAST_FUNCTIONAL_OWNER_REQUIRED: 'A organização precisa manter ao menos um Owner ativo com acesso ao gerenciamento de permissões.', SELF_PERMISSION_CHANGE_DENIED: 'Você não pode alterar suas próprias permissões.', PERMISSION_DELEGATION_DENIED: 'Você só pode gerenciar permissões que possui.', PERMISSION_DEPENDENCY_REQUIRED: 'Gerenciar permissões também exige consultar a equipe.', MEMBER_NOT_FOUND: 'Membro não encontrado nesta organização.', PERMISSION_DENIED: 'Seu acesso a esta operação está indisponível.' };
-    return messages[reason.code ?? ''] ?? 'Não foi possível concluir a operação. Tente novamente.';
-  }
-  return 'Não foi possível conectar. Tente novamente.';
-}
+import { errorMessage, roleLabels } from './teamPresentation';
+import type { TeamMember } from '../../types/resources';
 export function TeamPage() {
   const { session } = useSession(); const canManage = session?.permissions.includes('team.permissions.manage');
   const [members, setMembers] = useState<TeamMember[]>([]); const [cursor, setCursor] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [reload, setReload] = useState(0); const busy = useRef(false);
@@ -19,28 +11,5 @@ export function TeamPage() {
   async function more() { if (!cursor || busy.current) return; busy.current = true; setLoading(true); try { const page = await teamApi.directory(cursor); setMembers((previous) => [...previous, ...page.items]); setCursor(page.nextCursor); } catch (reason) { setError(errorMessage(reason)); } finally { busy.current = false; setLoading(false); } }
   return <section className="team-page"><p className="eyebrow">GESTÃO</p><h1>Equipe e permissões</h1><p className="muted">Membros da organização {session?.organization?.name}.</p>{error && <p role="alert" className="error-text">{error} <button type="button" onClick={() => setReload((value) => value + 1)}>Tentar novamente</button></p>}{loading && <p role="status">Carregando equipe…</p>}<ul className="team-list">{members.map((member) => <li key={member.id}><div><strong>{member.name}</strong><span>{member.email}</span></div><span>{roleLabels[member.role] ?? member.role}</span><span>{member.status === 'ACTIVE' && member.userStatus === 'ACTIVE' ? 'Ativo' : 'Inativo'}</span>{canManage && <Link to={`/app/team/${member.id}/permissions`}>Gerenciar permissões</Link>}</li>)}</ul>{!loading && !error && members.length === 0 && <p>Nenhum membro encontrado.</p>}{cursor && <button type="button" disabled={loading} onClick={() => void more()}>Carregar mais membros</button>}</section>;
 }
-export function MemberPermissionsPage() { const { membershipId = '' } = useParams(); return <MemberPermissionsEditor key={membershipId} membershipId={membershipId} />; }
-function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
-  const { session } = useSession();
-  const [value, setValue] = useState<MemberPermissions | null>(null); const [catalog, setCatalog] = useState<Permission[]>([]); const [grants, setGrants] = useState<string[]>([]); const [revocations, setRevocations] = useState<string[]>([]);
-  const [error, setError] = useState(''); const [saved, setSaved] = useState(''); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [confirm, setConfirm] = useState<'save' | 'reset' | null>(null); const [reload, setReload] = useState(0); const busy = useRef(false); const confirmation = useRef<HTMLButtonElement>(null); const returnFocus = useRef<HTMLButtonElement | null>(null);
-  const self = value?.member.userId === session?.user.id;
-  function apply(next: MemberPermissions) { setValue(next); setGrants(next.grants); setRevocations(next.revocations); }
-  useEffect(() => { const controller = new AbortController(); setValue(null); setSaved(''); setError(''); setLoading(true); void Promise.all([teamApi.member(membershipId, controller.signal), teamApi.permissions(controller.signal)]).then(([next, permissions]) => { if (!controller.signal.aborted) { apply(next); setCatalog(permissions.items); } }).catch((reason) => { if (!controller.signal.aborted) setError(errorMessage(reason)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); }); return () => controller.abort(); }, [membershipId, session?.organization?.id, reload]);
-  useEffect(() => { if (confirm) confirmation.current?.focus(); }, [confirm]);
-  function cancel() { setConfirm(null); returnFocus.current?.focus(); }
-  function choose(code: string, mode: string) { setSaved(''); setGrants((previous) => [...previous.filter((item) => item !== code), ...(mode === 'grant' ? [code] : [])]); setRevocations((previous) => [...previous.filter((item) => item !== code), ...(mode === 'revoke' ? [code] : [])]); }
-  async function persist() {
-    if (!value || !confirm || busy.current || self) return;
-    busy.current = true; setSaving(true); setError(''); setSaved('');
-    try { apply(confirm === 'reset' ? await teamApi.reset(value.member.id, value.version) : await teamApi.save(value.member.id, value.version, grants, revocations)); setSaved(confirm === 'reset' ? 'Permissões padrão restauradas.' : 'Permissões salvas. O acesso das sessões será atualizado automaticamente.'); cancel(); }
-    catch (reason) { setError(errorMessage(reason)); setConfirm(null); }
-    finally { busy.current = false; setSaving(false); }
-  }
-  const modules = [...new Set(catalog.map((permission) => permission.module))];
-  return <section className="team-page"><Link to="/app/team">← Equipe e permissões</Link><h1>Permissões do membro</h1>{loading && <p role="status">Carregando permissões…</p>}{error && <p role="alert" className="error-text">{error} <button type="button" onClick={() => setReload((previous) => previous + 1)}>Recarregar</button></p>}{saved && <p role="status" className="success-text">{saved}</p>}{value && <><div className="member-summary"><strong>{value.member.name}</strong><span>{value.member.email}</span><p>Perfil: {roleLabels[value.member.role] ?? value.member.role} · {value.member.status === 'ACTIVE' && value.member.userStatus === 'ACTIVE' ? 'Ativo' : 'Inativo'}</p></div>{self && <p className="muted">Suas permissões são exibidas para consulta. Outro administrador autorizado deve fazer alterações.</p>}<p className="muted">Padrão usa o perfil. Conceder e revogar criam ajustes individuais.</p>{modules.map((module) => <fieldset key={module} className="permission-group" disabled={saving || self}><legend>{module}</legend>{catalog.filter((permission) => permission.module === module).map((permission) => {
-    const inherited = value.inherited.includes(permission.code); const mode = grants.includes(permission.code) ? 'grant' : revocations.includes(permission.code) ? 'revoke' : 'default';
-    const effective = value.member.status === 'ACTIVE' && value.member.userStatus === 'ACTIVE' && (mode === 'grant' || (mode === 'default' && inherited));
-    return <div key={permission.code} className="permission-row"><div><label htmlFor={`permission-${permission.code}`}>{permission.name}</label><small>{inherited ? 'Herdada do perfil' : 'Não incluída no perfil'} · {mode === 'grant' ? 'Concessão individual' : mode === 'revoke' ? 'Revogação individual' : effective ? 'Permitida' : 'Não permitida'}</small></div><select id={`permission-${permission.code}`} value={mode} disabled={!permission.editable || !session?.permissions.includes(permission.code)} onChange={(event) => choose(permission.code, event.target.value)}><option value="default">Padrão do perfil</option><option value="grant">Conceder</option><option value="revoke">Revogar</option></select></div>;
-  })}</fieldset>)}<section className="unavailable-resources"><h2>Recursos indisponíveis</h2><ul>{session?.resources?.filter((resource) => resource.availability !== 'AVAILABLE').map((resource) => <li key={resource.code}>{resource.name} <span className="muted">— {resource.availability === 'RESEARCH' ? 'Em avaliação' : resource.availability === 'DEPRECATED' ? 'Descontinuado' : resource.availability === 'UNSUPPORTED' ? 'Não suportado' : 'Planejado'}</span></li>)}</ul></section>{!self && <div className="team-actions"><button type="button" className="primary-button" disabled={saving} onClick={(event) => { returnFocus.current = event.currentTarget; setConfirm('save'); }}>Salvar alterações</button><button type="button" disabled={saving} onClick={(event) => { returnFocus.current = event.currentTarget; setConfirm('reset'); }}>Restaurar padrões</button></div>}{confirm && <section className="permission-confirmation" role="region" aria-label="Confirmar alteração de permissões" onKeyDown={(event) => { if (event.key === 'Escape' && !saving) cancel(); }}><p>{confirm === 'reset' ? 'Restaurar todas as permissões padrão deste perfil, removendo ajustes individuais?' : 'Confirmar os ajustes individuais? Alterações podem mudar acesso a mensagens, supervisão e administração.'}</p><button ref={confirmation} type="button" className="primary-button" disabled={saving} onClick={() => void persist()}>{saving ? 'Salvando…' : 'Confirmar'}</button><button type="button" disabled={saving} onClick={cancel}>Cancelar</button></section>}</>}</section>;
-}
+
+export { MemberPermissionsPage } from './MemberPermissions';
