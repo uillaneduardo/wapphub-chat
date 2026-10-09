@@ -1,3 +1,4 @@
+import type { Resource } from '../types/resources';
 import type { AppIconName } from './AppIcon';
 
 export type NavigationContext = 'Atendimento' | 'Produtividade' | 'Comunicação' | 'Gestão' | 'Preferências';
@@ -16,25 +17,28 @@ export interface NavigationItem {
 }
 export const navigationContexts: readonly NavigationContext[] = ['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências'];
 export const navigationItems: readonly NavigationItem[] = [
-  { id: 'conversations', context: 'Atendimento', label: 'Conversas', icon: 'conversations', to: '/app/conversations', permissions: ['conversations.read'], availability: 'AVAILABLE' },
-  { id: 'contacts', context: 'Atendimento', label: 'Contatos', icon: 'contacts', to: '/app/contacts', permissions: ['contacts.read'], availability: 'AVAILABLE' },
-  { id: 'tags', context: 'Atendimento', label: 'Etiquetas', icon: 'tags', to: '/app/tags', availability: 'RESERVED_ROUTE' },
-  { id: 'files', context: 'Atendimento', label: 'Arquivos', icon: 'files', to: '/app/files', availability: 'RESERVED_ROUTE' },
-  { id: 'quick-replies', context: 'Produtividade', label: 'Respostas rápidas', icon: 'quickReplies', availability: 'PLANNED' },
-  { id: 'automations', context: 'Produtividade', label: 'Automações', icon: 'automations', availability: 'PLANNED' },
-  { id: 'bots', context: 'Produtividade', label: 'Bots de conversa', icon: 'bots', availability: 'PLANNED' },
-  { id: 'campaigns', context: 'Comunicação', label: 'Campanhas', icon: 'campaigns', availability: 'PLANNED' },
-  { id: 'status', context: 'Comunicação', label: 'Status', icon: 'status', availability: 'RESEARCH' },
-  { id: 'calls', context: 'Comunicação', label: 'Chamadas', icon: 'calls', availability: 'RESEARCH' },
-  { id: 'team', context: 'Gestão', label: 'Equipe e permissões', icon: 'team', to: '/app/team', availability: 'PLACEHOLDER' },
-  { id: 'providers', context: 'Gestão', label: 'Canais e integrações', icon: 'providers', to: '/app/settings/providers', permissions: ['providers.manage'], availability: 'AVAILABLE' },
-  { id: 'demo', context: 'Gestão', label: 'Simulador Demo', icon: 'providers', to: '/app/providers/demo/simulator', permissions: ['providers.simulate', 'messages.read'], availability: 'AVAILABLE' },
-  { id: 'usage', context: 'Gestão', label: 'Uso e custos', icon: 'usage', availability: 'PLANNED' },
-  { id: 'billing', context: 'Gestão', label: 'Plano e assinatura', icon: 'billing', availability: 'PLANNED' },
-  { id: 'settings', context: 'Preferências', label: 'Configurações', icon: 'settings', to: '/app/settings', availability: 'PLACEHOLDER' },
+  { id: 'conversations', featureCode: 'chat.conversations', context: 'Atendimento', label: 'Conversas', icon: 'conversations', to: '/app/conversations', permissions: ['conversations.read'], availability: 'AVAILABLE' },
+  { id: 'contacts', featureCode: 'chat.contacts', context: 'Atendimento', label: 'Contatos', icon: 'contacts', to: '/app/contacts', permissions: ['contacts.read'], availability: 'AVAILABLE' },
+  { id: 'tags', featureCode: 'conversation.tags', context: 'Atendimento', label: 'Etiquetas', icon: 'tags', to: '/app/tags', availability: 'RESERVED_ROUTE' },
+  { id: 'files', featureCode: 'chat.files', context: 'Atendimento', label: 'Arquivos', icon: 'files', to: '/app/files', availability: 'RESERVED_ROUTE' },
+  { id: 'quick-replies', featureCode: 'chat.quick_replies', context: 'Produtividade', label: 'Respostas rápidas', icon: 'quickReplies', availability: 'PLANNED' },
+  { id: 'automations', featureCode: 'chat.automations', context: 'Produtividade', label: 'Automações', icon: 'automations', availability: 'PLANNED' },
+  { id: 'bots', featureCode: 'chat.bots', context: 'Produtividade', label: 'Bots de conversa', icon: 'bots', availability: 'PLANNED' },
+  { id: 'campaigns', featureCode: 'chat.campaigns', context: 'Comunicação', label: 'Campanhas', icon: 'campaigns', availability: 'PLANNED' },
+  { id: 'status', featureCode: 'whatsapp.status', context: 'Comunicação', label: 'Status', icon: 'status', availability: 'RESEARCH' },
+  { id: 'calls', featureCode: 'calling.audio', context: 'Comunicação', label: 'Chamadas', icon: 'calls', availability: 'RESEARCH' },
+  { id: 'team', featureCode: 'team.permissions', context: 'Gestão', label: 'Equipe e permissões', icon: 'team', to: '/app/team', permissions: ['team.read'], availability: 'AVAILABLE' },
+  { id: 'providers', featureCode: 'providers.management', context: 'Gestão', label: 'Canais e integrações', icon: 'providers', to: '/app/settings/providers', permissions: ['providers.manage'], availability: 'AVAILABLE' },
+  { id: 'demo', featureCode: 'providers.demo', context: 'Gestão', label: 'Simulador Demo', icon: 'providers', to: '/app/providers/demo/simulator', permissions: ['providers.simulate', 'messages.read'], availability: 'AVAILABLE' },
+  { id: 'usage', featureCode: 'organization.usage', context: 'Gestão', label: 'Uso e custos', icon: 'usage', availability: 'PLANNED' },
+  { id: 'billing', featureCode: 'organization.subscription', context: 'Gestão', label: 'Plano e assinatura', icon: 'billing', availability: 'PLANNED' },
+  { id: 'settings', featureCode: 'chat.settings', context: 'Preferências', label: 'Configurações', icon: 'settings', to: '/app/settings', availability: 'PLACEHOLDER' },
 ];
-export function visibleNavigation(permissions: readonly string[], items: readonly NavigationItem[] = navigationItems) {
-  const visible = items.filter((item) => !item.permissions || item.permissions.every((permission) => permissions.includes(permission)));
+export function visibleNavigation(permissions: readonly string[], resources: readonly Resource[] = [], items: readonly NavigationItem[] = navigationItems) {
+  const visible = items.filter((item) => {
+    const resource = resources.find((resource) => resource.code === item.featureCode);
+    return resource?.availability === 'AVAILABLE' && resource.navigation && (!item.permissions || item.permissions.every((permission) => permissions.includes(permission)));
+  });
   // A simulation-only session retains the existing channels entry point.
   const providers = visible.find((item) => item.id === 'providers');
   const demo = visible.find((item) => item.id === 'demo');

@@ -18,7 +18,7 @@ export const sessionApi = {
     const selected = me.currentOrganizationId ? organizations.find((organization) => organization.id === me.currentOrganizationId) ?? null : null;
     if (!selected) return { user: me.user, organizations, currentOrganizationId: null, organization: null, membership: null, permissions: [] };
     const bootstrap: BootstrapResponse = await apiRequest('/app/bootstrap');
-    return { user: bootstrap.user, organizations, currentOrganizationId: selected.id, organization: bootstrap.organization, membership: bootstrap.membership, permissions: bootstrap.permissions };
+    return { user: bootstrap.user, organizations, currentOrganizationId: selected.id, organization: bootstrap.organization, membership: bootstrap.membership, resources: bootstrap.resources, permissions: bootstrap.permissions };
   },
   selectOrganization: (organizationId: string) => apiRequest<OrganizationContext>('/session/organization', { method: 'POST', body: JSON.stringify({ organizationId }) }),
 };

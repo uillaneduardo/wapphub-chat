@@ -15,7 +15,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
   const { session, logout } = useSession(); const location = useLocation();
   const [collapsed, setCollapsed] = useUiPreference(session?.user.id, 'sidebarCollapsed');
   const mobile = useMediaQuery('(max-width: 720px)'); const compact = collapsed || mobile;
-  const groups = visibleNavigation(session?.permissions ?? []);
+  const groups = visibleNavigation(session?.permissions ?? [], session?.resources ?? []);
   const permittedLinks = groups.find((group) => group.context === 'Atendimento')?.items ?? [];
   const primaryLinks = permittedLinks.filter((item) => ['conversations', 'contacts'].includes(item.id));
   const secondaryGroups = groups.map((group) => ({ ...group, items: group.items.filter((item) => !primaryLinks.includes(item)) })).filter((group) => group.items.length);
@@ -63,7 +63,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       <NavHint enabled={collapsed} label={collapsed ? 'Expandir menu' : 'Recolher menu'}><button type="button" className="nav-toggle" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-controls="main-navigation" onClick={() => { setCollapsed(!collapsed); closeFlyout(); }}><AppIcon name={collapsed ? 'expand' : 'collapse'} /></button></NavHint>
     </div>
     <nav id="main-navigation" aria-label="Navegação principal">
-      {mobile ? <section className="nav-section" aria-label="Acesso rápido">{primaryLinks.map((item) => entry(item))}{secondaryGroups.length > 0 && sectionTrigger('Mais áreas')}</section> : groups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><span className="nav-section-heading">{group.context}</span>{compact && group.context !== 'Atendimento' ? sectionTrigger(group.context) : group.items.map((item) => entry(item))}</section>)}
+      {mobile ? <section className="nav-section" aria-label="Acesso rápido">{primaryLinks.map((item) => entry(item))}{(secondaryGroups.length > 0 || (session?.organizations?.length ?? 0) > 1) && sectionTrigger('Mais áreas')}</section> : groups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><span className="nav-section-heading">{group.context}</span>{compact && group.context !== 'Atendimento' ? sectionTrigger(group.context) : group.items.map((item) => entry(item))}</section>)}
     </nav>
     <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
       {(session?.organizations?.length ?? 0) > 1 && <NavHint label="Trocar organização" enabled={compact}><NavLink className="organization-switch" to="/organizations" aria-label="Trocar organização"><AppIcon name="organization" /><span className="nav-label">Trocar organização</span></NavLink></NavHint>}
