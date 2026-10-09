@@ -1,6 +1,6 @@
 import {
   ChevronDown, ContactRound, FileText, LogOut, MessagesSquare,
-  PanelLeftClose, PanelLeftOpen, Plug, Settings, Tags, UsersRound,
+  PanelLeftClose, PanelLeftOpen, Plug, Settings, Tags, UsersRound, ChartNoAxesColumn, CreditCard,
 } from 'lucide-react';
 
 // Explicit imports keep the navigation independent of Lucide's full catalog.
@@ -12,6 +12,8 @@ const icons = {
   tags: Tags,
   settings: Settings,
   providers: Plug,
+  usage: ChartNoAxesColumn,
+  billing: CreditCard,
   collapse: PanelLeftClose,
   expand: PanelLeftOpen,
   logout: LogOut,
