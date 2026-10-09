@@ -1,10 +1,17 @@
 import {
   ChevronDown, ContactRound, FileText, LogOut, MessagesSquare,
-  PanelLeftClose, PanelLeftOpen, Plug, Settings, Tags, UsersRound, ChartNoAxesColumn, CreditCard,
+  PanelLeftClose, PanelLeftOpen, Plug, Settings, Tags, UsersRound, ChartNoAxesColumn, CreditCard, Zap, Workflow, Bot, Megaphone, CircleDashed, Phone, Building2,
 } from 'lucide-react';
 
 // Explicit imports keep the navigation independent of Lucide's full catalog.
 const icons = {
+  quickReplies: Zap,
+  automations: Workflow,
+  bots: Bot,
+  campaigns: Megaphone,
+  status: CircleDashed,
+  calls: Phone,
+  organization: Building2,
   conversations: MessagesSquare,
   contacts: ContactRound,
   files: FileText,

@@ -142,3 +142,11 @@ principal e Demo, sem habilitar recursos de mídia. Estados, cores, bordas e foc
 reutilizam tokens. Critérios completos e limitações: `M1_UI_POLISH_3.md`.
 A política permanente proíbe browser/testes visuais no Homelab; homologação manual
 pelo usuário no notebook após publicação autorizada.
+
+## Consolidação de navegação por contextos — 2026-10-09
+
+A Sidebar usa catálogo declarativo centralizado em `src/components/navigation.ts`.
+Rotas M1 preservadas; providers/Demo em Gestão, configurações reservadas em
+Preferências, recursos futuros desabilitados. Mobile usa acesso rápido e Mais.
+Detalhes de disponibilidade, permissões e arquitetura em [CONTEXT_NAVIGATION.md](CONTEXT_NAVIGATION.md).
+Homologação desta alteração permanece pendente pelo usuário.
