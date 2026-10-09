@@ -8,12 +8,14 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { AppIcon, type AppIconName } from './AppIcon';
 import { NavHint } from './NavHint';
 
-const links: { to: string; label: string; icon: AppIconName; permission?: string }[] = [
+const operationalLinks: { to: string; label: string; icon: AppIconName; permission?: string }[] = [
   { to: '/app/conversations', label: 'Conversas', icon: 'conversations', permission: 'conversations.read' },
   { to: '/app/contacts', label: 'Contatos', icon: 'contacts', permission: 'contacts.read' },
   { to: '/app/files', label: 'Arquivos', icon: 'files' },
-  { to: '/app/team', label: 'Equipe', icon: 'team' },
   { to: '/app/tags', label: 'Tags', icon: 'tags' },
+];
+const organizationLinks: { to: string; label: string; icon: AppIconName; permission?: string }[] = [
+  { to: '/app/team', label: 'Equipe e usuários', icon: 'team' },
 ];
 type RealtimeState = 'open' | 'connecting' | 'reconnecting' | 'stale' | 'closed';
 const realtimeLabels: Record<RealtimeState, string> = { open: 'Tempo real ativo', connecting: 'Conectando…', reconnecting: 'Reconectando…', closed: 'Tempo real indisponível', stale: 'Tempo real indisponível' };
@@ -22,18 +24,17 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
   const [collapsed, setCollapsed] = useUiPreference(session?.user.id, 'sidebarCollapsed');
   const mobile = useMediaQuery('(max-width: 720px)'); const compact = collapsed || mobile;
   const canManageProviders = session?.permissions.includes('providers.manage') ?? false;
-  const [childrenOpen, setChildrenOpen] = useState(true); const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false); const logoutBusy = useRef(false); const [logoutError, setLogoutError] = useState('');
   const groupId = useId(); const trigger = useRef<HTMLButtonElement>(null); const flyout = useRef<HTMLDivElement>(null); const logoutButton = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState({ left: 0, top: 0, width: 230, maxHeight: 300 });
   const settingsActive = location.pathname === '/app/settings' || location.pathname.startsWith('/app/settings/');
-  const expandedChildren = childrenOpen;
   function closeFlyout(restoreFocus = false) { setFlyoutOpen(false); if (restoreFocus) trigger.current?.focus(); }
   useLayoutEffect(() => {
     if (!flyoutOpen || !compact) return;
     function place() {
       const rect = trigger.current!.getBoundingClientRect(); const width = Math.min(230, window.innerWidth - 16);
-      const maxHeight = Math.min(300, window.innerHeight - 16); const height = Math.min(150, maxHeight);
+      const maxHeight = Math.min(300, window.innerHeight - 16); const height = Math.min(120, maxHeight);
       setPosition({ left: Math.max(8, Math.min(rect.right + 8, window.innerWidth - width - 8)), top: Math.max(8, Math.min(mobile ? rect.top - height - 8 : rect.top, window.innerHeight - height - 8)), width, maxHeight });
     }
     place(); flyout.current?.querySelector<HTMLAnchorElement>('a')?.focus();
@@ -57,10 +58,19 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       <NavHint enabled={collapsed} label={collapsed ? 'Expandir menu' : 'Recolher menu'}><button type="button" className="nav-toggle" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-controls="main-navigation" onClick={() => { setCollapsed(!collapsed); closeFlyout(); }}><AppIcon name={collapsed ? 'expand' : 'collapse'} /></button></NavHint>
     </div>
     <nav id="main-navigation" aria-label="Navegação principal">
-      {links.filter((link) => !link.permission || session?.permissions.includes(link.permission)).map((link) => <NavHint key={link.to} label={link.label} enabled={compact}><NavLink to={link.to} aria-label={link.label}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span></NavLink></NavHint>)}
-      <div className="nav-group">
-        {compact ? <NavHint label="Configurações" enabled><button ref={trigger} type="button" className={`nav-group-trigger${settingsActive ? ' active' : ''}`} aria-label="Configurações" aria-expanded={flyoutOpen} aria-controls={flyoutOpen ? groupId : undefined} onClick={() => setFlyoutOpen((open) => !open)} onKeyDown={(event) => { if (event.key === 'Escape') closeFlyout(); }}><AppIcon name="settings" /><span className="nav-label">Configurações</span></button></NavHint> : <div className="nav-group-heading">{settingsLink}{canManageProviders && <button type="button" className="subnav-toggle" aria-label={expandedChildren ? 'Recolher subitens de Configurações' : 'Expandir subitens de Configurações'} aria-expanded={expandedChildren} aria-controls={groupId} onClick={() => setChildrenOpen((open) => !open)}><AppIcon name="chevron" /></button>}</div>}
-        {!compact && canManageProviders && <ul id={groupId} className="nav-children" hidden={!expandedChildren}><li><NavLink to="/app/settings/providers" aria-label="Provedores"><AppIcon name="providers" /><span>Provedores</span></NavLink></li></ul>}
+      <div className="nav-section"><span className="nav-section-heading">Atendimento</span>
+        {operationalLinks.filter((link) => !link.permission || session?.permissions.includes(link.permission)).map((link) => <NavHint key={link.to} label={link.label} enabled={compact}><NavLink to={link.to} aria-label={link.label}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span></NavLink></NavHint>)}
+      </div>
+      <div className="nav-section"><span className="nav-section-heading">Organização</span>
+        {organizationLinks.filter((link) => !link.permission || session?.permissions.includes(link.permission)).map((link) => <NavHint key={link.to} label={link.label} enabled={compact}><NavLink to={link.to} aria-label={link.label}><AppIcon name={link.icon} /><span className="nav-label">{link.label}</span></NavLink></NavHint>)}
+        {canManageProviders && <NavHint label="Canais e integrações" enabled={compact}><NavLink to="/app/settings/providers" aria-label="Canais e integrações"><AppIcon name="providers" /><span className="nav-label">Canais e integrações</span></NavLink></NavHint>}
+        <div className="nav-future-items" aria-label="Recursos previstos no M2">
+          <span aria-disabled="true" title="Uso e custos — previsto para M2/M3"><AppIcon name="usage" /><span className="nav-label">Uso e custos</span></span>
+          <span aria-disabled="true" title="Plano e assinatura — previsto para M2"><AppIcon name="billing" /><span className="nav-label">Plano e assinatura</span></span>
+        </div>
+        <div className="nav-group">
+          {compact ? <NavHint label="Configurações" enabled><button ref={trigger} type="button" className={`nav-group-trigger${settingsActive ? ' active' : ''}`} aria-label="Configurações" aria-expanded={flyoutOpen} aria-controls={flyoutOpen ? groupId : undefined} onClick={() => setFlyoutOpen((open) => !open)} onKeyDown={(event) => { if (event.key === 'Escape') closeFlyout(); }}><AppIcon name="settings" /><span className="nav-label">Configurações</span></button></NavHint> : <div className="nav-group-heading">{settingsLink}</div>}
+        </div>
       </div>
     </nav>
     <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
