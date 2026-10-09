@@ -195,3 +195,11 @@ O app Android nativo é pós-MVP. O Chat Web não deve introduzir regras que imp
 - automações avançadas;
 - BI/SLA avançado;
 - app Android nativo.
+
+## Evolução M2.1
+
+Equipe/permissões passa a ser funcional e protegida por permissions efetivas.
+Navegação agora oculta recursos indisponíveis/grupos vazios pelo catálogo Core,
+superando a exibição anterior de placeholders desabilitados.
+Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
+Homologação manual pelo usuário permanece pendente.

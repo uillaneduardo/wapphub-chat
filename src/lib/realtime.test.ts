@@ -11,6 +11,14 @@ const flushQueue = async () => { for (let i = 0; i < 32; i += 1) await Promise.r
 
 describe('RealtimeClient', () => {
   afterEach(() => { FakeSocket.instances = []; vi.useRealTimers(); });
+  it('invalidates pending reconciliation on a permission revision without logging out or retrying stale authority', async () => {
+    vi.useFakeTimers(); const changed = vi.fn(), expired = vi.fn(); let signal!: AbortSignal;
+    const client = new RealtimeClient({ url: createRealtimeUrl('https://api.wapphub.com.br'), organizationId: 'org-1', onEvent: vi.fn(), onReconcile: (current) => { signal = current; return new Promise(() => {}); }, onPermissionsChanged: changed, onUnauthorized: expired, WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+    client.connect(); const socket = FakeSocket.instances[0]!;
+    socket.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '0', hasMore: false }) }); await flushQueue();
+    (socket.onclose as unknown as (event: { code: number }) => void)({ code: 4003 });
+    expect(signal.aborted).toBe(true); expect(changed).toHaveBeenCalledOnce(); expect(expired).not.toHaveBeenCalled(); vi.advanceTimersByTime(60_000); expect(FakeSocket.instances).toHaveLength(1);
+  });
   it('builds the Core websocket URL and reconnects from a confirmed checkpoint', async () => {
     expect(createRealtimeUrl('https://api.wapphub.com.br', '12')).toBe('wss://api.wapphub.com.br/api/v1/realtime?lastEventId=12');
     vi.useFakeTimers(); const events = vi.fn(); const checkpoint = vi.fn(); const stored = new Map([['org-1', '40']]); const checkpointStore = { get: (orgId: string) => stored.get(orgId) ?? null, set: (orgId: string, eventId: string) => { stored.set(orgId, eventId); } }; const client = new RealtimeClient({ url: createRealtimeUrl('https://api.wapphub.com.br'), organizationId: 'org-1', checkpointStore, onEvent: events, onCheckpoint: checkpoint, WebSocketImpl: FakeSocket as unknown as typeof WebSocket, random: () => 0.5 });

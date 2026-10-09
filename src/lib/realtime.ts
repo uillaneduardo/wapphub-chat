@@ -9,6 +9,7 @@ export interface RealtimeOptions {
   onEvent: (event: ChatEvent, signal: AbortSignal) => void | Promise<void>;
   onReconcile?: (signal: AbortSignal) => void | Promise<void>;
   onUnauthorized?: () => void;
+  onPermissionsChanged?: () => void;
   onCheckpoint?: (checkpoint: SyncCheckpoint) => void | Promise<void>;
   onState?: (state: 'connecting' | 'open' | 'reconnecting' | 'stale' | 'closed') => void;
   WebSocketImpl?: typeof WebSocket;
@@ -137,6 +138,7 @@ export class RealtimeClient {
       if (!current()) return;
       controller.abort();
       // A policy close needs a fresh authenticated context, not unlimited retry.
+      if (event?.code === 4003) { this.close(); this.options.onPermissionsChanged?.(); return; }
       if (event?.code === 1008) { this.close(); this.options.onUnauthorized?.(); return; }
       this.scheduleReconnect();
     };

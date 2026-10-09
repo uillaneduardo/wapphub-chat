@@ -47,3 +47,11 @@ Validação: lint/typecheck/test/build e CI GitHub sem navegador gráfico. Os te
 cobrem catálogo/ordem/permissões/grupos vazios/indisponibilidade/rotas, menu e foco,
 mobile, entrada de troca de Organization, desmontagem tenant-scoped, realtime e
 logout. A homologação visual/funcional final cabe ao usuário no navegador.
+
+## Evolução M2.1
+
+Equipe/permissões passa a ser funcional e protegida por permissions efetivas.
+Navegação agora oculta recursos indisponíveis/grupos vazios pelo catálogo Core,
+superando a exibição anterior de placeholders desabilitados.
+Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
+Homologação manual pelo usuário permanece pendente.

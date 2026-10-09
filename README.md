@@ -1,5 +1,9 @@
 # WappHub Chat
 
+> M2.1: equipe e permissões funcional sobre catálogo/RBAC do Core, validada localmente.
+> [Fluxos e limites](docs/M2_1_TEAM_PERMISSIONS.md). Deploy/homologação seguem gates
+> desta entrega; notas M1 abaixo preservam histórico.
+
 > **M1 funcionalmente homologado; consolidação administrativa Git pendente.** [Aceite formal](docs/M1_FINAL_ACCEPTANCE.md) e [STATUS](docs/STATUS.md). Nenhuma nova função/M2 ou publicação nesta auditoria.
 
 Frontend operacional de atendimento do ecossistema WappHub.

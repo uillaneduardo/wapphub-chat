@@ -1,14 +1,15 @@
+import { resourceFixture } from '../test/resourceFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { preferenceKey } from '../hooks/useUiPreference';
 import { AppShell } from './AppShell';
 import { Sidebar } from './Sidebar';
-const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, permissions: ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read'], organizations: [] as { id: string; name: string }[] }, logout: vi.fn() }));
+const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, organization: { id: 'org', name: 'Equipe' }, resources: [] as typeof resourceFixture, permissions: ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read', 'team.read'], organizations: [] as { id: string; name: string }[] }, logout: vi.fn() }));
 vi.mock('../features/session/SessionContext', () => ({ useSession: () => state }));
 vi.mock('../lib/realtime', async (importOriginal) => ({ ...await importOriginal<typeof import('../lib/realtime')>(), createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
 describe('conversation shell scope and navigation', () => {
-  beforeEach(() => { localStorage.clear(); state.session.organizations = []; state.session.user.id = 'u'; state.session.organization = { id: 'org', name: 'Equipe' }; state.session.permissions = ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read']; state.logout.mockReset(); });
+  beforeEach(() => { localStorage.clear(); state.session.resources = resourceFixture; state.session.organizations = []; state.session.user.id = 'u'; state.session.organization = { id: 'org', name: 'Equipe' }; state.session.permissions = ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read', 'team.read']; state.logout.mockReset(); });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   it.each(['/app/conversations', '/app/conversations/conv-1'])('bounds the shell only for the inbox route %s', (route) => {
     render(<MemoryRouter initialEntries={[route]}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations/*" element={<p>Atendimento sintético</p>} /></Route></Routes></MemoryRouter>);
@@ -24,19 +25,17 @@ describe('conversation shell scope and navigation', () => {
   }
   it('renders consistent icons, navigation groups and active provider routes', () => {
     renderNav(); const nav = screen.getByRole('navigation', { name: 'Navegação principal' });
-    for (const [name, glyph] of Object.entries({ Conversas: 'messages-square', Contatos: 'contact-round', Arquivos: 'file-text', Etiquetas: 'tags', 'Canais e integrações': 'plug' })) {
+    for (const [name, glyph] of Object.entries({ Conversas: 'messages-square', Contatos: 'contact-round', 'Equipe e permissões': 'users-round', 'Canais e integrações': 'plug' })) {
       const icon = within(nav).getByRole('link', { name }).querySelector('svg');
       expect(icon).toHaveClass('lucide', `lucide-${glyph}`, 'app-icon');
       expect(icon).toHaveAttribute('width', '22'); expect(icon).toHaveAttribute('height', '22');
       expect(icon).toHaveAttribute('stroke-width', '2'); expect(icon).toHaveAttribute('aria-hidden', 'true');
     }
-    for (const [name, glyph] of Object.entries({ 'Equipe e permissões': 'users-round', Configurações: 'settings', 'Uso e custos': 'chart-no-axes-column', 'Plano e assinatura': 'credit-card' })) {
-      const button = within(nav).getByRole('button', { name }); expect(button).toBeDisabled(); expect(button.querySelector('svg')).toHaveClass('lucide', `lucide-${glyph}`); expect(button).toHaveAttribute('aria-disabled', 'true');
-    }
+    for (const name of ['Configurações', 'Uso e custos', 'Plano e assinatura', 'Arquivos', 'Etiquetas']) expect(within(nav).queryByRole('link', { name })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Recolher menu' }).querySelector('svg')).toHaveClass('lucide-panel-left-close');
     expect(screen.getByRole('button', { name: 'Sair da conta' }).querySelector('svg')).toHaveClass('lucide-log-out');
     expect(within(nav).getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('aria-current', 'page');
-    expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link')).toHaveLength(4);
+    expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link')).toHaveLength(2);
     expect(within(screen.getByRole('region', { name: 'Gestão' })).getByRole('link', { name: 'Simulador Demo' })).toHaveAttribute('href', '/app/providers/demo/simulator');
   });
   it('collapses without navigation and exposes keyboard-accessible flyout links and tooltips', () => {
@@ -45,9 +44,9 @@ describe('conversation shell scope and navigation', () => {
     expect(screen.getByRole('button', { name: 'Expandir menu' }).querySelector('svg')).toHaveClass('lucide-panel-left-open');
     const contacts = screen.getByRole('link', { name: 'Contatos' }); fireEvent.focus(contacts); expect(screen.getByRole('tooltip', { name: 'Contatos' })).toBeInTheDocument(); fireEvent.blur(contacts);
     const trigger = screen.getByRole('button', { name: 'Gestão' }); expect(trigger).toHaveClass('active'); fireEvent.click(trigger);
-    const flyout = screen.getByRole('region', { name: 'Menu Gestão' }); const providers = within(flyout).getByRole('link', { name: 'Canais e integrações' }); expect(providers).toHaveFocus();
+    const flyout = screen.getByRole('region', { name: 'Menu Gestão' }); const providers = within(flyout).getByRole('link', { name: 'Canais e integrações' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); providers.focus();
     fireEvent.keyDown(providers, { key: 'ArrowDown' }); const demo = within(flyout).getByRole('link', { name: 'Simulador Demo' }); expect(demo).toHaveFocus(); expect(providers.querySelector('svg')).toHaveClass('lucide-plug');
-    fireEvent.keyDown(demo, { key: 'Home' }); expect(providers).toHaveFocus(); fireEvent.keyDown(providers, { key: 'End' }); expect(demo).toHaveFocus();
+    fireEvent.keyDown(demo, { key: 'Home' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); fireEvent.keyDown(providers, { key: 'End' }); expect(demo).toHaveFocus();
     fireEvent.keyDown(demo, { key: 'Escape' }); expect(trigger).toHaveFocus(); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
     fireEvent.click(trigger); within(screen.getByRole('region', { name: 'Menu Gestão' })).getByRole('link', { name: 'Simulador Demo' }).focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
     fireEvent.click(trigger); fireEvent.pointerDown(screen.getByText('Destino Provedores')); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
@@ -59,9 +58,9 @@ describe('conversation shell scope and navigation', () => {
   });
   it('preserves permission-based item visibility in expanded and collapsed modes', () => {
     state.session.permissions = []; renderNav(); expect(screen.queryByRole('link', { name: 'Conversas' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' })); fireEvent.click(screen.getByRole('button', { name: 'Gestão' }));
-    expect(screen.getByRole('button', { name: 'Equipe e permissões' })).toBeDisabled(); fireEvent.keyDown(screen.getByRole('region', { name: 'Menu Gestão' }), { key: 'Escape' }); fireEvent.click(screen.getByRole('button', { name: 'Preferências' })); expect(screen.getByRole('button', { name: 'Configurações' })).toBeDisabled(); expect(screen.queryByRole('link', { name: 'Simulador Demo' })).not.toBeInTheDocument();
-    const menu = screen.getByRole('region', { name: 'Menu Preferências' }); expect(menu).toHaveFocus(); fireEvent.keyDown(menu, { key: 'Escape' }); expect(screen.getByRole('button', { name: 'Preferências' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }));
+    expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Atendimento' })).not.toBeInTheDocument();
   });
   it('keeps organization, operational extras and logout accessible without a long mobile bar', () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
@@ -69,16 +68,16 @@ describe('conversation shell scope and navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' }));
     expect(within(screen.getByRole('region', { name: 'Menu Mais áreas' })).getByRole('link', { name: 'Canais e integrações' })).toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole('region', { name: 'Menu Mais áreas' }), { key: 'Escape' }); fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' }));
-    const extra = screen.getByRole('region', { name: 'Menu Mais áreas' }); expect(within(extra).getByRole('link', { name: 'Arquivos' })).toHaveAttribute('href', '/app/files'); expect(within(extra).getByRole('link', { name: 'Etiquetas' })).toHaveAttribute('href', '/app/tags');
+    const extra = screen.getByRole('region', { name: 'Menu Mais áreas' }); expect(within(extra).queryByRole('link', { name: 'Arquivos' })).not.toBeInTheDocument(); expect(within(extra).queryByRole('link', { name: 'Etiquetas' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
   });
 
-  it('renders all five contexts in order with planned resources disabled', () => {
+  it('preserves context order while hiding unlaunched resources and empty groups', () => {
     renderNav(); const nav = screen.getByRole('navigation', { name: 'Navegação principal' });
-    expect(within(nav).getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual(['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências']);
-    expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Conversas', 'Contatos', 'Etiquetas', 'Arquivos']);
+    expect(within(nav).getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual(['Atendimento', 'Gestão']);
+    expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Conversas', 'Contatos']);
     for (const name of ['Respostas rápidas', 'Automações', 'Bots de conversa', 'Campanhas', 'Status', 'Chamadas']) {
-      expect(screen.getByRole('button', { name })).toBeDisabled(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
     }
   });
   it.each([false, true])('opens the existing organization flow without changing context (mobile=%s)', (mobile) => {
@@ -127,17 +126,17 @@ describe('conversation shell scope and navigation', () => {
   });
 
   it('allows the Demo route only with effective simulation and message-read permissions', () => {
-    state.session.permissions = ['providers.simulate', 'messages.read']; const view = renderNav();
+    state.session.permissions = ['providers.simulate', 'messages.read', 'team.read']; const view = renderNav();
     expect(screen.getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('href', '/app/providers/demo/simulator');
     view.unmount(); state.session.permissions = ['providers.simulate']; renderNav(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
   });
   it('updates permissions and closes the old organization flyout on context change', () => {
     const view = render(<MemoryRouter><Sidebar /></MemoryRouter>); fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' })); fireEvent.click(screen.getByRole('button', { name: 'Gestão' })); expect(screen.getByRole('link', { name: 'Canais e integrações' })).toBeInTheDocument();
     state.session.organization = { id: 'other-org', name: 'Outra empresa' }; state.session.permissions = ['conversations.read']; view.rerender(<MemoryRouter><Sidebar /></MemoryRouter>);
-    expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Gestão' })); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: 'Conversas' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: 'Conversas' })).toBeInTheDocument();
   });
   it('keeps future commercial/admin controls disabled and never navigates on activation', () => {
-    renderNav(); for (const name of ['Equipe e permissões', 'Uso e custos', 'Plano e assinatura', 'Configurações']) { const button = screen.getByRole('button', { name }); expect(button).toBeDisabled(); expect(button).toHaveTextContent(['Equipe e permissões', 'Configurações'].includes(name) ? 'Indisponível' : 'Futuro'); fireEvent.click(button); }
+    renderNav(); for (const name of ['Uso e custos', 'Plano e assinatura', 'Configurações']) { expect(screen.queryByRole('button', { name })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name })).not.toBeInTheDocument(); }
     expect(screen.getByText('Destino Provedores')).toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Uso e custos' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('href', '/app/settings/providers'); expect(screen.getByRole('link', { name: 'Conversas' })).toHaveAttribute('href', '/app/conversations'); expect(screen.getByRole('link', { name: 'Contatos' })).toHaveAttribute('href', '/app/contacts');
   });

@@ -150,3 +150,11 @@ Rotas M1 preservadas; providers/Demo em Gestão, configurações reservadas em
 Preferências, recursos futuros desabilitados. Mobile usa acesso rápido e Mais.
 Detalhes de disponibilidade, permissões e arquitetura em [CONTEXT_NAVIGATION.md](CONTEXT_NAVIGATION.md).
 Homologação desta alteração permanece pendente pelo usuário.
+
+## Evolução M2.1
+
+Equipe/permissões passa a ser funcional e protegida por permissions efetivas.
+Navegação agora oculta recursos indisponíveis/grupos vazios pelo catálogo Core,
+superando a exibição anterior de placeholders desabilitados.
+Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
+Homologação manual pelo usuário permanece pendente.

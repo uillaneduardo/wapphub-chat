@@ -1,3 +1,12 @@
+# M2.1 — atualização técnica de 2026-10-09
+
+Equipe/permissões funcional, editor persistido no Core, navegação por catálogo
+e permissions efetivas, revalidação realtime 4003 e foco passivo implementados.
+Validação local: 188 testes em 23 arquivos, npm ci/lint/typecheck/build aprovados.
+Publicação depende dos checks compatíveis Core/Chat; homologação manual final pendente.
+Sem convites, alteração de perfil ou módulos comerciais.
+[Arquitetura/fluxos](M2_1_TEAM_PERMISSIONS.md). Registros abaixo são históricos.
+
 # Status do WappHub — M1
 
 > Consolidação por contextos — 2026-10-09: implementação e validação técnica local
