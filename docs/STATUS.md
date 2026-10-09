@@ -1,5 +1,12 @@
 # Status do WappHub — M1
 
+> Consolidação por contextos — 2026-10-09: implementação e validação técnica local
+> aprovadas (npm ci, lint, typecheck, 177 testes em 22 arquivos e build).
+> Cinco contextos declarativos, recursos futuros indisponíveis, mobile compacto
+> e acesso ao fluxo seguro de troca de Organization. PR/merge/deploy desta entrega
+> seguem os gates de publicação; homologação visual/funcional pendente pelo usuário.
+> Nenhuma funcionalidade comercial M2 implementada. [Arquitetura e limites](CONTEXT_NAVIGATION.md).
+
 > 2026-10-09: main Chat reconciliada com linha M1 homologada pelo PR6 (643ded8). Reorganização de navegação do PR5 validada localmente:170 testes, lint/typecheck/build. Homologação do novo menu pendente após deploy. Nenhum módulo comercial M2 implementado. [Reconciliação e critérios](NAVIGATION_RECONCILIATION_20261009.md). Estado detalhado abaixo registra auditoria anterior.
 
 Estado vigente em 2026-10-08: **M1 funcionalmente homologado pelo usuário; encerramento administrativo pendente de consolidação Git revisada.** Não iniciar M2 nesta execução.

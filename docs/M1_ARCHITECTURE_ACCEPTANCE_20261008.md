@@ -168,3 +168,11 @@ nome de plano, não persistir autorização em preferências. WappHub Admin/Minh
 Conta pertencem a wapphub-platform, não criar essas telas no Chat por conveniência.
 Priorizar regressões de sessão/org, contratos/bootstrap, quota/permission versus
 capability e preservação de mensagem/scroll. Nenhuma implementação M2 iniciada.
+
+## Consolidação de navegação por contextos — 2026-10-09
+
+A Sidebar usa catálogo declarativo centralizado em `src/components/navigation.ts`.
+Rotas M1 preservadas; providers/Demo em Gestão, configurações reservadas em
+Preferências, recursos futuros desabilitados. Mobile usa acesso rápido e Mais.
+Detalhes de disponibilidade, permissões e arquitetura em [CONTEXT_NAVIGATION.md](CONTEXT_NAVIGATION.md).
+Homologação desta alteração permanece pendente pelo usuário.

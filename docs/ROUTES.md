@@ -52,3 +52,11 @@ Menu e rotas podem variar por permission/entitlement, porém o backend continua 
 ## Rotas funcionais adicionadas nesta entrega local
 
 `/app/contacts` e `/app/contacts/:id`: lista/detalhe reais protegidos por `contacts.read`; escrita condicionada a `contacts.write`. `/app/conversations/new`: seleção/cadastro de contato e criação interna, exige `conversations.read`, `conversations.create` e `contacts.read`. A abertura usa o filtro de inbox correspondente à atribuição. Publicação/homologação pendentes.
+
+## Consolidação de navegação por contextos — 2026-10-09
+
+A Sidebar usa catálogo declarativo centralizado em `src/components/navigation.ts`.
+Rotas M1 preservadas; providers/Demo em Gestão, configurações reservadas em
+Preferências, recursos futuros desabilitados. Mobile usa acesso rápido e Mais.
+Detalhes de disponibilidade, permissões e arquitetura em [CONTEXT_NAVIGATION.md](CONTEXT_NAVIGATION.md).
+Homologação desta alteração permanece pendente pelo usuário.
