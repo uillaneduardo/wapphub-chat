@@ -1,0 +1,13 @@
+
+> wapphub-chat@0.1.0 test
+> vitest run src/lib/realtime.integration.test.tsx src/features/providers/Providers.test.tsx src/features/conversations/InboxList.test.tsx
+
+
+ RUN  v5.0.3 /home/uillan/homelab/apps/wapphub-chat
+
+
+ Test Files  3 passed (3)
+      Tests  28 passed (28)
+   Start at  15:38:00
+   Duration  5.88s (environment 32%, tests 30%, setup 17%, transform 15%, import 5%)
+

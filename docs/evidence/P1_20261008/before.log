@@ -1,0 +1,86 @@
+
+> wapphub-chat@0.1.0 test
+> vitest run src/lib/realtimeBus.test.ts
+
+
+ RUN  v5.0.3 /home/uillan/homelab/apps/wapphub-chat
+
+ ❯ src/lib/realtimeBus.test.ts (2 tests | 2 failed) 32ms
+   ❯ realtime consumer acknowledgement (2)
+     × waits for the authorized REST refresh before acknowledging delivery 21ms
+     × propagates REST failure instead of acknowledging a failed update 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/realtimeBus.test.ts > realtime consumer acknowledgement > waits for the authorized REST refresh before acknowledging delivery
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/lib/realtimeBus.test.ts:17:24
+     15|     const beforeREST = acknowledged;
+     16|     finish(); await delivery; unsubscribe();
+     17|     expect(beforeREST).toBe(false);
+       |                        ^
+     18|     expect(acknowledged).toBe(true);
+     19|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/realtimeBus.test.ts > realtime consumer acknowledgement > propagates REST failure instead of acknowledging a failed update
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/lib/realtimeBus.test.ts:22:64
+     20|   it('propagates REST failure instead of acknowledging a failed update…
+     21|     const unsubscribe = realtimeBus.subscribe(() => Promise.reject(new…
+     22|     try { await expect(Promise.resolve(realtimeBus.emit(event))).rejec…
+       |                                                                ^
+     23|     finally { unsubscribe(); }
+     24|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: REST 500
+ ❯ src/lib/realtimeBus.test.ts:21:68
+     19|   });
+     20|   it('propagates REST failure instead of acknowledging a failed update…
+     21|     const unsubscribe = realtimeBus.subscribe(() => Promise.reject(new…
+       |                                                                    ^
+     22|     try { await expect(Promise.resolve(realtimeBus.emit(event))).rejec…
+     23|     finally { unsubscribe(); }
+ ❯ src/lib/realtimeBus.ts:5:66
+ ❯ Object.emit src/lib/realtimeBus.ts:5:44
+ ❯ src/lib/realtimeBus.test.ts:22:52
+ ❯ node_modules/vitest/dist/chunks/run.BTlFXlnv.js:1628:35
+ ❯ node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:26
+ ❯ node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3321:20
+ ❯ runWithCancel node_modules/vitest/dist/chunks/run.BTlFXlnv.js:3316:10
+
+This error originated in "src/lib/realtimeBus.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+     Errors  1 error
+   Start at  15:15:41
+   Duration  1.61s (environment 65%, setup 22%, transform 9%, tests 3%, worker 1%, import 1%)
+

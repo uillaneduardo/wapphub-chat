@@ -1,43 +1,22 @@
 # WappHub Chat
 
+> **M1 funcionalmente homologado; consolidação administrativa Git pendente.** [Aceite formal](docs/M1_FINAL_ACCEPTANCE.md) e [STATUS](docs/STATUS.md). Nenhuma nova função/M2 ou publicação nesta auditoria.
+
 Frontend operacional de atendimento do ecossistema WappHub.
 
 ## Responsabilidade
 
 O WappHub Chat é a aplicação usada por Owner, Supervisor e Atendente para operar o atendimento da organização atual.
 
-O Chat não administra catálogo comercial global, preços ou produtos da WappHub. Esses recursos pertencem ao `wapphub-platform`.
+O Chat concentra atendimento e administração contextual do contratante; catálogo comercial global, preços e gestão GLOBAL do SaaS pertencem ao `wapphub-platform`. A implementação administrativa futura segue o ADR, sem funcionalidades comerciais nesta reconciliação.
 
 O WappHub Core é a autoridade de domínio, segurança, persistência, permissões, isolamento multi-tenant e realtime. O frontend não duplica essas regras.
 
 ## Estado atual
 
-**Milestone ativo:** M1 — frontend operacional do chat interno.
+M1 funcionalmente homologado pelo usuário; encerramento administrativo Git pendente. Frontend publicado `6b04e65`, Core/API/Worker `a45fb33`. P0/P1 e contatos/criação manual passaram na homologação informada. Fontes/evidências atuais conferidas; main remota ainda anterior à produção. Não iniciar M2 sem nova execução autorizada.
 
-O backend M1 já está implantado no WappHub Core e expõe, em `/api/v1`:
-
-- sessão web por cookie revogável;
-- Organization Context;
-- permissions da Membership;
-- Contacts;
-- Conversations;
-- mensagens internas de texto;
-- `clientMessageId` e idempotência;
-- Tags;
-- Internal Notes;
-- archive/unarchive;
-- assignment manual;
-- transferência `FULL`, `LIMITED` e `NONE`;
-- supervisão;
-- cursor pagination;
-- WebSocket realtime;
-- replay/sincronização por event stream.
-
-API pública atual do Core:
-
-`https://api.wapphub.com.br`
-
-A fundação do frontend M1 já foi iniciada neste repositório; consulte `docs/STATUS.md` para o estado validado.
+[Aceite e matriz](docs/M1_FINAL_ACCEPTANCE.md), [STATUS](docs/STATUS.md), [consolidação Git](docs/M1_FINAL_GIT_CONSOLIDATION.md), [releases](docs/M1_RELEASE_HISTORY.md). API: https://api.wapphub.com.br; Chat: https://chat.wapphub.com.br.
 
 ## Escopo do frontend M1
 
@@ -96,6 +75,10 @@ O realtime usa os contratos atuais do Core:
 - replay/sync: `/api/v1/realtime/events`.
 
 Consulte `docs/STATUS.md`, `docs/SCOPE.md` e `docs/UX_REALTIME.md` antes de assumir uma funcionalidade como disponível.
+
+## Finalização funcional M1
+
+Contatos e criação manual interna publicados e homologados pelo usuário. [Relatório e evidências](docs/M1_CONTACTS_CONVERSATION_CREATION.md). Fonte de estado vigente: [aceite final](docs/M1_FINAL_ACCEPTANCE.md); encerramento administrativo Git pendente.
 
 
 ## Decisão arquitetural M2 — administração

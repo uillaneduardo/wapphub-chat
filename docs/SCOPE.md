@@ -83,6 +83,15 @@ No M1 atual:
 - retry idempotente;
 - estados suportados pelo Core;
 - histórico por cursor.
+- conversas do canal DEMO aparecem na inbox comum; direção/autoria vem do Core.
+
+### Demo Provider (homologação M1)
+
+- Configurações → Provedores permite ao contexto com `providers.manage` ativar/desativar DEMO.
+- A primeira ativação provisiona dois contatos e mensagens recebidas pelo Core.
+- O simulador autenticado `/app/providers/demo/simulator` permite enviar como contato autorizado pela sessão; não é endpoint público/anônimo.
+- META pode aparecer no catálogo apenas como “Em desenvolvimento”; configuração permanece indisponível.
+- Esta capacidade não declara integração Meta, mídia ou entitlements implementados.
 
 Imagem e áudio pertencem ao milestone de mídia e não devem ser implementados no M1.
 

@@ -17,3 +17,19 @@ describe('apiRequest', () => {
   });
   it('wraps network failures', async () => { vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline'))); await expect(apiRequest('/resource')).rejects.toBeInstanceOf(ApiError); });
 });
+
+describe('P1 bounded authorized reads', () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+  it('aborts a timed-out bootstrap read with a controlled error', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url, init: RequestInit) => new Promise((_resolve, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))));
+    const result = expect(apiRequest('/conversations')).rejects.toMatchObject({ status: 0, kind: 'network', message: 'A consulta excedeu o tempo limite.' });
+    await vi.advanceTimersByTimeAsync(15_000); await result; expect(vi.getTimerCount()).toBe(0);
+  });
+  it('forwards teardown cancellation to fetch and removes its timeout', async () => {
+    vi.useFakeTimers(); const controller = new AbortController(); let signal!: AbortSignal;
+    vi.stubGlobal('fetch', vi.fn((_url, init: RequestInit) => { signal = init.signal!; return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))); }));
+    const result = expect(apiRequest('/conversations', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort(); await result; expect(signal.aborted).toBe(true); expect(vi.getTimerCount()).toBe(0);
+  });
+});

@@ -10,6 +10,11 @@ O produto não pretende copiar visualmente o WhatsApp, mas deve oferecer intera�
 
 O M1 frontend opera sobre o backend M1 já disponível no Core.
 
+A correção P1 publicada e homologada usa confirmação assíncrona das projeções REST, checkpoint
+conservador isolado por User/Organization/aba, retry limitado e reconciliação após
+replay. Ver [P1_REALTIME_CONSISTENCY.md](P1_REALTIME_CONSISTENCY.md) para garantias,
+limites e testes. P0/P1 e funcionalidades finais foram publicados e homologados pelo usuário; ver M1_FINAL_ACCEPTANCE.md.
+
 Nesta etapa:
 
 - mensagens operacionais são de texto;
@@ -93,6 +98,11 @@ Comportamento esperado:
 - atualizar apenas recursos afetados;
 - não usar polling frequente como estratégia principal.
 
+Mensagens de contato Demo e respostas do atendente usam os mesmos eventos
+`message.created`/`conversation.updated`; o simulador atualiza apenas a conversa
+selecionada por realtime. Histórico, autores e texto são consultados na API
+autorizada, nunca no envelope de eventos.
+
 ## Segurança do realtime
 
 O upgrade WebSocket respeita o Origin autorizado e a sessão do Core.
@@ -145,3 +155,60 @@ O futuro Android nativo deve poder reproduzir:
 - alternância de organização;
 - cache/offline controlado;
 - mídia quando o respectivo milestone existir.
+
+## Revisão de rolagem do atendimento M1
+
+A rota de conversas usa um shell com altura de `100dvh` (fallback `100vh`).
+O conteúdo principal é grid: status realtime em linha automática, workspace em
+`minmax(0, 1fr)`. Padding e navegação mobile existente são descontados pelo box
+model, sem subtrair alturas arbitrárias do histórico. Workspace tem uma linha
+`minmax(0, 1fr)`; painel da conversa, detalhe, corpo e coluna de mensagens
+permitem encolher com `min-height: 0`. Cabeçalho e compositor não encolhem.
+Inbox, histórico e contexto mantêm scroll próprios. O shell das outras rotas
+continua com rolagem de documento. Não se oculta overflow no body/root.
+
+O histórico recebe foco (`region`, `tabIndex=0`) e usa scroll nativo para mouse,
+touch e teclado. As mensagens ficam em uma coluna interna, sem encolher suas
+bolhas. A ancoragem automática do navegador é desabilitada somente no histórico
+para não disputar com a preservação explícita da mensagem em leitura.
+
+Após o carregamento inicial, o histórico vai ao final. Novas mensagens acompanham
+quando o usuário está a até 80px do final; longe dele, a mensagem visível e seu
+deslocamento relativo são preservados. Um indicador discreto anuncia novas mensagens
+abaixo e oferece “Ir para o final”, que limpa o indicador e devolve foco ao
+histórico. Atualizações de status não levam alguém próximo do final até o rodapé;
+quem já está no final continua nele quando a altura muda. Paginação mantém a
+mensagem em leitura mesmo que o controle de carregar anteriores desapareça.
+Reconciliação otimista usa `clientMessageId` como identidade estável de rolagem,
+sem contar o mesmo envio novamente. `ResizeObserver` mantém a posição ao mudar
+a altura disponível, inclusive ao abrir detalhes ou redimensionar o textarea.
+Sem `ResizeObserver`, a preservação continua nos commits de mensagens e no scroll.
+
+A troca de conversa, Organization ou usuário remonta o detalhe com uma chave de
+contexto, limpando scroll, indicador e rascunhos. Uma resposta antiga de refresh
+não altera o histórico do novo contexto; eventos de outra Organization são
+ignorados. Não há polling nem consulta adicional para controlar rolagem.
+
+Compositor mantém texto simples, 8000 caracteres, Enter para enviar,
+Shift+Enter para nova linha, IME, estado pendente, erro e retry idempotente.
+As seis ferramentas permanecem desabilitadas. Ícones SVG locais de negrito,
+itálico, anexo, imagem/vídeo, microfone e emoji substituem caracteres dependentes
+de fonte; não adicionam suporte a mídia/vídeo. Tooltips explicam a indisponibilidade
+por hover/foco, com descrição acessível. Botão Enviar mantém o payload vigente.
+
+## Preferências locais do atendimento (UI Polish 3)
+
+Recolher/expandir navegação não muda rota nem subscriptions. Preferências cosméticas
+são isoladas por User no localStorage, sem sessão/token/textos. Largura do contexto
+usa limites dinâmicos para preservar o histórico. Nenhuma transição de largura
+foi adicionada; a política de ancoragem/ResizeObserver já existente mantém a leitura.
+
+Compositores principal e Demo usam o mesmo hook para Enter/Shift+Enter. Padrão:
+Enter envia, Shift+Enter é newline nativo. Modo alternativo: Shift+Enter envia,
+Enter é newline nativo. IME e Ctrl/Alt/Meta não são capturados. Botão, limite,
+permissions, payload e retry principal permanecem; Demo tem lock síncrono para
+bloquear duplicação pelo novo atalho. Não há consulta de API para preferências.
+
+Ver `M1_UI_POLISH_3.md` para navegação, splitter, armazenamento e critérios de
+homologação. Não instalar/executar navegador gráfico ou screenshot no Homelab;
+validar visualmente no notebook após deploy explicitamente autorizado.

@@ -17,14 +17,15 @@ export function upsertInboxConversation(items: Conversation[], conversation: Con
 export function mergeMessages(existing: InternalTextMessage[], incoming: InternalTextMessage[]): InternalTextMessage[] {
   const merged = new Map(existing.map((message) => [message.id, message]));
   for (const message of incoming) {
+    const previous = merged.get(message.id);
     const optimistic = message.clientMessageId ? [...merged.values()].find((candidate) => candidate.clientMessageId === message.clientMessageId) : undefined;
     if (optimistic) merged.delete(optimistic.id);
-    merged.set(message.id, message);
+    merged.set(message.id, previous && previous.updatedAt > message.updatedAt ? previous : message);
   }
   return [...merged.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
 export function createClientMessageId(): string { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 export function createOptimisticMessage(conversationId: string, senderUserId: string, body: string, clientMessageId = createClientMessageId()): InternalTextMessage {
   const now = new Date().toISOString();
-  return { id: `optimistic:${clientMessageId}`, conversationId, senderUserId, clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'PENDING', createdAt: now, updatedAt: now };
+  return { id: `optimistic:${clientMessageId}`, conversationId, senderUserId, senderContactId: null, clientMessageId, direction: 'INTERNAL', type: 'TEXT', body, status: 'PENDING', createdAt: now, updatedAt: now };
 }

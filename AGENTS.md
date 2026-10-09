@@ -30,3 +30,11 @@ Leia antes de alterar código:
 - Não implementar vídeo, Status, chamadas, marketing ou IA no MVP.
 - Não colocar regra exclusiva no frontend que o futuro Android também precise.
 - Atualizar STATUS somente quando funcionalidade estiver validada.
+
+## Política permanente de homologação visual no Homelab
+
+- Não instalar nem executar Chromium, Firefox ou bibliotecas gráficas no Homelab.
+- Não executar Playwright Browser, screenshots automatizados ou testes visuais de navegador no servidor.
+- Executar somente lint, typecheck, build e testes unitários/integração seguros sem navegador gráfico.
+- A homologação visual é manual pelo usuário no notebook, após deploy explicitamente autorizado.
+- Ausência de teste visual no servidor é validação manual pendente, não falha de implementação.
