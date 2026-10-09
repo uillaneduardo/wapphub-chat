@@ -8,7 +8,7 @@ Frontend operacional de atendimento do ecossistema WappHub.
 
 O WappHub Chat é a aplicação usada por Owner, Supervisor e Atendente para operar o atendimento da organização atual.
 
-O Chat não administra catálogo comercial global, preços ou produtos da WappHub. Esses recursos pertencem ao `wapphub-platform`.
+O Chat concentra atendimento e administração contextual do contratante; catálogo comercial global, preços e gestão GLOBAL do SaaS pertencem ao `wapphub-platform`. A implementação administrativa futura segue o ADR, sem funcionalidades comerciais nesta reconciliação.
 
 O WappHub Core é a autoridade de domínio, segurança, persistência, permissões, isolamento multi-tenant e realtime. O frontend não duplica essas regras.
 
@@ -79,3 +79,8 @@ Consulte `docs/STATUS.md`, `docs/SCOPE.md` e `docs/UX_REALTIME.md` antes de assu
 ## Finalização funcional M1
 
 Contatos e criação manual interna publicados e homologados pelo usuário. [Relatório e evidências](docs/M1_CONTACTS_CONVERSATION_CREATION.md). Fonte de estado vigente: [aceite final](docs/M1_FINAL_ACCEPTANCE.md); encerramento administrativo Git pendente.
+
+
+## Decisão arquitetural M2 — administração
+
+A divisão aprovada é: **Chat** atende e administra cada Organization (equipe, integração Meta, uso, custos e assinatura); **Platform** é exclusivo para administração GLOBAL do SaaS; **Core** aplica autorização e regras do domínio. O frontend `wapphub-account` não será criado. Para fronteiras de segurança, usuários multi-Organization e planejamento, consultar [ADR-0001 — M2](docs/ADR-0001-M2-ADMIN-BOUNDARIES.md). Esta decisão é documental; não altera o M1 homologado.
