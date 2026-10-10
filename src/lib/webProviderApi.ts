@@ -5,6 +5,8 @@ export interface WebConnection {
   id: string; state: string; uiState: WebState; version: number; qrRevision: number; errorCode: string | null; lastCheckedAt: string | null;
   operation: { id: string; action: WebAction | 'create'; status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'; errorCode: string | null } | null;
   sendingEnabled: false; mediaEnabled: false;
+  pairingPhase?: 'IDLE' | 'GENERATING_QR' | 'WAITING_SCAN' | 'AUTHENTICATING' | 'CONNECTED' | 'RECONNECTING' | null;
+  sync?: { contacts: number; conversations: number; messages: number; failures: number; batches: number; lastProcessedAt?: string; lastErrorCode?: string; provider: { historyEnabled: boolean; phase: 'DISABLED' | 'AWAITING_HISTORY' | 'CONTACTS' | 'MESSAGES' | 'PROCESSED' | 'PARTIAL'; queued: number; contacts: number; conversations: number; messages: number; failures: number; limited: boolean; durationMs: number } | null };
 }
 export interface WebQr { qr: string; revision: number; expiresAt: string; expiresInMs: number }
 const base = '/providers/whatsapp-web/connections';

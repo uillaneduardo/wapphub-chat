@@ -219,3 +219,12 @@ Providers usa stream dedicado do mesmo Core em /api/v1/providers/realtime, com
 providers.manage, cursor só em memória, abort/reconciliação e invalidação por
 Organization/permissões. Eventos não transportam QR, credenciais nem arquivos.
 [Detalhes](WHATSAPP_WEB_CHECKPOINT3.md).
+
+
+## WhatsApp Web CP4
+
+conversation.history.updated invalida histórico autorizado por lote/conversa e
+preserva âncora de scroll, sem contador de novas mensagens históricas. contacts.updated
+atualiza contatos e projeções abertas; stream restrito permite contacts.read sem
+conversations.read. Troca de tenant/permissions aborta subscriptions e respostas.
+Status de conexão e sync são independentes; sem porcentagens quando total desconhecido.

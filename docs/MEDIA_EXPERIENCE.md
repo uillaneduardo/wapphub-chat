@@ -87,3 +87,11 @@ O gerenciador global de arquivos poderá oferecer filtros adicionais sem perder 
 ## Regra para o M1
 
 Não criar mocks de upload, contratos fictícios de mídia ou integração direta com storage durante o M1 apenas para antecipar esta documentação.
+
+
+## WhatsApp Web CP4
+
+Mensagem importada com mídia mostra tipo/nome/metadados e legenda preservada, sem
+download/player/envio. Binários e chaves de mídia não chegam ao Chat. Referência
+PENDING não representa download concluído. Texto usa marcadores seguros React,
+sem HTML externo ou inferência de atendente por prefixo.

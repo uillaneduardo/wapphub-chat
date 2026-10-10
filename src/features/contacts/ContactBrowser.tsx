@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ContactRound, Search } from 'lucide-react';
 import { chatApi } from '../../lib/chatApi';
+import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
 import { useSession } from '../session/SessionContext';
 import type { Contact } from '../../types/chat';
@@ -29,7 +30,7 @@ export function ContactBrowser({ onSelect, selectedId }: { onSelect?: (contact: 
   }, [canRead, load, revision, organizationId]);
   useEffect(() => {
     if (!canRead) return;
-    return realtimeBus.subscribe(() => undefined, { organizationId, reconcile: load });
+    return realtimeBus.subscribe((event, signal) => event.type === 'contacts.updated' ? load(signal) : undefined, { organizationId, reconcile: load });
   }, [canRead, organizationId, load]);
   async function loadMore() {
     if (!cursor || more) return;
@@ -45,7 +46,7 @@ export function ContactBrowser({ onSelect, selectedId }: { onSelect?: (contact: 
     {error && <p role="alert">{error} <button className="text-button" type="button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button></p>}
     {!loading && !error && !items.length && <p role="status">Nenhum contato encontrado.</p>}
     <ul className="contact-results">{items.map((contact) => {
-      const content = <><ContactRound size={22} strokeWidth={2} aria-hidden="true" /><span><strong>{contact.name}</strong><small>{contact.primaryIdentifier}</small>{Boolean(contact.providers?.length) && <small className="channel-label">{contact.providers?.join(' · ')}</small>}</span></>;
+      const content = <><ContactRound size={22} strokeWidth={2} aria-hidden="true" /><span><strong>{contact.name}</strong><small>{contactIdentifier(contact.primaryIdentifier)}</small>{Boolean(contact.providers?.length) && <small className="channel-label">{contact.providers?.join(' · ')}</small>}</span></>;
       return <li key={contact.id}>{onSelect ? <button className="contact-row" type="button" aria-pressed={contact.id === selectedId} aria-label={`Selecionar ${contact.name}`} onClick={() => onSelect(contact)}>{content}</button> : <Link className="contact-row" to={`/app/contacts/${contact.id}`}>{content}</Link>}</li>;
     })}</ul>
     {cursor && <button className="secondary-button" type="button" onClick={() => void loadMore()} disabled={more}>{more ? 'Carregando…' : 'Carregar mais contatos'}</button>}
