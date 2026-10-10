@@ -115,4 +115,9 @@ describe('WhatsApp Web provider integration', () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 2, conversations: 1, messages: 3, failures: 1, batches: 1, lastErrorCode: 'IDENTITY_MAPPING_CONFLICT', provider: { historyEnabled: false, phase: 'PARTIAL', queued: 0, contacts: 2, conversations: 1, messages: 3, failures: 0, limited: true, durationMs: 100 } } }) });
     renderCard(); await screen.findByText('Sincronização parcial ou com falhas'); expect(screen.getByText(/até 500 contatos/)).toBeInTheDocument(); expect(screen.getByText(/total disponível é desconhecido/)).toBeInTheDocument(); expect(screen.getByRole('alert')).toHaveTextContent(/identidade externa/); expect(webProviderApi.command).not.toHaveBeenCalled();
   });
+  it('ends the processing label after continuous messages drain without claiming initial history complete', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 1, conversations: 1, messages: 2, failures: 0, batches: 1, provider: { historyEnabled: false, phase: 'MESSAGES', queued: 0, contacts: 1, conversations: 1, messages: 2, failures: 0, limited: false, durationMs: 100 } } }) });
+    renderCard(); await screen.findByText('Sincronização contínua ativa');
+    expect(screen.queryByText('Sincronizando conversas e mensagens')).not.toBeInTheDocument(); expect(screen.queryByText('Sincronização inicial processada')).not.toBeInTheDocument();
+  });
 });

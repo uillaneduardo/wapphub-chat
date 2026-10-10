@@ -21,7 +21,7 @@ function SyncProgress({ connection }: { connection: WebConnection }) {
   const provider = sync.provider;
   const failures = sync.failures + (provider?.failures ?? 0);
   const active = Boolean(provider?.queued || provider?.historyEnabled && ['CONTACTS', 'MESSAGES'].includes(provider.phase));
-  const label = failures || provider?.limited || provider?.phase === 'PARTIAL' ? 'Sincronização parcial ou com falhas' : provider?.phase === 'CONTACTS' ? 'Sincronizando contatos' : active || provider?.phase === 'MESSAGES' ? 'Sincronizando conversas e mensagens' : provider?.phase === 'PROCESSED' ? 'Sincronização inicial processada' : provider?.phase === 'AWAITING_HISTORY' ? 'Aguardando histórico disponibilizado pelo WhatsApp' : 'Sincronização contínua ativa';
+  const label = failures || provider?.limited || provider?.phase === 'PARTIAL' ? 'Sincronização parcial ou com falhas' : active && provider?.phase === 'CONTACTS' ? 'Sincronizando contatos' : active ? 'Sincronizando conversas e mensagens' : provider?.phase === 'PROCESSED' ? 'Sincronização inicial processada' : provider?.phase === 'AWAITING_HISTORY' ? 'Aguardando histórico disponibilizado pelo WhatsApp' : 'Sincronização contínua ativa';
   return <section className="web-provider-sync" aria-label="Progresso da sincronização">
     <h3>{label}</h3>{active && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />Processando em segundo plano. Você pode continuar navegando.</p>}
     <dl><div><dt>Contatos processados</dt><dd>{sync.contacts}</dd></div><div><dt>Conversas processadas</dt><dd>{sync.conversations}</dd></div><div><dt>Mensagens processadas</dt><dd>{sync.messages}</dd></div><div><dt>Falhas de processamento</dt><dd>{failures}</dd></div></dl>
