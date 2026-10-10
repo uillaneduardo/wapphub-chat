@@ -16,6 +16,22 @@ const errors: Record<string, string> = {
 };
 const failure = (reason: unknown) => reason instanceof ApiError && reason.status === 403 ? 'Você não tem acesso para gerenciar esta conexão.' : reason instanceof ApiError ? errors[reason.code ?? ''] ?? 'Não foi possível concluir a operação. Confira a conexão e tente novamente.' : 'Não foi possível conectar à API. Tente novamente.';
 const pending = (connection: WebConnection | null) => ['PENDING', 'PROCESSING'].includes(connection?.operation?.status ?? '');
+function SyncProgress({ connection }: { connection: WebConnection }) {
+  const sync = connection.sync; if (!sync) return null;
+  const provider = sync.provider;
+  const failures = sync.failures + (provider?.failures ?? 0);
+  const active = Boolean(provider?.queued || provider?.historyEnabled && ['CONTACTS', 'MESSAGES'].includes(provider.phase));
+  const label = failures || provider?.limited || provider?.phase === 'PARTIAL' ? 'Sincronização parcial ou com falhas' : provider?.phase === 'CONTACTS' ? 'Sincronizando contatos' : active || provider?.phase === 'MESSAGES' ? 'Sincronizando conversas e mensagens' : provider?.phase === 'PROCESSED' ? 'Sincronização inicial processada' : provider?.phase === 'AWAITING_HISTORY' ? 'Aguardando histórico disponibilizado pelo WhatsApp' : 'Sincronização contínua ativa';
+  return <section className="web-provider-sync" aria-label="Progresso da sincronização">
+    <h3>{label}</h3>{active && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />Processando em segundo plano. Você pode continuar navegando.</p>}
+    <dl><div><dt>Contatos processados</dt><dd>{sync.contacts}</dd></div><div><dt>Conversas processadas</dt><dd>{sync.conversations}</dd></div><div><dt>Mensagens processadas</dt><dd>{sync.messages}</dd></div><div><dt>Falhas de processamento</dt><dd>{failures}</dd></div></dl>
+    {provider && <p className="muted">Itens na fila: {provider.queued}</p>}
+    {sync.lastErrorCode && <p role="alert">{sync.lastErrorCode === 'IDENTITY_MAPPING_CONFLICT' ? 'Uma identidade externa está vinculada a contatos distintos. Os dados foram preservados; a associação precisa ser revisada.' : 'Alguns itens não puderam ser processados. Os demais continuam sendo sincronizados.'}</p>}
+    {!provider?.historyEnabled && <p>O histórico inicial aguarda autorização. A operação limitada admite até 500 contatos, 500 conversas e 1.000 mensagens dos últimos 30 dias, com até 8 MiB por lote de histórico recebido. O total disponível é desconhecido; nenhum novo pareamento será feito automaticamente.</p>}
+    {provider?.phase === 'PROCESSED' && <p>Os lotes disponibilizados foram processados. Isso não comprova a importação de todo o histórico da conta.</p>}
+    {provider?.limited && <p>Um limite de processamento foi atingido ou há histórico anterior pendente. Mensagens novas continuam tendo prioridade.</p>}
+  </section>;
+}
 function QrImage({ value }: { value: string }) {
   try {
     const { modules } = QRCode.create(value, { errorCorrectionLevel: 'M' });
@@ -54,7 +70,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
   }, [organizationId, load, expireSession, refreshSession]);
   useEffect(() => {
     setQr(null); setExpired(false);
-    if (!wantsQr || ['PENDING', 'PROCESSING'].includes(connection?.operation?.status ?? '') || connection?.uiState !== 'QR_READY') { setQrLoading(false); return; }
+    if (!wantsQr || ['PENDING', 'PROCESSING'].includes(connection?.operation?.status ?? '') || connection?.uiState !== 'QR_READY' || connection?.pairingPhase === 'AUTHENTICATING') { setQrLoading(false); return; }
     const abort = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined;
     const started = performance.now(); setQrLoading(true);
     void webProviderApi.qr(connection.id, abort.signal).then((value) => {
@@ -64,7 +80,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
       setError(''); setQr(value); timer = setTimeout(() => { setQr(null); setExpired(true); }, remaining);
     }).catch((reason) => { if (!abort.signal.aborted) { setError(failure(reason)); setExpired(true); } }).finally(() => { if (!abort.signal.aborted) setQrLoading(false); });
     return () => { abort.abort(); clearTimeout(timer); };
-  }, [wantsQr, connection?.id, connection?.uiState, connection?.qrRevision, connection?.operation?.status]);
+  }, [wantsQr, connection?.id, connection?.uiState, connection?.qrRevision, connection?.operation?.status, connection?.pairingPhase]);
   useEffect(() => { if (confirm) confirmation.current?.focus(); }, [confirm]);
   const cancel = () => { setConfirm(false); disconnectButton.current?.focus(); };
   async function command(action: WebAction | 'create') {
@@ -84,11 +100,15 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     {live !== 'open' && <p role="status">Atualização de estado interrompida ou conectando. <button type="button" className="text-button" onClick={() => controller.current && void load(controller.current.signal).catch(() => undefined)}>Consultar estado</button></p>}
     {!error && connection?.operation?.status === 'FAILED' && connection.operation.errorCode !== connection.errorCode && <p role="status">Última operação: {errors[connection.operation.errorCode ?? ''] ?? 'não foi possível concluir. Tente novamente.'}</p>}
     {pending(connection) && <p role="status">Operação solicitada. Aguardando confirmação do serviço…</p>}
+    {(busy || pending(connection) || state === 'CONNECTING' || connection?.pairingPhase === 'AUTHENTICATING') && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />{connection?.pairingPhase === 'AUTHENTICATING' ? 'Autenticando…' : state === 'CONNECTING' && !pending(connection) ? 'Gerando QR Code…' : 'Preparando conexão…'}</p>}
+    {state === 'QR_READY' && !expired && connection?.pairingPhase !== 'AUTHENTICATING' && <p role="status">Aguardando leitura do QR Code.</p>}
+    {state === 'CONNECTED' && <p role="status">WhatsApp conectado.</p>}
+    {connection && <SyncProgress connection={connection} />}
     <div className="provider-actions">
       {!connection && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('create')}>{busy ? 'Criando…' : 'Criar conexão'}</button>}
       {connection && ['DISCONNECTED', 'ERROR'].includes(state) && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('connect')}>{busy ? 'Solicitando…' : 'Solicitar QR Code'}</button>}
       {connection && state === 'QR_READY' && !wantsQr && <button type="button" className="primary-button" disabled={disabled} onClick={() => setWantsQr(true)}>Exibir QR Code</button>}
-      {connection && ['QR_READY', 'CONNECTING'].includes(state) && <button type="button" className="secondary-button" disabled={disabled || qrLoading} onClick={() => { setWantsQr(false); void command('refresh'); }}>Atualizar QR Code</button>}
+      {connection && ['QR_READY', 'CONNECTING'].includes(state) && <button type="button" className="secondary-button" disabled={disabled || qrLoading || connection.pairingPhase === 'AUTHENTICATING'} onClick={() => { setWantsQr(false); void command('refresh'); }}>Atualizar QR Code</button>}
       {connection && <button ref={disconnectButton} type="button" className="secondary-button" disabled={disabled || ['DISCONNECTED', 'ERROR'].includes(state)} onClick={() => setConfirm(true)}>Desconectar</button>}
     </div>
     {qrLoading && <p role="status">Buscando QR Code…</p>}{qr && connection?.uiState === 'QR_READY' && <div className="web-provider-pairing"><QrImage value={qr.qr} /><div><h3>Vincular aparelho</h3><ol><li>Abra o WhatsApp no telefone.</li><li>Acesse Aparelhos conectados e selecione Conectar um aparelho.</li><li>Escaneie este QR Code para autorizar o vínculo.</li></ol><p>O código expira em poucos segundos e será removido da tela. Você pode solicitar uma atualização.</p><button type="button" className="text-button" onClick={() => { setWantsQr(false); setQr(null); }}>Ocultar QR Code</button></div></div>}

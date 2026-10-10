@@ -99,4 +99,20 @@ describe('WhatsApp Web provider integration', () => {
     auth.session.currentOrganizationId = 'org-b'; vi.mocked(webProviderApi.read).mockResolvedValue({ connection: null }); view.rerender(<MemoryRouter><ProvidersPage /></MemoryRouter>);
     await screen.findByRole('button', { name: 'Criar conexão' }); expect(screen.queryByRole('img')).not.toBeInTheDocument(); expect(FakeSocket.instances.at(-1)!.url).toContain('/api/v1/providers/realtime');
   });
+  it('shows generation and authentication feedback from observed phases without enabling refresh during authentication', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTING', uiState: 'CONNECTING', pairingPhase: 'GENERATING_QR' }) });
+    const view = renderCard(); await screen.findByText('Gerando QR Code…');
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTING', uiState: 'CONNECTING', pairingPhase: 'AUTHENTICATING', version: 4 }) });
+    await act(async () => { FakeSocket.instances[0]!.event(); await flush(); });
+    await screen.findByText('Autenticando…'); expect(screen.getByRole('button', { name: 'Atualizar QR Code' })).toBeDisabled(); expect(webProviderApi.qr).not.toHaveBeenCalled(); view.unmount();
+  });
+  it('keeps the connection connected while showing genuine progress and no fabricated percentage', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 7, conversations: 3, messages: 29, failures: 0, batches: 4, provider: { historyEnabled: true, phase: 'MESSAGES', queued: 12, contacts: 9, conversations: 5, messages: 40, failures: 0, limited: false, durationMs: 500 } } }) });
+    renderCard(); await screen.findByText('Sincronizando conversas e mensagens'); expect(screen.getByText('Conectado')).toBeInTheDocument(); expect(screen.getByText('WhatsApp conectado.')).toBeInTheDocument();
+    expect(screen.getByText('29')).toBeInTheDocument(); expect(screen.getByText('Itens na fila: 12')).toBeInTheDocument(); expect(screen.getByText(/continuar navegando/)).toBeInTheDocument(); expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
+  });
+  it('shows bounded import awaiting authorization and preserves partial failures instead of claiming all history', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 2, conversations: 1, messages: 3, failures: 1, batches: 1, lastErrorCode: 'IDENTITY_MAPPING_CONFLICT', provider: { historyEnabled: false, phase: 'PARTIAL', queued: 0, contacts: 2, conversations: 1, messages: 3, failures: 0, limited: true, durationMs: 100 } } }) });
+    renderCard(); await screen.findByText('Sincronização parcial ou com falhas'); expect(screen.getByText(/até 500 contatos/)).toBeInTheDocument(); expect(screen.getByText(/total disponível é desconhecido/)).toBeInTheDocument(); expect(screen.getByRole('alert')).toHaveTextContent(/identidade externa/); expect(webProviderApi.command).not.toHaveBeenCalled();
+  });
 });

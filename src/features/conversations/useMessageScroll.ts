@@ -55,7 +55,8 @@ export function useMessageScroll(messages: InternalTextMessage[], ready: boolean
     const previous = previousKeys.current;
     const lastIndex = previous.length ? keys.indexOf(previous[previous.length - 1]) : -1;
     const known = new Set(previous);
-    const appended = lastIndex >= 0 || previous.length === 0 ? keys.slice(lastIndex + 1).filter((key) => !known.has(key)) : [];
+    const historical = new Set(messages.filter((message) => message.historical).map(messageScrollKey));
+    const appended = lastIndex >= 0 || previous.length === 0 ? keys.slice(lastIndex + 1).filter((key) => !known.has(key) && !historical.has(key)) : [];
     if (!initialized.current) {
       initialized.current = true; scrollToBottom();
     } else if (!prepending.current && (position.current.atBottom || (following.current && appended.length > 0))) {

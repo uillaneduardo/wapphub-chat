@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { FormattedMessage } from '../../components/FormattedMessage';
 import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
+import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
 import { InboxList } from './InboxList';
 import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, Tag } from '../../types/chat';
@@ -24,7 +26,7 @@ export function ConversationsLayout() {
 export function InboxWelcome() { return <div className="conversation-welcome"><div className="page-icon">◌</div><h2>Suas conversas</h2><p>Selecione uma conversa na lista para abrir o atendimento.</p></div>; }
 
 const messageStatusLabel: Record<InternalTextMessage['status'], string> = { PENDING: 'Enviando', SENT: 'Enviada', DELIVERED: 'Entregue', READ: 'Lida', FAILED: 'Erro' };
-const chatEventTypes = new Set(['conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'tag.created', 'tag.updated', 'tag.deleted', 'conversation.tag.added', 'conversation.tag.removed']);
+const chatEventTypes = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'tag.created', 'tag.updated', 'tag.deleted', 'conversation.tag.added', 'conversation.tag.removed']);
 const noPermissions: string[] = [];
 
 export function ConversationView() {
@@ -108,6 +110,7 @@ function ConversationViewContent() {
     if (can('tags.read')) { const page = await chatApi.listTags(undefined, signal); if (!signal?.aborted && mounted.current) setTags(page.items); }
   }, [can]);
 
+  const prepareHistoryUpdate = scroll.preparePrepend;
   useEffect(() => {
     const refreshConversation = async (signal: AbortSignal, reset: boolean) => {
       if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
@@ -132,8 +135,10 @@ function ConversationViewContent() {
       await bootstrap.current;
       if (signal.aborted) return;
       if (event.type.startsWith('tag.')) { await refreshTags(signal); return; }
+      if (event.type === 'contacts.updated') { await refreshConversation(signal, false); return; }
       const related = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (related !== conversationId) return;
+      if (event.type === 'conversation.history.updated') { prepareHistoryUpdate(); await refreshVisibleMessages(signal); await refreshConversation(signal, false); return; }
       if (event.type.startsWith('message.')) { await refreshVisibleMessages(signal); return; }
       if (event.type === 'note.created') { await refreshNotes(signal); return; }
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
@@ -141,7 +146,7 @@ function ConversationViewContent() {
       await bootstrap.current;
       if (!signal.aborted) { await refreshConversation(signal, true); await refreshTags(signal); }
     } });
-  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can]);
+  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
 
   async function loadOlderMessages() {
     if (!messageCursor || loadingOlder) return;
@@ -187,13 +192,13 @@ function ConversationViewContent() {
   const canSeeMessages = can('messages.read'); const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
-    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{contact?.primaryIdentifier ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider === 'WHATSAPP_WEB' ? 'WhatsApp Web' : conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
+    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div>{conversation.provider && <span className="channel-label">{conversation.provider === 'WHATSAPP_WEB' ? 'WhatsApp Web' : conversation.provider}</span>}<span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
     <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
       {detailError && <p className="inline-error" role="alert">{detailError}</p>}
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
         {messages.length === 0 ? <div className="message-empty">Ainda não há mensagens nesta conversa.</div> : messages.map((message) => <article key={messageScrollKey(message)} data-message-key={messageScrollKey(message)} className={`message-bubble${message.senderUserId === sessionUserId || message.direction === 'OUTBOUND' ? ' own-message' : ''}`}>
-          {message.direction !== 'INTERNAL' && <strong className="message-author">{message.direction === 'INBOUND' ? contactName : message.senderUserId ? (message.senderUserId === sessionUserId ? session?.user.name : 'Atendente') : 'Aparelho conectado'}</strong>}<p>{message.body}</p><footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
+          {message.direction !== 'INTERNAL' && <strong className="message-author">{message.direction === 'INBOUND' ? contactName : message.senderUserId ? (message.senderUserId === sessionUserId ? session?.user.name : 'Atendente') : 'Aparelho conectado'}</strong>}<p>{conversation.provider === 'WHATSAPP_WEB' && message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <p className="muted">{message.media?.fileName ?? message.type} — download de mídia indisponível</p>}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
@@ -201,7 +206,7 @@ function ConversationViewContent() {
       {conversation.outboundEnabled === false && <p className="provider-warning" role="status">Envio pelo WhatsApp Web ainda indisponível nesta etapa. O histórico autorizado permanece acessível.</p>}
     </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
       {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}
-      <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{contact?.primaryIdentifier ?? conversation.contactId}</span></div>
+      <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{(contact ? contactIdentifier(contact.primaryIdentifier) : undefined) ?? conversation.contactId}</span></div>
       <div className="context-section"><h2>Responsável</h2><span>{conversation.assignedUserId ? conversation.assignedUserId === sessionUserId ? `${session?.user.name} (você)` : conversation.assignedUserId : 'Não atribuída'}</span></div>
       {can('tags.read') && <div className="context-section"><h2>Tags</h2>{appliedTags.length ? <ul className="applied-tags">{appliedTags.map((tag) => <li key={tag.id}><span>{tag.name}</span>{can('tags.manage') && <button type="button" aria-label={`Remover tag ${tag.name}`} disabled={actionBusy} onClick={() => void removeTag(tag.id)}>×</button>}</li>)}</ul> : <span className="muted">Sem tags</span>}</div>}
       <ConversationActions conversation={conversation} tags={tags} userId={sessionUserId} permissions={permissions} onConversationUpdate={setConversation} onTagsUpdate={() => void chatApi.listTags().then((page) => setTags(page.items)).catch(() => undefined)} />

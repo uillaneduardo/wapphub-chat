@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { chatApi } from '../../lib/chatApi';
+import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
 import { useSession } from '../session/SessionContext';
 import type { Contact } from '../../types/chat';
@@ -15,7 +16,7 @@ function contactError(reason: unknown): string {
 }
 export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact; onSaved: (value: Contact) => void; onCancel?: () => void }) {
   const { session } = useSession(); const id = useId();
-  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact?.primaryIdentifier ?? '');
+  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact ? contactIdentifier(contact.primaryIdentifier) : '');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [saved, setSaved] = useState<Contact | null>(null);
   const lock = useRef(false); const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);

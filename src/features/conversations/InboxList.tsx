@@ -8,7 +8,7 @@ import { upsertInboxConversation } from './conversationModel';
 
 type InboxTab = ConversationScope | 'archived';
 const tabs: { id: InboxTab; label: string }[] = [{ id: 'mine', label: 'Minhas' }, { id: 'unassigned', label: 'Não atribuídas' }, { id: 'all', label: 'Todas' }, { id: 'archived', label: 'Arquivadas' }];
-const conversationEvents = new Set(['conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'conversation.tag.added', 'conversation.tag.removed']);
+const conversationEvents = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'conversation.tag.added', 'conversation.tag.removed']);
 
 export function InboxList() {
   const { session } = useSession();
@@ -67,6 +67,7 @@ export function InboxList() {
         if (!signal.aborted) setTags(page.items);
         return;
       }
+      if (event.type === 'contacts.updated') { await refresh(signal); return; }
       if (!conversationEvents.has(event.type)) return;
       const id = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (!id) return;
