@@ -1,3 +1,16 @@
+# WhatsApp Web — checkpoint 3 (2026-10-10)
+
+Interface de conexão/QR implementada na rota existente de providers, com permissão
+efetiva, comandos explícitos, estados reais, renovação, expiração e confirmação de
+logout. Realtime pelo Core, QR em SVG/memória, troca de tenant e respostas atrasadas
+protegidas. Histórico Web respeita capacidade de envio bloqueada pelo Core e autoria
+DEVICE; Demo preservado. 249 testes locais, lint/typecheck/build e audit aprovados.
+CI/merge/deploy possuem gates e registro no homelab; homologação visual/funcional é
+manual e pendente. Envio Web, mídia e gravação não estão disponíveis. Nenhuma conta
+real é vinculada automaticamente. [Detalhes](WHATSAPP_WEB_CHECKPOINT3.md).
+
+Abaixo, histórico das entregas anteriores.
+
 # M2.1 — editor refinado e recursos permanentes (2026-10-09)
 
 Busca local, agrupamento dinâmico recolhível, herança/overrides/acesso aplicado

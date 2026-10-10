@@ -69,3 +69,9 @@ e permissions efetivas do Core controlam links e motivos de bloqueio.
 Refinamento: [PERMISSIONS_UI_POLISH.md](PERMISSIONS_UI_POLISH.md).
 Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
 Homologação manual pelo usuário permanece pendente.
+
+## WhatsApp Web — checkpoint 3
+
+A rota existente /app/settings/providers passa a oferecer gestão de conexão e QR
+quando o catálogo real do Core habilitar WhatsApp Web. Nenhuma rota interna do
+provider é acessada pelo navegador. [Comportamento e limites](WHATSAPP_WEB_CHECKPOINT3.md).
