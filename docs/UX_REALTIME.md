@@ -228,3 +228,11 @@ preserva âncora de scroll, sem contador de novas mensagens históricas. contact
 atualiza contatos e projeções abertas; stream restrito permite contacts.read sem
 conversations.read. Troca de tenant/permissions aborta subscriptions e respostas.
 Status de conexão e sync são independentes; sem porcentagens quando total desconhecido.
+
+Correção CP4: Inbox abre Todas quando há conversations.supervise; para demais leitores abre Não atribuídas. Filtro explícito permanece na query scope e nos links, sem ampliar autorização. Realtime e refresh consultam os mesmos escopos autorizados.
+
+Provedores possui painel contextual Erros/Eventos/Saúde, somente leitura pelo Core e disponível com providers.manage + providers.diagnostics.read. Abre por ação explícita, consulta paginada/filtrada e cancela requisições ao trocar organização/permissão. Alterações da conexão pelo realtime existente coalescem recarga em 200 ms; sem polling. Não inventa dados de saúde ou detalhes das falhas antigas. Exportação é projetada para campos sanitizados. Drawer responsivo, Escape/retorno de foco/trap de teclado. Homologação visual permanece manual no notebook.
+
+Autoria: nomes de mensagens persistidas vêm exclusivamente de senderName + senderUserId/senderContactId do Core, sem fallback para o visualizador, Atendente ou Aparelho conectado. Saídas sem autoria interna ficam sem rótulo. Recebidas usam contato disponível; originalBody continua intacto e a mesma formatação de texto vale para qualquer provider. Renomeação de usuário atualiza seu nome de exibição por ID, mantendo a autoria original.
+
+Operação: remover badges técnicos e nomes de providers de Inbox, cabeçalho, balões, contatos e mensagens de indisponibilidade. Estados de entrega, atribuição e arquivamento permanecem. Configurações/diagnóstico preservam identificação técnica; simulador tem rótulo funcional neutro, URL e autorização existentes. Metadados de provider e identidades externas não são apagados dos contratos/banco.

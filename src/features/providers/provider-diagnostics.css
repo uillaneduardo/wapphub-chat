@@ -1,0 +1,22 @@
+.provider-diagnostics-trigger { display: inline-flex; align-items: center; gap: 8px; }
+.diagnostic-badge { border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.diagnostic-backdrop { position: fixed; inset: 0; z-index: 85; background: rgb(0 0 0 / 35%); display: flex; justify-content: flex-end; }
+.diagnostic-panel { width: min(580px, 100vw); height: 100dvh; overflow-y: auto; background: var(--surface); padding: 24px; border-left: 1px solid var(--border); box-sizing: border-box; color: var(--text); }
+.diagnostic-panel header, .diagnostic-panel nav, .diagnostic-row-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.diagnostic-panel h2 { font-size: 18px; margin-top: 4px; }
+.diagnostic-panel [role=tablist] { display: flex; border-bottom: 1px solid var(--border); margin-block: 16px; }
+.diagnostic-panel [role=tab] { background: transparent; color: var(--text-muted); border: 0; padding: 12px 16px; cursor: pointer; }
+.diagnostic-panel [role=tab].selected { color: var(--accent); border-bottom: 2px solid var(--accent); }
+.diagnostic-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.diagnostic-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-block: 16px; }
+.diagnostic-filters label { display: grid; gap: 4px; font-size: 12px; }
+.diagnostic-filters input, .diagnostic-filters select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.diagnostic-timeline { list-style: none; padding: 0; }
+.diagnostic-occurrence { padding: 16px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; font-size: 13px; }
+.diagnostic-occurrence time { color: var(--text-muted); }
+.diagnostic-occurrence summary { cursor: pointer; padding-block: 8px; }
+.diagnostic-occurrence dl, .diagnostic-health { display: grid; gap: 12px; }
+.diagnostic-occurrence dt, .diagnostic-health dt { color: var(--text-muted); font-size: 12px; }
+.diagnostic-occurrence dd, .diagnostic-health dd { margin: 4px 0; overflow-wrap: anywhere; }
+.diagnostic-panel footer { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 12px; }
+@media (max-width: 480px) { .diagnostic-panel { padding: 16px; } .diagnostic-row-heading { flex-wrap: wrap; } }

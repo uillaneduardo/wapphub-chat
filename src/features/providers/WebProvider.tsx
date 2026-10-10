@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { AppIcon } from '../../components/AppIcon';
+import { ProviderDiagnosticsButton } from './ProviderDiagnostics';
 import { ApiError } from '../../lib/api';
 import { createRealtimeUrl, RealtimeClient } from '../../lib/realtime';
 import { webProviderApi, type WebAction, type WebConnection, type WebQr, type WebState } from '../../lib/webProviderApi';
@@ -19,15 +20,21 @@ const pending = (connection: WebConnection | null) => ['PENDING', 'PROCESSING'].
 function SyncProgress({ connection }: { connection: WebConnection }) {
   const sync = connection.sync; if (!sync) return null;
   const provider = sync.provider;
-  const failures = sync.failures + (provider?.failures ?? 0);
+  const diagnostics = provider?.diagnostics;
+  const failures = sync.failures + (provider?.failures ?? 0) + (sync.failedAttempts ?? 0);
+  const rejected = (sync.rejectedItems ?? 0) + (diagnostics?.rejected ?? 0);
   const active = Boolean(provider?.queued || provider?.historyEnabled && ['CONTACTS', 'MESSAGES'].includes(provider.phase));
-  const label = failures || provider?.limited || provider?.phase === 'PARTIAL' ? 'Sincronização parcial ou com falhas' : active && provider?.phase === 'CONTACTS' ? 'Sincronizando contatos' : active ? 'Sincronizando conversas e mensagens' : provider?.phase === 'PROCESSED' ? 'Sincronização inicial processada' : provider?.phase === 'AWAITING_HISTORY' ? 'Aguardando histórico disponibilizado pelo WhatsApp' : 'Sincronização contínua ativa';
+  const label = sync.failures || (provider?.failures ?? 0) || rejected || sync.pendingFailures || provider?.limited || provider?.phase === 'PARTIAL' ? 'Sincronização parcial ou com falhas' : active && provider?.phase === 'CONTACTS' ? 'Sincronizando contatos' : active ? 'Sincronizando conversas e mensagens' : provider?.phase === 'PROCESSED' ? 'Sincronização inicial processada' : provider?.phase === 'AWAITING_HISTORY' ? 'Aguardando histórico disponibilizado pelo WhatsApp' : 'Sincronização contínua ativa';
   return <section className="web-provider-sync" aria-label="Progresso da sincronização">
     <h3>{label}</h3>{active && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />Processando em segundo plano. Você pode continuar navegando.</p>}
-    <dl><div><dt>Contatos processados</dt><dd>{sync.contacts}</dd></div><div><dt>Conversas processadas</dt><dd>{sync.conversations}</dd></div><div><dt>Mensagens processadas</dt><dd>{sync.messages}</dd></div><div><dt>Falhas de processamento</dt><dd>{failures}</dd></div></dl>
+    <dl><div><dt>Contatos criados ou atualizados</dt><dd>{sync.contacts}</dd></div><div><dt>Conversas criadas</dt><dd>{sync.conversations}</dd></div><div><dt>Mensagens persistidas</dt><dd>{sync.messages}</dd></div><div><dt>Falhas de processamento</dt><dd>{failures}</dd></div></dl>
+    <p className="muted">Contatos, conversas e mensagens acima refletem persistência no Core. Falhas incluem registros do Provider e tentativas malsucedidas do Core. Uma mensagem pode usar uma conversa já existente, sem aumentar “Conversas criadas”. Conversas sem atendente ficam em Não atribuídas e também em Todas para quem pode supervisionar.</p>
+    {sync.diagnosticsSince && <dl><div><dt>Itens em lotes registrados no Core</dt><dd>{sync.receivedItems ?? 0}</dd></div><div><dt>Itens processados no Core</dt><dd>{sync.processedItems ?? 0}</dd></div><div><dt>Duplicidades no Core</dt><dd>{sync.duplicateItems ?? 0}</dd></div><div><dt>Itens rejeitados no Core</dt><dd>{sync.rejectedItems ?? 0}</dd></div><div><dt>Conversas localizadas em eventos</dt><dd>{sync.conversationsLocated ?? 0}</dd></div><div><dt>Tentativas com falha ao persistir</dt><dd>{sync.failedAttempts ?? 0}</dd></div><div><dt>Lotes com falha aguardando nova tentativa</dt><dd>{sync.pendingFailures ?? 0}</dd></div></dl>}
+    {diagnostics && <><p>Diagnóstico do recebimento a partir de {new Date(diagnostics.since).toLocaleString('pt-BR')}:</p><dl><div><dt>Itens recebidos no Provider</dt><dd>{diagnostics.received}</dd></div><div><dt>Itens normalizados</dt><dd>{diagnostics.normalized}</dd></div><div><dt>Itens ignorados pelo protocolo ou conteúdo</dt><dd>{diagnostics.ignored}</dd></div><div><dt>Itens rejeitados antes do Core</dt><dd>{diagnostics.rejected}</dd></div><div><dt>Lotes publicados</dt><dd>{diagnostics.publishedBatches}</dd></div><div><dt>Lotes confirmados pelo Core</dt><dd>{diagnostics.acknowledgedBatches}</dd></div></dl>{diagnostics.legacyFailures > 0 && <p role="alert">Há {diagnostics.legacyFailures} registros anteriores de falha sem causa registrada. Eles foram preservados e não comprovam perda de mensagens. Os novos diagnósticos distinguem avisos do protocolo, rejeições e erros.</p>}</>}
+    {!diagnostics && (provider?.failures ?? 0) > 0 && <p role="status">Há {provider?.failures} falhas registradas apenas como contador. Não é possível reconstruir seus detalhes com segurança.</p>}
     {provider && <p className="muted">Itens na fila: {provider.queued}</p>}
     {sync.lastErrorCode && <p role="alert">{sync.lastErrorCode === 'IDENTITY_MAPPING_CONFLICT' ? 'Uma identidade externa está vinculada a contatos distintos. Os dados foram preservados; a associação precisa ser revisada.' : 'Alguns itens não puderam ser processados. Os demais continuam sendo sincronizados.'}</p>}
-    {!provider?.historyEnabled && <p>O histórico inicial aguarda autorização. A operação limitada admite até 500 contatos, 500 conversas e 1.000 mensagens dos últimos 30 dias, com até 8 MiB por lote de histórico recebido. O total disponível é desconhecido; nenhum novo pareamento será feito automaticamente.</p>}
+    {!provider?.historyEnabled && <p>Histórico inicial desativado. Apenas mensagens novas e eventos recentes disponibilizados na sessão são processados. Nenhum novo pareamento será feito automaticamente.</p>}
     {provider?.phase === 'PROCESSED' && <p>Os lotes disponibilizados foram processados. Isso não comprova a importação de todo o histórico da conta.</p>}
     {provider?.limited && <p>Um limite de processamento foi atingido ou há histórico anterior pendente. Mensagens novas continuam tendo prioridade.</p>}
   </section>;
@@ -104,7 +111,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     {state === 'QR_READY' && !expired && connection?.pairingPhase !== 'AUTHENTICATING' && <p role="status">Aguardando leitura do QR Code.</p>}
     {state === 'CONNECTED' && <p role="status">WhatsApp conectado.</p>}
     {connection && <SyncProgress connection={connection} />}
-    <div className="provider-actions">
+    <div className="provider-actions"><ProviderDiagnosticsButton provider="WHATSAPP_WEB" count={(connection?.sync?.provider?.failures ?? 0) + (connection?.sync?.pendingFailures ?? 0) + (connection?.sync?.rejectedItems ?? 0)} revision={connection?.version ?? 0} />
       {!connection && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('create')}>{busy ? 'Criando…' : 'Criar conexão'}</button>}
       {connection && ['DISCONNECTED', 'ERROR'].includes(state) && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('connect')}>{busy ? 'Solicitando…' : 'Solicitar QR Code'}</button>}
       {connection && state === 'QR_READY' && !wantsQr && <button type="button" className="primary-button" disabled={disabled} onClick={() => setWantsQr(true)}>Exibir QR Code</button>}

@@ -25,12 +25,26 @@ function mockBase() {
 describe('ConversationView', () => {
   beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
   afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  it.each(['DEMO', 'WHATSAPP_WEB', 'META'] as const)('uses persisted authors and hides technical %s labels without inferring authors from viewer or body', async (provider) => {
+    mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider, outboundEnabled: false });
+    vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [
+      { ...message('historical-author', 'historic-client', 'Texto histórico'), senderUserId: 'original-user', senderName: 'Autora persistida', historical: true },
+      { ...message('unknown-history', '', '*Maria:* conteúdo original'), direction: 'OUTBOUND', senderUserId: null, senderName: null, clientMessageId: null, historical: true },
+      { ...message('device', '', 'Texto do celular'), direction: 'OUTBOUND', senderUserId: null, senderName: null, clientMessageId: null },
+      { ...message('inbound', '', 'Texto recebido'), direction: 'INBOUND', senderUserId: null, senderContactId: contact.id, clientMessageId: null, senderName: 'Contato externo' },
+    ], nextCursor: null });
+    const view = renderDetail(); await screen.findByText('Texto do celular');
+    expect([...view.container.querySelectorAll('.message-author')].map((element) => element.textContent)).toEqual(['Autora persistida', 'Contato externo']);
+    expect(screen.queryByText('Aparelho conectado')).not.toBeInTheDocument(); expect(screen.queryByText('Atendente')).not.toBeInTheDocument();
+    expect(view.container.querySelectorAll('.channel-label')).toHaveLength(0); expect(screen.queryByText('WhatsApp Web')).not.toBeInTheDocument(); expect(screen.queryByText('DEMO')).not.toBeInTheDocument(); expect(screen.queryByText('META')).not.toBeInTheDocument();
+    expect(screen.getByText('Maria:').tagName).toBe('STRONG'); expect(screen.getByText(/conteúdo original/)).toBeInTheDocument();
+  });
   it('keeps WhatsApp Web outbound disabled according to Core capability and identifies device authorship', async () => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', outboundEnabled: false });
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [{ ...message('device', '', 'Texto do aparelho'), senderUserId: null, clientMessageId: null, direction: 'OUTBOUND' }], nextCursor: null });
     const send = vi.spyOn(chatApi, 'sendMessage'); renderDetail(); await screen.findByText('Texto do aparelho');
-    expect(screen.getByText('Aparelho conectado')).toBeInTheDocument(); expect(screen.queryByRole('textbox', { name: 'Escrever mensagem' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Envio pelo WhatsApp Web ainda indisponível/)).toBeInTheDocument(); expect(send).not.toHaveBeenCalled();
+    expect(screen.queryByText('Aparelho conectado')).not.toBeInTheDocument(); expect(screen.queryByRole('textbox', { name: 'Escrever mensagem' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Envio indisponível nesta conversa/)).toBeInTheDocument(); expect(send).not.toHaveBeenCalled();
   });
   it('shows an optimistic send and retries with the same clientMessageId', async () => {
     mockBase(); const send = vi.spyOn(chatApi, 'sendMessage').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(message('message-1', 'client-stable', 'Olá'));

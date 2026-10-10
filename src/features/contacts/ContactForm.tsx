@@ -44,7 +44,7 @@ export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact;
   return <form className="contact-form" onSubmit={(event) => void submit(event)} aria-label={contact ? 'Editar contato' : 'Cadastrar contato'}>
     <label htmlFor={`${id}-name`}>Nome<input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} disabled={!canWrite || busy || Boolean(saved)} /></label>
     <label htmlFor={`${id}-identifier`}>Identificador principal<input id={`${id}-identifier`} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required maxLength={254} readOnly={linked} disabled={!canWrite || busy || Boolean(saved)} /></label>
-    {linked && <p className="muted">Vínculo com {contact?.providers?.join(', ')} preservado. Nesta tela, edite somente o nome.</p>}
+    {linked && <p className="muted">Vínculo externo preservado. Nesta tela, edite somente o nome.</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
     <div className="contact-form-actions"><button className="primary-button" type="submit" disabled={!canWrite || busy}>{busy ? 'Salvando…' : saved ? 'Atualizar tela' : 'Salvar contato'}</button>{onCancel && <button className="secondary-button" type="button" onClick={onCancel} disabled={busy}>Cancelar</button>}</div>
   </form>;

@@ -91,3 +91,7 @@ Limites explícitos: criação interna apenas; Meta M3; reutilização opt-in se
 ## Histórico preservado
 
 [STATUS integral anterior ao aceite final](history/STATUS_BEFORE_M1_FINAL_20261008.md). Referências históricas à publicação/homologação pendente ou imagens anteriores descrevem o momento da respectiva entrega, não o estado vigente. Registros técnicos e rollback antigos permanecem nos documentos de cada release; nunca retornar Core anterior ao P0.
+
+Correção CP4 e painel contextual implementados, com gates/deploy em validação. Inbox inclui conversas não atribuídas no escopo inicial autorizado. Provedores permite consultar erros/eventos/saúde e copiar diagnóstico sanitizado, com permissão específica. As duas falhas antigas não possuem detalhes reconstruíveis. Homologação funcional e visual pelo usuário continua pendente; CP5/histórico/envio/mídia não iniciados. Provider conectado será preservado sem reinício.
+
+Padronização de autoria incorporada: nome do autor vem do Core e do ID persistido, saída do celular sem rótulo, recebidas com contato disponível. Badges técnicos removidos da operação; metadados internos preservados. Nenhuma migration de autoria; validação junto à correção CP4 e ao painel contextual.

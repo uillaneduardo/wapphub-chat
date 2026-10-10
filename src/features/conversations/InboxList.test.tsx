@@ -9,10 +9,40 @@ import type { Conversation } from '../../types/chat';
 const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'] } }));
 vi.mock('../session/SessionContext', () => ({ useSession: () => ({ session: state.session }) }));
 const row = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'conv-1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', lastMessageAt: '2026-10-01T00:00:00.000Z', visibility: 'FULL', ...overrides });
-function renderInbox() { return render(<MemoryRouter initialEntries={['/app/conversations']}><InboxList /></MemoryRouter>); }
+function renderInbox(path = '/app/conversations?scope=mine') { return render(<MemoryRouter initialEntries={[path]}><InboxList /></MemoryRouter>); }
 
 describe('InboxList', () => {
   afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; });
+  it('opens all authorized conversations for supervisors and retains the selected scope in links', async () => {
+    const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ assignedUserId: null, provider: 'WHATSAPP_WEB' })], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox('/app/conversations'); await screen.findByText('Contato contact-');
+    expect(list).toHaveBeenCalledWith({ scope: 'all', archived: false, limit: 50 }, expect.any(AbortSignal));
+    fireEvent.click(screen.getByRole('tab', { name: 'Não atribuídas' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Não atribuídas' })).toHaveAttribute('aria-selected', 'true'));
+    expect(screen.getByRole('link', { name: /Contato contact-/ })).toHaveAttribute('href', '/app/conversations/conv-1?scope=unassigned');
+  });
+  it('opens unassigned for readers without supervision and blocks an all-scope URL', async () => {
+    state.session.permissions = ['conversations.read', 'messages.read'];
+    const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ assignedUserId: null })], nextCursor: null });
+    renderInbox('/app/conversations?scope=all'); await screen.findByText('Contato contact-');
+    expect(list).toHaveBeenCalledWith({ scope: 'unassigned', archived: false, limit: 50 }, expect.any(AbortSignal));
+    expect(screen.queryByRole('tab', { name: 'Todas' })).not.toBeInTheDocument();
+  });
+  it.each(['DEMO', 'WHATSAPP_WEB', 'META'] as const)('keeps %s metadata in data while rendering no technical badge', async (provider) => {
+    const data = row({ provider }); vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [data], nextCursor: null });
+    const view = renderInbox(); await screen.findByRole('link', { name: /Contato/ }); expect(view.container.querySelector('.channel-label')).toBeNull(); expect(data.provider).toBe(provider);
+  });
+  it('adds a new unassigned WhatsApp conversation through realtime without refresh and survives remount', async () => {
+    const external = row({ assignedUserId: null, contactName: 'Novo contato', provider: 'WHATSAPP_WEB', lastMessagePreview: '*Texto recebido*' });
+    const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null }); vi.spyOn(chatApi, 'getConversation').mockResolvedValue(external);
+    const view = renderInbox('/app/conversations?scope=unassigned'); await screen.findByText('Nenhuma conversa');
+    await realtimeBus.emit({ version: 1, eventId: '99', organizationId: 'org-1', type: 'message.created', entityId: 'new-message', occurredAt: '2026-10-10T00:00:00Z', payload: { resourceId: 'new-message', conversationId: external.id } });
+    await screen.findByText('Novo contato'); expect(list).toHaveBeenCalledTimes(1); view.unmount();
+    list.mockResolvedValue({ items: [external], nextCursor: null }); renderInbox('/app/conversations?scope=unassigned'); await screen.findByText('*Texto recebido*');
+    expect(screen.getByRole('tab', { name: 'Não atribuídas' })).toHaveAttribute('aria-selected', 'true');
+  });
   it('sends scope, tag filter, and next cursor to the Core endpoint', async () => {
     const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValueOnce({ items: [row()], nextCursor: 'cursor-1' }).mockResolvedValueOnce({ items: [row({ id: 'conv-2', assignedUserId: null })], nextCursor: 'cursor-2' }).mockResolvedValueOnce({ items: [], nextCursor: 'cursor-3' }).mockResolvedValueOnce({ items: [row({ id: 'conv-3', tagIds: ['tag-1'] })], nextCursor: null });
     vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [{ id: 'tag-1', name: 'Urgente' }], nextCursor: null });

@@ -19,7 +19,7 @@ afterEach(() => { vi.restoreAllMocks(); state.session.currentOrganizationId = 'o
 describe('M1 contacts browser', () => {
   it('lists names, identifiers, provider origin and details links', async () => {
     vi.spyOn(chatApi, 'listContacts').mockResolvedValue(page([{ ...ana, providers: ['DEMO'] }])); browser();
-    expect(await screen.findByText('Ana')).toBeInTheDocument(); expect(screen.getByText('ana@example.test')).toBeInTheDocument(); expect(screen.getByText('DEMO')).toBeInTheDocument(); expect(screen.getByRole('link', { name: /Ana/ })).toHaveAttribute('href', '/app/contacts/contact-1');
+    expect(await screen.findByText('Ana')).toBeInTheDocument(); expect(screen.getByText('ana@example.test')).toBeInTheDocument(); expect(screen.queryByText('DEMO')).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: /Ana/ })).toHaveAttribute('href', '/app/contacts/contact-1');
   });
   it('searches on explicit submit and resets cursor pagination', async () => {
     const list = vi.spyOn(chatApi, 'listContacts').mockResolvedValueOnce(page()).mockResolvedValue(page([{ ...ana, name: 'Resultado' }])); browser(); await screen.findByText('Ana');
