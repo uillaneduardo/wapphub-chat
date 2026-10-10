@@ -11,7 +11,7 @@ function queryString(values: Record<string, string | number | boolean | undefine
 const idPath = (id: string) => encodeURIComponent(id);
 
 export const chatApi = {
-  listProviders: () => apiRequest<{ items: Provider[] }>('/providers'),
+  listProviders: (signal?: AbortSignal) => apiRequest<{ items: Provider[] }>('/providers', { signal }),
   setDemoProvider: (enabled: boolean) => apiRequest<{ enabled: boolean }>('/providers/demo', { method: 'PUT', body: JSON.stringify({ enabled }) }),
   listDemoContacts: (signal?: AbortSignal) => apiRequest<{ enabled: boolean; items: DemoContact[] }>('/providers/demo/contacts', { signal }),
   sendDemoMessage: (contactId: string, externalMessageId: string, body: string) => apiRequest<InternalTextMessage>('/providers/demo/messages', { method: 'POST', body: JSON.stringify({ contactId, externalMessageId, body }) }),

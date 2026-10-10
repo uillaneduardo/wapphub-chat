@@ -25,6 +25,13 @@ function mockBase() {
 describe('ConversationView', () => {
   beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
   afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  it('keeps WhatsApp Web outbound disabled according to Core capability and identifies device authorship', async () => {
+    mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', outboundEnabled: false });
+    vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [{ ...message('device', '', 'Texto do aparelho'), senderUserId: null, clientMessageId: null, direction: 'OUTBOUND' }], nextCursor: null });
+    const send = vi.spyOn(chatApi, 'sendMessage'); renderDetail(); await screen.findByText('Texto do aparelho');
+    expect(screen.getByText('Aparelho conectado')).toBeInTheDocument(); expect(screen.queryByRole('textbox', { name: 'Escrever mensagem' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Envio pelo WhatsApp Web ainda indisponível/)).toBeInTheDocument(); expect(send).not.toHaveBeenCalled();
+  });
   it('shows an optimistic send and retries with the same clientMessageId', async () => {
     mockBase(); const send = vi.spyOn(chatApi, 'sendMessage').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(message('message-1', 'client-stable', 'Olá'));
     renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); fireEvent.change(screen.getByRole('textbox', { name: 'Escrever mensagem' }), { target: { value: 'Olá' } }); fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));

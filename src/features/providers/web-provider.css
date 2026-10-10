@@ -1,0 +1,13 @@
+.web-provider-card .provider-warning { margin-block: 14px; }
+.web-provider-card .provider-detail { margin-top: 14px; }
+.web-provider-card .provider-actions { flex-wrap: wrap; }
+.web-provider-pairing { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-block: 20px; }
+.web-provider-qr { width: min(260px, 100%); height: auto; flex-shrink: 0; }
+.web-provider-pairing > div { flex: 1 1 220px; min-width: 0; }
+.web-provider-pairing h3 { font-size: 14px; }
+.web-provider-pairing ol { padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.web-provider-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 35%); }
+.web-provider-dialog { width: min(460px, 100%); max-height: 90dvh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+.web-provider-dialog h2 { font-size: 18px; }
+.web-provider-dialog button { margin-top: 16px; margin-right: 8px; }
+@media (max-width: 720px) { .web-provider-card .provider-card-head { flex-wrap: wrap; }.web-provider-pairing { gap: 12px; }.web-provider-qr { width: min(240px, 100%); margin-inline: auto; } }

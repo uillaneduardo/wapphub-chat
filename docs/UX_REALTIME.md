@@ -212,3 +212,10 @@ bloquear duplicação pelo novo atalho. Não há consulta de API para preferênc
 Ver `M1_UI_POLISH_3.md` para navegação, splitter, armazenamento e critérios de
 homologação. Não instalar/executar navegador gráfico ou screenshot no Homelab;
 validar visualmente no notebook após deploy explicitamente autorizado.
+
+## Conexões WhatsApp Web
+
+Providers usa stream dedicado do mesmo Core em /api/v1/providers/realtime, com
+providers.manage, cursor só em memória, abort/reconciliação e invalidação por
+Organization/permissões. Eventos não transportam QR, credenciais nem arquivos.
+[Detalhes](WHATSAPP_WEB_CHECKPOINT3.md).

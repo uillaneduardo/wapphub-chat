@@ -1,3 +1,7 @@
+> WhatsApp Web — checkpoint 3: [conexões e QR via Core, segurança,
+> estados e homologação manual](docs/WHATSAPP_WEB_CHECKPOINT3.md).
+> Envio e mídias ainda indisponíveis.
+
 > Refinamento M2.1: busca local, accordion, confirmação de alterações pendentes
 > e navegação permanente com estados de acesso. [Fluxos e limites](docs/PERMISSIONS_UI_POLISH.md).
 > Homologação visual/funcional manual pendente.
