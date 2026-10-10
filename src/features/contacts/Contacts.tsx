@@ -39,7 +39,7 @@ function ContactDetail({ contactId }: { contactId: string }) {
     {loading && <p role="status">Carregando contato…</p>}
     {error && <p role="alert">{error} <button type="button" className="text-button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button></p>}
     {!loading && !error && contact && <section className="contact-card"><header className="contacts-heading"><h1>{contact.name}</h1>{session?.permissions.includes('contacts.write') && !editing && <button type="button" className="secondary-button" onClick={() => setEditing(true)}><Pencil size={18} aria-hidden="true" />Editar contato</button>}</header>
-      {editing ? <ContactForm contact={contact} onSaved={(updated) => { setContact(updated); setEditing(false); }} onCancel={() => setEditing(false)} /> : <><p className="contact-identifier">{contactIdentifier(contact.primaryIdentifier)}</p>{Boolean(contact.providers?.length) && <p>Vínculos: {contact.providers?.join(', ')}</p>}<p className="muted">Contato da organização ativa. O histórico e os vínculos existentes são preservados.</p>
+      {editing ? <ContactForm contact={contact} onSaved={(updated) => { setContact(updated); setEditing(false); }} onCancel={() => setEditing(false)} /> : <><p className="contact-identifier">{contactIdentifier(contact.primaryIdentifier)}</p><p className="muted">Contato da organização ativa. O histórico e os vínculos existentes são preservados.</p>
         {session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && <Link className="primary-button contact-create-link" to={`/app/conversations/new?contactId=${encodeURIComponent(contact.id)}`}>Nova conversa interna</Link>}</>}
     </section>}
   </section>;

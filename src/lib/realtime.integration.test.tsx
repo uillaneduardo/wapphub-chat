@@ -44,7 +44,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
   });
   afterEach(() => { clients.splice(0).forEach((item) => item.close()); Socket.instances = []; vi.restoreAllMocks(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'providers.simulate']; });
   it('keeps the real inbox checkpoint pending until its REST response is applied', async () => {
-    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
     let finish!: (value: Conversation) => void;
     vi.mocked(chatApi.getConversation).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const connection = client(); act(() => emit());
@@ -55,7 +55,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     await screen.findByText('Prévia nova'); await waitFor(() => expect(connection.lastEventId).toBe('1'));
   });
   it('recovers a real inbox REST 500 by replaying from the unconfirmed cursor', async () => {
-    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
     vi.mocked(chatApi.getConversation).mockRejectedValueOnce(new Error('REST 500')).mockResolvedValue({ ...conversation, lastMessagePreview: 'Recuperada' });
     vi.mocked(chatApi.listConversations).mockResolvedValue({ items: [{ ...conversation, lastMessagePreview: 'Recuperada' }], nextCursor: null });
     const connection = client(); act(() => emit());
@@ -63,7 +63,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     act(() => emit()); await screen.findByText('Recuperada'); await waitFor(() => expect(connection.lastEventId).toBe('1'));
   });
   it('does not let a later event race an earlier request or regress the inbox', async () => {
-    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
     let finish!: (value: Conversation) => void;
     const refresh = vi.mocked(chatApi.getConversation).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; })).mockResolvedValue({ ...conversation, lastMessagePreview: 'Mais recente' });
     const connection = client();
@@ -117,7 +117,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     let finish!: (value: CursorPage<Conversation>) => void;
     vi.mocked(chatApi.listConversations).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; })).mockResolvedValue({ items: [{ ...conversation, lastMessagePreview: 'Depois do bootstrap' }], nextCursor: null });
     vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, lastMessagePreview: 'Depois do bootstrap' });
-    render(<MemoryRouter><InboxList /></MemoryRouter>); const connection = client(); act(() => emit());
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); const connection = client(); act(() => emit());
     expect(connection.lastEventId).toBe('0');
     await act(async () => finish({ items: [conversation], nextCursor: null }));
     await screen.findByText('Depois do bootstrap'); await waitFor(() => expect(connection.lastEventId).toBe('1'));
@@ -126,7 +126,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
   it('bootstraps current authorized data after events processed with no mounted projection', async () => {
     const connection = client(); act(() => emit()); await waitFor(() => expect(connection.lastEventId).toBe('1'));
     vi.mocked(chatApi.listConversations).mockResolvedValue({ items: [{ ...conversation, lastMessagePreview: 'Estado atual do REST' }], nextCursor: null });
-    render(<MemoryRouter><InboxList /></MemoryRouter>); expect(await screen.findByText('Estado atual do REST')).toBeInTheDocument();
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); expect(await screen.findByText('Estado atual do REST')).toBeInTheDocument();
   });
   it('does not duplicate messages when the same event is delivered twice', async () => {
     detail(); await screen.findByText('Histórico inicial');
@@ -142,7 +142,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
     let finish!: (value: CursorPage<Conversation>) => void;
     vi.mocked(chatApi.listConversations).mockResolvedValueOnce({ items: [conversation], nextCursor: 'older' }).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; })).mockResolvedValue({ items: [], nextCursor: null });
     vi.mocked(chatApi.getConversation).mockRejectedValue({ status: 403 });
-    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); await screen.findByText('Prévia inicial');
     fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' })); await waitFor(() => expect(finish).toBeTypeOf('function'));
     const connection = client(); act(() => emit('conversation.transferred'));
     await waitFor(() => expect(connection.lastEventId).toBe('1'));
@@ -167,7 +167,7 @@ describe('P1 transport + actual REST projections (synthetic)', () => {
 
   it('applies a new conversation event through authorized REST without duplicating its inbox row', async () => {
     vi.mocked(chatApi.listConversations).mockResolvedValueOnce({ items: [], nextCursor: null }).mockResolvedValue({ items: [conversation], nextCursor: null });
-    render(<MemoryRouter><InboxList /></MemoryRouter>); await screen.findByText('Nenhuma conversa');
+    render(<MemoryRouter initialEntries={["/app/conversations?scope=mine"]}><InboxList /></MemoryRouter>); await screen.findByText('Nenhuma conversa');
     const connection = client(); act(() => { emit('conversation.created'); emit('conversation.created'); });
     await screen.findByRole('link', { name: /Contato sintético/ }); await waitFor(() => expect(connection.lastEventId).toBe('1'));
     expect(screen.getAllByRole('link', { name: /Contato sintético/ })).toHaveLength(1);

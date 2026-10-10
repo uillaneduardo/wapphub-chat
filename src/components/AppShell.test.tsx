@@ -36,7 +36,7 @@ describe('conversation shell scope and navigation', () => {
     expect(screen.getByRole('button', { name: 'Sair da conta' }).querySelector('svg')).toHaveClass('lucide-log-out');
     expect(within(nav).getByRole('link', { name: 'Canais e integrações' })).toHaveAttribute('aria-current', 'page');
     expect(within(screen.getByRole('region', { name: 'Atendimento' })).getAllByRole('link')).toHaveLength(2);
-    expect(within(screen.getByRole('region', { name: 'Gestão' })).getByRole('link', { name: 'Simulador Demo' })).toHaveAttribute('href', '/app/providers/demo/simulator');
+    expect(within(screen.getByRole('region', { name: 'Gestão' })).getByRole('link', { name: 'Simulador de contato' })).toHaveAttribute('href', '/app/providers/demo/simulator');
   });
   it('collapses without navigation and exposes keyboard-accessible flyout links and tooltips', () => {
     renderNav(); fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' }));
@@ -45,7 +45,7 @@ describe('conversation shell scope and navigation', () => {
     const contacts = screen.getByRole('link', { name: 'Contatos' }); fireEvent.focus(contacts); expect(screen.getByRole('tooltip', { name: 'Contatos' })).toBeInTheDocument(); fireEvent.blur(contacts);
     const trigger = screen.getByRole('button', { name: 'Gestão' }); expect(trigger).toHaveClass('active'); fireEvent.click(trigger);
     const flyout = screen.getByRole('region', { name: 'Menu Gestão' }); const providers = within(flyout).getByRole('link', { name: 'Canais e integrações' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); providers.focus();
-    fireEvent.keyDown(providers, { key: 'ArrowDown' }); const demo = within(flyout).getByRole('link', { name: 'Simulador Demo' }); expect(demo).toHaveFocus(); expect(providers.querySelector('svg')).toHaveClass('lucide-plug');
+    fireEvent.keyDown(providers, { key: 'ArrowDown' }); const demo = within(flyout).getByRole('link', { name: 'Simulador de contato' }); expect(demo).toHaveFocus(); expect(providers.querySelector('svg')).toHaveClass('lucide-plug');
     fireEvent.keyDown(demo, { key: 'Home' }); expect(within(flyout).getByRole('link', { name: 'Equipe e permissões' })).toHaveFocus(); fireEvent.keyDown(providers, { key: 'End' }); expect(screen.getByRole('button', { name: 'Plano e assinatura' }).parentElement).toHaveFocus();
     fireEvent.keyDown(demo, { key: 'Escape' }); expect(trigger).toHaveFocus(); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
     fireEvent.click(trigger); screen.getByRole('button', { name: 'Plano e assinatura' }).parentElement!.focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
@@ -114,7 +114,7 @@ describe('conversation shell scope and navigation', () => {
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent(label); expect(status).toHaveClass(`realtime-${connection}`);
     expect(status).toHaveAttribute('aria-live', 'polite'); expect(status).toHaveAttribute('aria-atomic', 'true');
-    expect(status.title).toContain('servidor WappHub, não com o WhatsApp');
+    expect(status.title).toContain('servidor WappHub');
     expect(status.querySelector('.realtime-dot')).toHaveAttribute('aria-hidden', 'true');
   });
   it('preserves paused recovery and accessible status when collapsed', () => {
@@ -127,7 +127,7 @@ describe('conversation shell scope and navigation', () => {
 
   it('allows the Demo route only with effective simulation and message-read permissions', () => {
     state.session.permissions = ['providers.simulate', 'messages.read', 'team.read']; const view = renderNav();
-    expect(screen.getByRole('link', { name: 'Simulador Demo' })).toHaveAttribute('href', '/app/providers/demo/simulator'); expect(screen.getByRole('button', { name: 'Canais e integrações' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Simulador de contato' })).toHaveAttribute('href', '/app/providers/demo/simulator'); expect(screen.getByRole('button', { name: 'Canais e integrações' })).toBeDisabled();
     view.unmount(); state.session.permissions = ['providers.simulate']; renderNav(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
   });
   it('updates permissions and closes the old organization flyout on context change', () => {

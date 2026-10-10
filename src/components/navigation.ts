@@ -31,7 +31,7 @@ export const navigationItems: readonly NavigationItem[] = [
   { id: 'calls', featureCode: 'calling.audio', context: 'Comunicação', label: 'Chamadas', icon: 'calls', availability: 'RESEARCH' },
   { id: 'team', featureCode: 'team.permissions', context: 'Gestão', label: 'Equipe e permissões', icon: 'team', to: '/app/team', permissions: ['team.read'], availability: 'AVAILABLE' },
   { id: 'providers', featureCode: 'providers.management', context: 'Gestão', label: 'Canais e integrações', icon: 'providers', to: '/app/settings/providers', permissions: ['providers.manage'], availability: 'AVAILABLE' },
-  { id: 'demo', featureCode: 'providers.demo', context: 'Gestão', label: 'Simulador Demo', icon: 'providers', to: '/app/providers/demo/simulator', permissions: ['providers.simulate', 'messages.read'], availability: 'AVAILABLE' },
+  { id: 'demo', featureCode: 'providers.demo', context: 'Gestão', label: 'Simulador de contato', icon: 'providers', to: '/app/providers/demo/simulator', permissions: ['providers.simulate', 'messages.read'], availability: 'AVAILABLE' },
   { id: 'usage', featureCode: 'organization.usage', context: 'Gestão', label: 'Uso e custos', icon: 'usage', availability: 'PLANNED' },
   { id: 'billing', featureCode: 'organization.subscription', context: 'Gestão', label: 'Plano e assinatura', icon: 'billing', availability: 'PLANNED' },
   { id: 'settings', featureCode: 'chat.settings', context: 'Preferências', label: 'Configurações', icon: 'settings', to: '/app/settings', availability: 'PLACEHOLDER' },

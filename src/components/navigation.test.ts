@@ -12,7 +12,7 @@ describe('declarative context navigation', () => {
     expect(links([])).toEqual([]); expect(links(['OWNER'])).toEqual([]);
     expect(links(['contacts.read']).map((item) => item.id)).toEqual(['contacts']);
     expect(links(['providers.simulate'])).toEqual([]);
-    expect(links(['providers.simulate', 'messages.read'])[0]).toMatchObject({ id: 'demo', label: 'Simulador Demo', to: '/app/providers/demo/simulator' });
+    expect(links(['providers.simulate', 'messages.read'])[0]).toMatchObject({ id: 'demo', label: 'Simulador de contato', to: '/app/providers/demo/simulator' });
     expect(visibleNavigation([], resourceFixture).flatMap((group) => group.items)).toHaveLength(navigationItems.length);
   });
   it('never turns planned, research, unsupported or placeholder items into links', () => {
