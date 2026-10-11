@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { AppIcon } from '../../components/AppIcon';
+import { HistoryControls } from './HistoryControls';
 import { ProviderDiagnosticsButton } from './ProviderDiagnostics';
 import { ApiError } from '../../lib/api';
 import { createRealtimeUrl, RealtimeClient } from '../../lib/realtime';
@@ -110,7 +111,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     {(busy || pending(connection) || state === 'CONNECTING' || connection?.pairingPhase === 'AUTHENTICATING') && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />{connection?.pairingPhase === 'AUTHENTICATING' ? 'Autenticando…' : state === 'CONNECTING' && !pending(connection) ? 'Gerando QR Code…' : 'Preparando conexão…'}</p>}
     {state === 'QR_READY' && !expired && connection?.pairingPhase !== 'AUTHENTICATING' && <p role="status">Aguardando leitura do QR Code.</p>}
     {state === 'CONNECTED' && <p role="status">{connection?.errorCode === 'PROVIDER_UNAVAILABLE' ? 'Conexão não confirmada. Exibindo o último estado conhecido.' : 'WhatsApp conectado.'}</p>}
-    {connection && <SyncProgress connection={connection} />}
+    {connection && <SyncProgress connection={connection} />}{connection && <HistoryControls connectionId={connection.id} revision={connection.version} connected={state === 'CONNECTED' && !connection.errorCode} />}
     <div className="provider-actions"><ProviderDiagnosticsButton provider="WHATSAPP_WEB" count={(connection?.sync?.provider?.failures ?? 0) + (connection?.sync?.pendingFailures ?? 0) + (connection?.sync?.rejectedItems ?? 0)} revision={connection?.version ?? 0} />
       {!connection && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('create')}>{busy ? 'Criando…' : 'Criar conexão'}</button>}
       {connection && ['DISCONNECTED', 'ERROR'].includes(state) && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('connect')}>{busy ? 'Solicitando…' : 'Solicitar QR Code'}</button>}
