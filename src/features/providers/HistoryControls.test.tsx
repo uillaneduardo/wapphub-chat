@@ -34,4 +34,22 @@ describe('CP4.6 administrative history controls', () => {
   let done!: (value: HistoryStatus) => void; vi.mocked(webHistoryApi.read).mockImplementation(() => new Promise((resolve) => { done = resolve; })); const view = panel(); fireEvent.click(screen.getByText('Histórico controlado')); await waitFor(() => expect(webHistoryApi.read).toHaveBeenCalledOnce()); const signal = vi.mocked(webHistoryApi.read).mock.calls[0]![1];
   auth.session.currentOrganizationId = 'org-b'; view.rerender(<HistoryControls connectionId="connection-b" revision={1} connected />); expect(signal.aborted).toBe(true); await act(async () => done(status())); expect(screen.queryByText('Preparada')).not.toBeInTheDocument();
  });
+ it('keeps an explicit command alive across realtime revisions and releases the busy state', async () => {
+  vi.mocked(webHistoryApi.read).mockResolvedValue({ ...status(), operation: null });
+  let done!: (value: { operation: NonNullable<HistoryStatus['operation']> }) => void;
+  vi.mocked(webHistoryApi.prepare).mockImplementation(() => new Promise((resolve) => { done = resolve; }));
+  const view = panel(); fireEvent.click(screen.getByText('Histórico controlado')); fireEvent.click(await screen.findByText('Preparar operação'));
+  await waitFor(() => expect(webHistoryApi.prepare).toHaveBeenCalledOnce()); const signal = vi.mocked(webHistoryApi.prepare).mock.calls[0]![4];
+  vi.mocked(webHistoryApi.read).mockResolvedValue({ ...status(), version: 13 }); view.rerender(<HistoryControls connectionId="connection" revision={13} connected />);
+  await screen.findByText('Preparada'); expect(signal.aborted).toBe(false);
+  await act(async () => done({ operation: status().operation! }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Cancelar produtor' })).toBeEnabled()); expect(webHistoryApi.command).not.toHaveBeenCalled();
+ });
+ it('aborts an in-flight explicit command when the tenant panel unmounts', async () => {
+  vi.mocked(webHistoryApi.read).mockResolvedValue({ ...status(), operation: null });
+  vi.mocked(webHistoryApi.prepare).mockImplementation(() => new Promise(() => {}));
+  const view = panel(); fireEvent.click(screen.getByText('Histórico controlado')); fireEvent.click(await screen.findByText('Preparar operação'));
+  await waitFor(() => expect(webHistoryApi.prepare).toHaveBeenCalledOnce()); const signal = vi.mocked(webHistoryApi.prepare).mock.calls[0]![4]; view.unmount(); expect(signal.aborted).toBe(true);
+ });
+
 });

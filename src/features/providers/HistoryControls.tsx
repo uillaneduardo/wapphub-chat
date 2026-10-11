@@ -11,12 +11,14 @@ export function HistoryControls({ connectionId, revision, connected }: { connect
 }
 function HistoryPanel({ connectionId, revision, connected }: { connectionId: string; revision: number; connected: boolean }) {
  const [open, setOpen] = useState(false), [status, setStatus] = useState<HistoryStatus | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [messages, setMessages] = useState(20), [refresh, setRefresh] = useState(0), [confirm, setConfirm] = useState<HistoryAction | null>(null);
- const abort = useRef<AbortController | null>(null), locked = useRef(false);
- useEffect(() => { if (!open) return; const request = new AbortController(); abort.current = request; const timer = setTimeout(() => {
+ const commandAbort = useRef<AbortController | null>(null), locked = useRef(false);
+ useEffect(() => () => commandAbort.current?.abort(), []);
+ useEffect(() => { if (!open) return; const request = new AbortController(); const timer = setTimeout(() => {
   void webHistoryApi.read(connectionId, request.signal).then((value) => { if (!request.signal.aborted) { setStatus(value); setError(''); } }).catch(() => { if (!request.signal.aborted) setError('Histórico indisponível. Tente consultar novamente.'); });
  }, 200); return () => { clearTimeout(timer); request.abort(); }; }, [open, connectionId, revision, refresh]);
  async function run(action: 'prepare' | HistoryAction) {
-  const request = abort.current; if (!request || !status || locked.current) return;
+  if (!status || locked.current) return;
+  const request = new AbortController(); commandAbort.current = request;
   locked.current = true; setBusy(true); setError(''); setConfirm(null);
   try {
    if (action === 'prepare') await webHistoryApi.prepare(connectionId, status.version, messages, crypto.randomUUID(), request.signal);
