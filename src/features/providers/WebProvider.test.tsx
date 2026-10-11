@@ -128,4 +128,9 @@ describe('WhatsApp Web provider integration', () => {
     renderCard(); await screen.findByText('Sincronização contínua ativa');
     expect(screen.queryByText('Sincronizando conversas e mensagens')).not.toBeInTheDocument(); expect(screen.queryByText('Sincronização inicial processada')).not.toBeInTheDocument();
   });
+  it('never claims the account is currently connected when the Core reports provider unavailability', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', errorCode: 'PROVIDER_UNAVAILABLE' }) });
+    renderCard(); await screen.findByText('Último estado: Conectado'); expect(screen.queryByText('WhatsApp conectado.')).not.toBeInTheDocument(); expect(screen.getByText('Conexão não confirmada. Exibindo o último estado conhecido.')).toBeInTheDocument(); expect(screen.getByText('Último estado: Conectado')).not.toHaveClass('is-enabled'); expect(webProviderApi.command).not.toHaveBeenCalled();
+  });
+
 });

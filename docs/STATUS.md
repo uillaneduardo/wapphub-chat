@@ -97,3 +97,5 @@ Correção CP4 e painel contextual implementados, com gates/deploy em validaçã
 Padronização de autoria incorporada: nome do autor vem do Core e do ID persistido, saída do celular sem rótulo, recebidas com contato disponível. Badges técnicos removidos da operação; metadados internos preservados. Nenhuma migration de autoria; validação junto à correção CP4 e ao painel contextual.
 
 Retomada adicional em validação: displayIdentifier amigável fornecido pelo Core, drawer de 560 px responsivo, busca e filtros avançados, etapas com evidência e saúde sem assumir conexão atual pelo último estado persistido. A confirmação visual final permanece a cargo do usuário; nenhum navegador gráfico executado no Homelab.
+
+Correção adicional do card: indisponibilidade do processamento mostra o último estado sem indicador de conexão atual. Core/Chat PR15/PR13 publicados; recuperação do runtime Provider ainda condicionada à autorização específica. Homologação manual pendente.
