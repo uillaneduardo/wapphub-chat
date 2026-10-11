@@ -1,5 +1,5 @@
 export interface CursorPage<T> { items: T[]; nextCursor: string | null }
-export interface Contact { providers?: ('DEMO' | 'META' | 'WHATSAPP_WEB')[]; id: string; name: string; primaryIdentifier: string; createdAt: string; updatedAt: string }
+export interface Contact { providers?: ('DEMO' | 'META' | 'WHATSAPP_WEB')[]; id: string; name: string; primaryIdentifier: string; displayIdentifier?: string; createdAt: string; updatedAt: string }
 export type ConversationStatus = 'OPEN' | 'PENDING' | 'ARCHIVED';
 export type HistoryVisibility = 'FULL' | 'LIMITED' | 'NONE';
 export interface Conversation { id: string; contactId: string; contactName: string | null; lastMessagePreview: string | null; provider: 'DEMO' | 'META' | 'WHATSAPP_WEB' | null; outboundEnabled?: boolean; tagIds: string[]; status: ConversationStatus; assignedUserId: string | null; archivedAt: string | null; createdAt: string; updatedAt: string; lastMessageAt: string; visibility: HistoryVisibility }

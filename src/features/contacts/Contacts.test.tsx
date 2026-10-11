@@ -103,3 +103,10 @@ describe('M1 contacts mutations', () => {
   });
 
 });
+
+it('keeps opaque legacy identities read-only even when an older record has no provider binding', async () => {
+ const linked = { ...ana, primaryIdentifier: 'web:11111111-1111-4111-8111-111111111111:80595094880359@lid', displayIdentifier: 'Contato contact', providers: [] };
+ const update = vi.spyOn(chatApi, 'updateContact').mockResolvedValue({ ...linked, name: 'Novo nome' }); vi.spyOn(realtimeBus, 'reconcile').mockResolvedValue();
+ render(<ContactForm contact={linked} onSaved={vi.fn()} />); expect(screen.getByLabelText('Identificador principal')).toHaveValue('Contato contact'); expect(screen.getByLabelText('Identificador principal')).toHaveAttribute('readonly');
+ fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Novo nome' } }); fireEvent.submit(screen.getByRole('form')); await waitFor(() => expect(update).toHaveBeenCalledWith(linked.id, { name: 'Novo nome' }));
+});

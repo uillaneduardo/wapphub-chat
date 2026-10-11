@@ -16,12 +16,12 @@ function contactError(reason: unknown): string {
 }
 export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact; onSaved: (value: Contact) => void; onCancel?: () => void }) {
   const { session } = useSession(); const id = useId();
-  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact ? contactIdentifier(contact.primaryIdentifier) : '');
+  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : '');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [saved, setSaved] = useState<Contact | null>(null);
   const lock = useRef(false); const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const canWrite = session?.permissions.includes('contacts.write') ?? false;
-  const linked = Boolean(contact?.providers?.length);
+  const linked = Boolean(contact?.providers?.length || contact?.displayIdentifier && contact.displayIdentifier !== contact.primaryIdentifier);
   async function reconcile(value: Contact) {
     if (session?.currentOrganizationId) await realtimeBus.reconcile(session.currentOrganizationId);
     if (mounted.current) onSaved(value);
