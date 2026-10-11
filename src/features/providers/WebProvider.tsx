@@ -101,7 +101,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
   }
   const disabled = loading || busy || pending(connection), state = connection?.uiState ?? 'DISCONNECTED';
   return <article className="provider-card web-provider-card" aria-labelledby={titleId}>
-    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp Web</h2><p>Vincule um aparelho à organização selecionada.</p></div></div><span className={`provider-state ${state === 'CONNECTED' ? 'is-enabled' : ''}`} role="status">{loading ? 'Carregando…' : connection ? `${connection.errorCode === 'PROVIDER_UNAVAILABLE' ? 'Último estado: ' : ''}${expired && state === 'QR_READY' ? 'QR indisponível' : labels[state]}` : 'Sem conexão'}</span></div>
+    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp Web</h2><p>Vincule um aparelho à organização selecionada.</p></div></div><span className={`provider-state ${state === 'CONNECTED' && connection?.errorCode !== 'PROVIDER_UNAVAILABLE' ? 'is-enabled' : ''}`} role="status">{loading ? 'Carregando…' : connection ? `${connection.errorCode === 'PROVIDER_UNAVAILABLE' ? 'Último estado: ' : ''}${expired && state === 'QR_READY' ? 'QR indisponível' : labels[state]}` : 'Sem conexão'}</span></div>
     <p className="provider-warning">Esta integração utiliza um protocolo não oficial, sujeito a desconexões e restrições do WhatsApp.</p>
     {error && <p role="alert" className="error-text">{error}</p>}{!error && connection?.errorCode && <p role="alert">{errors[connection.errorCode] ?? 'A operação falhou. Confira a conexão e tente novamente.'}</p>}
     {live !== 'open' && <p role="status">Atualização de estado interrompida ou conectando. <button type="button" className="text-button" onClick={() => controller.current && void load(controller.current.signal).catch(() => undefined)}>Consultar estado</button></p>}
@@ -109,7 +109,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     {pending(connection) && <p role="status">Operação solicitada. Aguardando confirmação do serviço…</p>}
     {(busy || pending(connection) || state === 'CONNECTING' || connection?.pairingPhase === 'AUTHENTICATING') && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />{connection?.pairingPhase === 'AUTHENTICATING' ? 'Autenticando…' : state === 'CONNECTING' && !pending(connection) ? 'Gerando QR Code…' : 'Preparando conexão…'}</p>}
     {state === 'QR_READY' && !expired && connection?.pairingPhase !== 'AUTHENTICATING' && <p role="status">Aguardando leitura do QR Code.</p>}
-    {state === 'CONNECTED' && <p role="status">WhatsApp conectado.</p>}
+    {state === 'CONNECTED' && <p role="status">{connection?.errorCode === 'PROVIDER_UNAVAILABLE' ? 'Conexão não confirmada. Exibindo o último estado conhecido.' : 'WhatsApp conectado.'}</p>}
     {connection && <SyncProgress connection={connection} />}
     <div className="provider-actions"><ProviderDiagnosticsButton provider="WHATSAPP_WEB" count={(connection?.sync?.provider?.failures ?? 0) + (connection?.sync?.pendingFailures ?? 0) + (connection?.sync?.rejectedItems ?? 0)} revision={connection?.version ?? 0} />
       {!connection && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('create')}>{busy ? 'Criando…' : 'Criar conexão'}</button>}
