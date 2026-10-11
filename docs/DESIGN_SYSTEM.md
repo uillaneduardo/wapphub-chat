@@ -159,3 +159,5 @@ e permissions efetivas do Core controlam links e motivos de bloqueio.
 Refinamento: [PERMISSIONS_UI_POLISH.md](PERMISSIONS_UI_POLISH.md).
 Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
 Homologação manual pelo usuário permanece pendente.
+
+CP4.7: três cards de WhatsApp/sincronização/histórico, grant persistente via Core, confirmação do piloto20/30dias/16solicitações, pausa/desativação e diagnósticos/gerenciamento expansíveis. Não há botão de preparação ou dependência da aba aberta. Demo/Meta em Outros provedores; navegação global preservada. Validação jsdom não equivale a homologação visual, que permanece manual após deploy.
