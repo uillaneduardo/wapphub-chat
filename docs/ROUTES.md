@@ -77,3 +77,5 @@ quando o catálogo real do Core habilitar WhatsApp Web. Nenhuma rota interna do
 provider é acessada pelo navegador. [Comportamento e limites](WHATSAPP_WEB_CHECKPOINT3.md).
 
 Configurações → Provedores → Ver diagnóstico abre um painel contextual, sem rota privada do Provider ou ação de reprocessamento. Todas as consultas passam por `/api/v1/providers/{WHATSAPP_WEB|DEMO|META}/diagnostics` no Core; detalhe e saúde são consultas read-only. Inbox preserva `?scope=mine|all|unassigned|archived` em navegação e refresh, respeitando permissions efetivas.
+
+Configurações → Provedores → Histórico controlado usa somente a API Core scoped de histórico. O painel requer providers.manage + providers.diagnostics.read + conversations.supervise + messages.read; não concede acesso novo a agentes. Controles/limites e estados vêm do Core, versão e CSRF nas mutações. Nenhuma requisição automática de histórico na montagem ou na preparação.
