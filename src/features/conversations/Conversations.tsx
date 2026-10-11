@@ -1,3 +1,6 @@
+import "./media.css";
+import { MessageMedia } from "./MessageMedia";
+import { MediaComposer, type Attachment } from "./MediaComposer";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -43,7 +46,7 @@ function ConversationViewContent() {
   const contactNameRef = useRef(contact?.name);
   contactNameRef.current = contact?.name;
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
-  const [sending, setSending] = useState(false);
+  const [sending, setSending] = useState(false); const [attachment, setAttachment] = useState<Attachment | null>(null);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
@@ -158,22 +161,30 @@ function ConversationViewContent() {
     catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar o histórico.'); }
     finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
-  async function submitMessage(body: string, retryClientMessageId?: string) {
-    if (!body.trim() || body.trim().length > 8000 || !can('messages.send') || conversation?.outboundEnabled === false || conversation?.status === 'ARCHIVED') return;
+  async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null) {
+    const failedMessage = retryClientMessageId ? messages.find(message => message.clientMessageId === retryClientMessageId) : undefined;
+    if ((!body.trim() && !selectedAttachment && !failedMessage?.media) || body.length > 8000 || !can('messages.send') || conversation?.outboundEnabled === false || conversation?.status === 'ARCHIVED') return;
     const clientMessageId = retryClientMessageId ?? createClientMessageId();
-    const failedMessage = retryClientMessageId ? messages.find((message) => message.clientMessageId === retryClientMessageId) : undefined;
-    if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && failedMessage?.status !== 'FAILED')) return;
+    if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && (failedMessage?.status !== 'FAILED' || failedMessage.deliveryOutcome === 'UNKNOWN'))) return;
     pendingSends.current.add(clientMessageId);
     const optimistic = failedMessage ? { ...failedMessage, status: 'PENDING' as const, updatedAt: new Date().toISOString() } : createOptimisticMessage(conversationId, sessionUserId, body.trim(), clientMessageId, session?.user.name);
     setDetailError(''); setMessages((current) => mergeMessages(current, [optimistic]));
-    try { const saved = await chatApi.sendMessage(conversationId, { body: body.trim(), clientMessageId }); setMessages((current) => mergeMessages(current, [saved])); }
-    catch (reason) { setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId ? { ...message, status: 'FAILED' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
-    finally { pendingSends.current.delete(clientMessageId); }
+    const text = conversation?.provider === 'WHATSAPP_WEB' ? body : body.trim();
+    const controller = new AbortController(); reads.current.add(controller); let intentSubmitted = false;
+    try {
+      const media = selectedAttachment ? await chatApi.uploadMedia(conversationId, selectedAttachment.file, selectedAttachment.type, controller.signal) : failedMessage?.media ?? undefined;
+      if (!mounted.current || controller.signal.aborted) return;
+      intentSubmitted = true;
+      const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
+      if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) setAttachment(null); }
+    }
+    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
+    finally { reads.current.delete(controller); pendingSends.current.delete(clientMessageId); }
   }
   function sendDraft() {
-    if (composerBusy.current || !draft.trim() || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
+    if (composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
     composerBusy.current = true; setSending(true); const body = draft; setDraft('');
-    void submitMessage(body).finally(() => { composerBusy.current = false; setSending(false); });
+    void submitMessage(body, undefined, attachment).finally(() => { composerBusy.current = false; setSending(false); });
   }
   function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); sendDraft(); }
   async function submitNote(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = noteDraft.trim(); if (!body || !can('notes.create')) return; setActionBusy(true); setDetailError(''); try { const created = await chatApi.createNote(conversationId, body); setNotes((current) => [...current, created]); setNoteDraft(''); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível criar a nota.'); } finally { setActionBusy(false); } }
@@ -192,17 +203,17 @@ function ConversationViewContent() {
   const canSeeMessages = can('messages.read'); const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
-    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div><span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
+    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{conversation.provider === 'WHATSAPP_WEB' ? location.state.conversationCreation === 'reused' ? 'Conversa do WhatsApp existente aberta.' : 'Conversa do WhatsApp criada. Nenhuma mensagem foi enviada.' : location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div><span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
     <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
       {detailError && <p className="inline-error" role="alert">{detailError}</p>}
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
         {messages.length === 0 ? <div className="message-empty">Ainda não há mensagens nesta conversa.</div> : messages.map((message) => <article key={messageScrollKey(message)} data-message-key={messageScrollKey(message)} className={`message-bubble${message.senderUserId === sessionUserId || message.direction === 'OUTBOUND' ? ' own-message' : ''}`}>
-          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <p className="muted">{message.media?.fileName ?? message.type} — download de mídia indisponível</p>}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
+          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <MessageMedia message={message} />}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : message.deliveryOutcome === 'UNKNOWN' ? 'Resultado incerto — aguardando confirmação' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.deliveryOutcome !== 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
-      {can('messages.send') && conversation.outboundEnabled !== false && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer"><ComposerTools /><div className="composer-send-controls"><button className="primary-button" disabled={sending || !draft.trim() || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
+      {can('messages.send') && conversation.outboundEnabled !== false && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer">{conversation.mediaEnabled && <MediaComposer attachment={attachment} onChange={setAttachment} disabled={sending || conversation.status === 'ARCHIVED'} />}<ComposerTools mediaEnabled={conversation.mediaEnabled} /><div className="composer-send-controls"><button className="primary-button" disabled={sending || (!draft.trim() && !attachment) || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
       {conversation.outboundEnabled === false && <p className="provider-warning" role="status">Envio indisponível nesta conversa. O histórico autorizado permanece acessível.</p>}
     </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
       {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}

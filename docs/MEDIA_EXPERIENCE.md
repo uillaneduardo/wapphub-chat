@@ -1,97 +1,23 @@
-# Experiência e Arquitetura de Mídia
+# Experiência de mídia — consolidação B3
 
-## Status
+Implementação em branch de revisão, **não publicada ou homologada**. A aprovação técnica do [PR25 do Core](https://github.com/uillaneduardo/wapphub-core/pull/25#pullrequestreview-5484867318) inclui vídeo e substitui a exclusão antiga de MVP neste escopo. Progresso canônico e plano B5 estão no Core; não criar acompanhamento paralelo.
 
-Este documento descreve a experiência planejada para o milestone de mídia do WappHub Chat.
+## Experiência implementada
 
-**Não faz parte do frontend M1 atual.**
+Capacidade efetiva vem do Core: flags técnicas + autorização da conexão + Membership/RBAC. Quando habilitada, o compositor oferece anexo e gravação de voz; selecionar arquivo/gravar somente prepara prévia local. Upload e intenção de envio começam em **Enviar**. Nenhuma chamada direta do Chat ao Provider ou WhatsApp.
 
-O M1 opera somente mensagens internas de texto. Imagem, áudio, gravação, player e galeria devem ser implementados apenas quando o Core fornecer os contratos de mídia correspondentes.
+Imagem JPEG/PNG/WebP até 8 MiB, áudio/voz até 16 MiB, vídeo MP4 H.264/AAC até 25 MiB, duração máxima de 600s. Arquivos suportados são inspecionados pelo backend; erro de codec/expiração é apresentado ao operador. Gravação usa MediaRecorder WebM/Opus quando disponível; Provider converte voz para Ogg/Opus. Navegador sem suporte oferece anexo de áudio. Preview e player usam Blob URL local, revogada ao sair/trocar contexto; trilhas do microfone são encerradas ao concluir/sair.
 
-## Escopo planejado
+Recebimento não baixa automaticamente binários. **Abrir mídia** chama rota autenticada do Core vinculada à mensagem e à conversa. Imagem abre visualização, áudio/voz e vídeo usam controles nativos; UI mostra indisponibilidade/expiração. Documentos permanecem apenas metadados nesta entrega. Referência PENDING não comprova bytes disponíveis.
 
-Tipos operacionais previstos:
+## Domínio e segurança
 
-- IMAGE;
-- AUDIO.
+Core é autoridade de Organization/Conversation/Message/ator/idempotência/visibilidade FULL/LIMITED/NONE. Media SQL guarda metadados e vínculos; bytes e referências de download ficam no cache/Vault criptografados do Provider, sujeitos a TTL/quota. Nenhuma mediaKey, URL de WhatsApp, token, credencial ou Signal key chega ao Chat. Downloads são sob demanda, autenticados e limitados; não são arquivo remoto permanente nem galeria global.
 
-Vídeo fica fora do MVP inicial.
+Mensagem de envio é PENDING até recibo/echo confirmado. Resultado UNKNOWN não oferece retransmissão cega. Retry explícito reaproveita clientMessageId apenas nos casos que o Core confirma como seguros; upload sem envio não equivale a mensagem entregue. Mensagem do aparelho vinculado mantém autoria externa.
 
-## Princípio
+## Validação e limites
 
-Mídia é parte central da conversa, não um anexo desconectado.
+Jsdom verifica demanda explícita, erro/expiração, cleanup/abort e indisponibilidade da gravação. Core/Provider têm integração SQL/journal e runtime Docker sintético sem rede com imagem/áudio/voz/vídeo e conversão WebM. Não houve browser/Playwright no homelab, upload/envio real ou deploy. Qualidade de gravação/players, layouts e mídias reais dependem de homologação humana após B5 autorizado.
 
-Cada Media deve permanecer relacionada a:
-
-- Organization;
-- Conversation;
-- Message;
-- remetente;
-- metadata de tipo/tamanho.
-
-## Storage
-
-O Chat não conhece MinIO/S3/R2 diretamente como regra de domínio.
-
-O Core fornece autorização/metadata e abstração de object storage.
-
-Quando possível:
-
-- upload/download direto autorizado ao storage;
-- API não carrega arquivos grandes inteiros na memória.
-
-## Segurança
-
-URL de mídia precisa respeitar autorização tenant-scoped.
-
-Nunca confiar em URL pública permanente da Meta como armazenamento da aplicação.
-
-## Imagem
-
-Experiência planejada:
-
-- preview;
-- envio otimista;
-- visualização ampliada/lightbox;
-- download autorizado;
-- contexto/remetente/data;
-- ir para mensagem.
-
-## Áudio
-
-Experiência planejada:
-
-- gravação interna;
-- preview;
-- duração;
-- player próprio;
-- envio assíncrono;
-- retry.
-
-O navegador poderá usar recursos apropriados como MediaRecorder quando o milestone for implementado.
-
-Pipeline pode normalizar codec/container quando necessário antes do provider.
-
-## Galeria da conversa
-
-O painel de detalhes poderá oferecer conteúdo multimídia da conversa.
-
-Escopo planejado:
-
-- imagens;
-- áudios;
-- vínculo preservado com a mensagem de origem.
-
-O gerenciador global de arquivos poderá oferecer filtros adicionais sem perder vínculo com a conversa.
-
-## Regra para o M1
-
-Não criar mocks de upload, contratos fictícios de mídia ou integração direta com storage durante o M1 apenas para antecipar esta documentação.
-
-
-## WhatsApp Web CP4
-
-Mensagem importada com mídia mostra tipo/nome/metadados e legenda preservada, sem
-download/player/envio. Binários e chaves de mídia não chegam ao Chat. Referência
-PENDING não representa download concluído. Texto usa marcadores seguros React,
-sem HTML externo ou inferência de atendente por prefixo.
+Galeria, gerenciador global de arquivos e storage comercial permanecem fora deste escopo; Demo conserva sua experiência de texto.

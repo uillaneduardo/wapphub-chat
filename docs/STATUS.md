@@ -103,3 +103,11 @@ Correção adicional do card: indisponibilidade do processamento mostra o últim
 CP4 contínuo foi homologado pelo usuário em 11/10/2026 (recebimento, persistência, deduplicação, saída pelo celular, identificação e diagnóstico; latência observada ~1s). CP4.6 adiciona Histórico controlado nas configurações administrativas, com direitos combinados verificados no Core e sem acesso direto ao Provider. Preparação é segura e não solicita dados; início/retomada reais permanecem bloqueados por flag. Testes jsdom/RBAC/estado vazio/erro/tenant e regressões aprovados; homologação visual CP4.6 pelo usuário permanece pendente. CP5/envio/mídia não iniciados.
 
 CP4.7: três cards de WhatsApp/sincronização/histórico, grant persistente via Core, confirmação do piloto20/30dias/16solicitações, pausa/desativação e diagnósticos/gerenciamento expansíveis. Não há botão de preparação ou dependência da aba aberta. Demo/Meta em Outros provedores; navegação global preservada. Validação jsdom não equivale a homologação visual, que permanece manual após deploy.
+
+
+## Consolidação B3 — implementação técnica em revisão (2026-10-11)
+
+Branches de revisão conectam abertura WhatsApp por contato/número, envio durável,
+capabilities e imagem/áudio/voz/vídeo sob demanda. Suites headless, lint, typecheck
+e build registrados no progresso canônico do Core; sem deploy, sem browser, sem
+mensagens reais. Não marcado PUBLICADO/HOMOLOGADO. B5 exige autorização posterior.

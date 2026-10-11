@@ -16,6 +16,7 @@ async function select() { fireEvent.click(await screen.findByRole('button', { na
 
 describe('M1 manual internal conversation flow', () => {
   beforeEach(() => {
+    vi.spyOn(chatApi, 'listChannels').mockResolvedValue({ items: [] });
     vi.spyOn(chatApi, 'listContacts').mockResolvedValue({ items: [contact], nextCursor: null });
     vi.spyOn(chatApi, 'listConversations').mockImplementation(async (query) => ({ items: query.scope === 'unassigned' ? [conversation] : [], nextCursor: null }));
     vi.spyOn(chatApi, 'getConversation').mockResolvedValue(conversation);
@@ -51,6 +52,22 @@ describe('M1 manual internal conversation flow', () => {
   });
   it('rejects missing creation or contacts read permission without calls to mutate', async () => {
     state.session.permissions = ['conversations.read']; const create = vi.spyOn(chatApi, 'createConversation'); renderFlow('/app/conversations/new?contactId=foreign'); expect(screen.getByRole('alert')).toHaveTextContent('não permite'); expect(chatApi.getContact).not.toHaveBeenCalled(); expect(chatApi.listContacts).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled(); expect(screen.queryByRole('link', { name: 'Nova conversa' })).not.toBeInTheDocument();
+  });
+  it('opens WhatsApp by known contact only on explicit action and never sends automatically', async () => {
+    vi.mocked(chatApi.listChannels).mockResolvedValue({ items: [{ id: 'web-1', name: 'WhatsApp', outboundEnabled: true, mediaEnabled: true }] });
+    const create = vi.spyOn(chatApi, 'createExternalConversation').mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', outboundEnabled: true, assignedUserId: state.session.user.id }); const send = vi.spyOn(chatApi, 'sendMessage');
+    renderFlow(); fireEvent.change(await screen.findByRole('combobox', { name: 'Canal da nova conversa' }), { target: { value: 'web-1' } }); await select(); expect(create).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Validar e abrir WhatsApp' })); await screen.findByRole('heading', { name: contact.name }); expect(create).toHaveBeenCalledWith({ channelId: 'web-1', contactId: contact.id }, expect.any(AbortSignal)); expect(send).not.toHaveBeenCalled();
+  });
+  it('requires an international number and explicit confirmation; typing never resolves or creates', async () => {
+    vi.mocked(chatApi.listChannels).mockResolvedValue({ items: [{ id: 'web-1', name: 'WhatsApp', outboundEnabled: true, mediaEnabled: true }] }); const create = vi.spyOn(chatApi, 'createExternalConversation').mockResolvedValue(conversation); const send = vi.spyOn(chatApi, 'sendMessage');
+    renderFlow(); fireEvent.change(await screen.findByRole('combobox', { name: 'Canal da nova conversa' }), { target: { value: 'web-1' } }); fireEvent.click(screen.getByRole('button', { name: 'Número novo' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Número com DDI' }), { target: { value: '81999999999' } }); expect(screen.getByRole('button', { name: 'Validar e abrir WhatsApp' })).toBeDisabled(); expect(create).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Número com DDI' }), { target: { value: '+5581999999999' } }); expect(create).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Validar e abrir WhatsApp' })); await screen.findByRole('heading', { name: contact.name }); expect(create).toHaveBeenCalledWith({ channelId: 'web-1', phone: '+5581999999999' }, expect.any(AbortSignal)); expect(send).not.toHaveBeenCalled();
+  });
+  it('displays persisted UNKNOWN without a retransmission action', async () => {
+    vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [{ id: 'unknown-1', conversationId: conversation.id, senderUserId: state.session.user.id, senderContactId: null, clientMessageId: 'intent-1', direction: 'OUTBOUND', type: 'TEXT', body: 'Synthetic uncertain', status: 'PENDING', deliveryOutcome: 'UNKNOWN', createdAt: conversation.createdAt, updatedAt: conversation.updatedAt }], nextCursor: null });
+    renderFlow('/app/conversations/conv-1'); expect(await screen.findByText('Resultado incerto — aguardando confirmação')).toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
   });
   it('clears the previous tenant selection and cancels a late creation navigation', async () => {
     let finish!: (value: CreateConversationResult) => void; const create = vi.spyOn(chatApi, 'createConversation').mockImplementation(() => new Promise((resolve) => { finish = resolve; }));

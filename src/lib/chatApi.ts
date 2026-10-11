@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { apiRequest, apiBlob } from './api';
 import type { Contact, Conversation, CreateConversationResult, CursorPage, DemoContact, InternalNote, InternalTextMessage, Provider, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
 
 export type ConversationScope = 'mine' | 'unassigned' | 'all';
@@ -10,7 +10,17 @@ function queryString(values: Record<string, string | number | boolean | undefine
 }
 const idPath = (id: string) => encodeURIComponent(id);
 
+export type WebChannel = { id: string; name: string; outboundEnabled: boolean; mediaEnabled: boolean };
 export const chatApi = {
+  listChannels: (signal?: AbortSignal) => apiRequest<{ items: WebChannel[] }>('/channels', { signal }),
+  createExternalConversation: (data: { channelId: string; contactId?: string; phone?: string }, signal?: AbortSignal) => apiRequest<CreateConversationResult>('/conversations/external', { method: 'POST', body: JSON.stringify(data), signal }),
+  uploadMedia: async (conversationId: string, file: File, type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'VOICE', signal?: AbortSignal) => {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    const sha256 = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
+    const query = new URLSearchParams({ mediaId: crypto.randomUUID(), type, mimeType: file.type.split(';')[0], fileName: file.name, size: String(file.size), sha256 });
+    return apiRequest<NonNullable<InternalTextMessage['media']>>(`/conversations/${idPath(conversationId)}/media?${query}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file, signal });
+  },
+  messageMedia: (conversationId: string, messageId: string, signal?: AbortSignal) => apiBlob(`/conversations/${idPath(conversationId)}/messages/${idPath(messageId)}/media`, signal),
   listProviders: (signal?: AbortSignal) => apiRequest<{ items: Provider[] }>('/providers', { signal }),
   setDemoProvider: (enabled: boolean) => apiRequest<{ enabled: boolean }>('/providers/demo', { method: 'PUT', body: JSON.stringify({ enabled }) }),
   listDemoContacts: (signal?: AbortSignal) => apiRequest<{ enabled: boolean; items: DemoContact[] }>('/providers/demo/contacts', { signal }),
