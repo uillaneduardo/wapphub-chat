@@ -13,7 +13,7 @@ describe('contextual provider diagnostics', () => {
  beforeEach(() => {
   auth.session.currentOrganizationId = 'org-a'; auth.session.permissions = ['providers.manage', 'providers.diagnostics.read'];
   vi.spyOn(providerDiagnosticsApi, 'list').mockResolvedValue(page()); vi.spyOn(providerDiagnosticsApi, 'detail').mockResolvedValue(row);
-  vi.spyOn(providerDiagnosticsApi, 'health').mockResolvedValue({ provider: 'WHATSAPP_WEB', state: 'CONNECTED', backlog: 0, pendingFailures: 1, failedAttempts: 1, deadLetters: 0, pendingCommands: 0, legacyFailures: 2, lastProcessedAt: null, lastCheckedAt: null, diagnosticsSince: null, detailsAvailable: true });
+  vi.spyOn(providerDiagnosticsApi, 'health').mockResolvedValue({ provider: 'WHATSAPP_WEB', state: 'CONNECTED', backlog: 0, pendingFailures: 1, failedAttempts: 1, deadLetters: 0, pendingCommands: 0, legacyFailures: 2, lastProcessedAt: null, lastCheckedAt: null, diagnosticsSince: null, detailsAvailable: true, connectionStateConfirmed: true, processingState: 'ACTIVE', activeFailures: 1, recoveredFailures: 0, retryAttempts: 0 });
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
  });
  afterEach(() => vi.restoreAllMocks());
@@ -29,8 +29,15 @@ describe('contextual provider diagnostics', () => {
   vi.mocked(providerDiagnosticsApi.list).mockResolvedValue(page({ hasMore: true })); await open();
   fireEvent.click(screen.getByRole('button', { name: 'Próxima' })); await waitFor(() => expect(providerDiagnosticsApi.list).toHaveBeenLastCalledWith('WHATSAPP_WEB', expect.objectContaining({ page: 2 }), expect.any(AbortSignal)));
   fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'RECOVERED' } }); await waitFor(() => expect(providerDiagnosticsApi.list).toHaveBeenLastCalledWith('WHATSAPP_WEB', expect.objectContaining({ page: 1, status: 'RECOVERED' }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText('Buscar código, descrição ou correlação'), { target: { value: 'persistência' } }); fireEvent.change(screen.getByLabelText('Componente'), { target: { value: 'CORE' } }); fireEvent.change(screen.getByLabelText('Tipo de evento'), { target: { value: 'sync.batch' } }); await waitFor(() => expect(providerDiagnosticsApi.list).toHaveBeenLastCalledWith('WHATSAPP_WEB', expect.objectContaining({ page: 1, q: 'persistência', component: 'CORE', eventType: 'sync.batch' }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole('tab', { name: 'Eventos' })); await waitFor(() => expect(providerDiagnosticsApi.list).toHaveBeenLastCalledWith('WHATSAPP_WEB', expect.objectContaining({ kind: 'EVENTS' }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole('tab', { name: 'Saúde' })); expect(await screen.findByText('CONNECTED')).toBeInTheDocument(); expect(screen.getAllByText('Não disponível').length).toBeGreaterThan(0); expect(providerDiagnosticsApi.health).toHaveBeenCalledOnce();
+ });
+ it('shows unconfirmed connection and only observed pipeline steps without claiming Inbox delivery', async () => {
+  vi.mocked(providerDiagnosticsApi.list).mockResolvedValue(page({ items: [{ ...row, pipeline: [{ stage: 'CORE_ACCEPTED', confirmed: true, occurredAt: row.occurredAt, description: 'Envelope registrado.' }, { stage: 'INBOX_RENDERED', confirmed: false, occurredAt: null, description: 'Sem confirmação de exibição.' }] }] }));
+  await open(); const details = screen.getByText('Detalhes da ocorrência').closest('details')!; details.open = true; expect(screen.getByLabelText('Evidências do processamento')).toHaveTextContent('Exibição na Inbox · Sem evidência retida');
+  vi.mocked(providerDiagnosticsApi.health).mockResolvedValue({ provider: 'WHATSAPP_WEB', state: 'CONNECTED', backlog: 1, pendingFailures: 0, failedAttempts: null, deadLetters: null, pendingCommands: 0, legacyFailures: 14, lastProcessedAt: null, lastCheckedAt: null, diagnosticsSince: null, detailsAvailable: true, connectionStateConfirmed: false, processingState: 'UNAVAILABLE', activeFailures: 0, recoveredFailures: 0, retryAttempts: null });
+  fireEvent.click(screen.getByRole('tab', { name: 'Saúde' })); expect(await screen.findByText(/último estado conhecido; confirmação indisponível/)).toBeInTheDocument(); expect(screen.getByText('Indisponível')).toBeInTheDocument();
  });
  it('exports only projected sanitized fields, excluding unexpected payload and credentials', async () => {
   const dirty = { ...row, body: 'SECRET_BODY', token: 'SECRET_TOKEN', stack: 'SECRET_STACK' };
@@ -50,6 +57,6 @@ describe('contextual provider diagnostics', () => {
   auth.session.currentOrganizationId = 'org-b'; view.rerender(<ProviderDiagnosticsButton provider="WHATSAPP_WEB" />); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(signal.aborted).toBe(true);
  });
  it('keeps a responsive viewport bound and scrollable content without a graphical browser', () => {
-  const css = readFileSync('src/features/providers/provider-diagnostics.css', 'utf8'); expect(css).toContain('width: min(580px, 100vw)'); expect(css).toContain('overflow-y: auto'); expect(css).toContain('minmax(0, 1fr)');
+  const css = readFileSync('src/features/providers/provider-diagnostics.css', 'utf8'); expect(css).toContain('width: min(560px, 100vw)'); expect(css).toContain('overflow-y: auto'); expect(css).toContain('minmax(0, 1fr)');
  });
 });
