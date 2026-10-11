@@ -19,7 +19,7 @@ describe('Demo provider screens', () => {
     vi.spyOn(chatApi, 'listProviders').mockResolvedValue({ items: providerList });
     const toggle = vi.spyOn(chatApi, 'setDemoProvider').mockResolvedValue({ enabled: true });
     render(<MemoryRouter><ProvidersPage /></MemoryRouter>);
-    await screen.findByRole('heading', { name: 'Meta' });
+    fireEvent.click(await screen.findByText('Outros provedores')); await screen.findByRole('heading', { name: 'Meta' });
     expect(screen.getByRole('button', { name: 'Configuração indisponível' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Ativar Demo' }));
     await waitFor(() => expect(toggle).toHaveBeenCalledWith(true));

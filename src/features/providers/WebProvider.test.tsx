@@ -13,7 +13,7 @@ class FakeSocket {
   close = vi.fn(); constructor(public url: string) { FakeSocket.instances.push(this); }
   event(organizationId = 'org-a', id = '1') { this.onmessage?.({ data: JSON.stringify({ version: 1, type: 'provider.connection.updated', eventId: id, organizationId, entityId: 'channel', occurredAt: '2026-10-10T00:00:00Z', payload: { resourceId: 'channel' } }) }); }
 }
-const connection = (values: Partial<WebConnection> = {}): WebConnection => ({ id: 'channel', state: 'DISCONNECTED', uiState: 'DISCONNECTED', version: 1, qrRevision: 0, errorCode: null, lastCheckedAt: null, operation: null, sendingEnabled: false, mediaEnabled: false, ...values });
+const connection = (values: Partial<WebConnection> = {}): WebConnection => ({ id: 'channel', state: 'DISCONNECTED', uiState: 'DISCONNECTED', version: 1, qrRevision: 0, errorCode: null, lastCheckedAt: new Date().toISOString(), operation: null, sendingEnabled: false, mediaEnabled: false, ...values });
 const ready = () => connection({ state: 'QR_REQUIRED', uiState: 'QR_READY', qrRevision: 1, version: 3 });
 const renderCard = () => render(<MemoryRouter><WebProviderCard organizationId="org-a" /></MemoryRouter>);
 const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
@@ -68,7 +68,7 @@ describe('WhatsApp Web provider integration', () => {
   });
   it('confirms logout contextually and supports Escape, focus return and keyboard trapping', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED' }) }); renderCard();
-    const button = await screen.findByRole('button', { name: 'Desconectar' }); fireEvent.click(button); const dialog = screen.getByRole('dialog'); expect(dialog).toHaveTextContent('revoga o vínculo'); expect(screen.getByRole('button', { name: 'Confirmar desconexão' })).toHaveFocus();
+    await screen.findByText('WhatsApp conectado.'); fireEvent.click(screen.getByText('Gerenciar conexão')); const button = await screen.findByRole('button', { name: 'Desconectar' }); fireEvent.click(button); const dialog = screen.getByRole('dialog'); expect(dialog).toHaveTextContent('revoga o vínculo'); expect(screen.getByRole('button', { name: 'Confirmar desconexão' })).toHaveFocus();
     const cancel = screen.getByRole('button', { name: 'Cancelar' }); cancel.focus(); fireEvent.keyDown(cancel, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Confirmar desconexão' })).toHaveFocus();
     fireEvent.keyDown(dialog, { key: 'Escape' }); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(button).toHaveFocus(); expect(webProviderApi.command).not.toHaveBeenCalled();
     fireEvent.click(button); fireEvent.click(screen.getByRole('button', { name: 'Confirmar desconexão' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'disconnect', expect.any(String), expect.any(AbortSignal)));
@@ -91,7 +91,7 @@ describe('WhatsApp Web provider integration', () => {
   it('uses catalog visibility and effective permissions rather than role names', async () => {
     const catalog = vi.spyOn(chatApi, 'listProviders').mockResolvedValue({ items: [{ code: 'WHATSAPP_WEB', name: 'WhatsApp Web', description: '', state: 'AVAILABLE', enabled: false }] });
     auth.session.permissions = []; const view = render(<MemoryRouter><ProvidersPage /></MemoryRouter>); expect(screen.getByRole('alert')).toHaveTextContent('não tem permissão'); expect(catalog).not.toHaveBeenCalled();
-    view.unmount(); auth.session.permissions = ['providers.manage']; render(<MemoryRouter><ProvidersPage /></MemoryRouter>); expect(await screen.findByRole('heading', { name: 'WhatsApp Web' })).toBeInTheDocument();
+    view.unmount(); auth.session.permissions = ['providers.manage']; render(<MemoryRouter><ProvidersPage /></MemoryRouter>); expect(await screen.findByRole('heading', { name: 'WhatsApp' })).toBeInTheDocument();
   });
   it('clears the old tenant QR and rejects late reads when provider page changes organization', async () => {
     vi.spyOn(chatApi, 'listProviders').mockResolvedValue({ items: [{ code: 'WHATSAPP_WEB', name: 'WhatsApp Web', description: '', state: 'AVAILABLE', enabled: false }] }); vi.mocked(webProviderApi.read).mockResolvedValue({ connection: ready() });
@@ -130,7 +130,7 @@ describe('WhatsApp Web provider integration', () => {
   });
   it('never claims the account is currently connected when the Core reports provider unavailability', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', errorCode: 'PROVIDER_UNAVAILABLE' }) });
-    renderCard(); await screen.findByText('Último estado: Conectado'); expect(screen.queryByText('WhatsApp conectado.')).not.toBeInTheDocument(); expect(screen.getByText('Conexão não confirmada. Exibindo o último estado conhecido.')).toBeInTheDocument(); expect(screen.getByText('Último estado: Conectado')).not.toHaveClass('is-enabled'); expect(webProviderApi.command).not.toHaveBeenCalled();
+    renderCard(); await screen.findByText('Último estado: Conectado'); expect(screen.queryByText('WhatsApp conectado.')).not.toBeInTheDocument(); expect(screen.getByText('Não foi possível verificar. Exibindo o último estado conhecido.')).toBeInTheDocument(); expect(screen.getByText('Último estado: Conectado')).not.toHaveClass('is-enabled'); expect(webProviderApi.command).not.toHaveBeenCalled();
   });
 
 });
