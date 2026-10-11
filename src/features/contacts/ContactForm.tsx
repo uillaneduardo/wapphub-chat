@@ -16,12 +16,12 @@ function contactError(reason: unknown): string {
 }
 export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact; onSaved: (value: Contact) => void; onCancel?: () => void }) {
   const { session } = useSession(); const id = useId();
-  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact ? contactIdentifier(contact.primaryIdentifier) : '');
+  const [name, setName] = useState(contact?.name ?? ''); const [identifier, setIdentifier] = useState(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : '');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [saved, setSaved] = useState<Contact | null>(null);
   const lock = useRef(false); const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const canWrite = session?.permissions.includes('contacts.write') ?? false;
-  const linked = Boolean(contact?.providers?.length);
+  const linked = Boolean(contact?.providers?.length || contact?.displayIdentifier && contact.displayIdentifier !== contact.primaryIdentifier);
   async function reconcile(value: Contact) {
     if (session?.currentOrganizationId) await realtimeBus.reconcile(session.currentOrganizationId);
     if (mounted.current) onSaved(value);
@@ -44,7 +44,7 @@ export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact;
   return <form className="contact-form" onSubmit={(event) => void submit(event)} aria-label={contact ? 'Editar contato' : 'Cadastrar contato'}>
     <label htmlFor={`${id}-name`}>Nome<input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} disabled={!canWrite || busy || Boolean(saved)} /></label>
     <label htmlFor={`${id}-identifier`}>Identificador principal<input id={`${id}-identifier`} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required maxLength={254} readOnly={linked} disabled={!canWrite || busy || Boolean(saved)} /></label>
-    {linked && <p className="muted">Vínculo com {contact?.providers?.join(', ')} preservado. Nesta tela, edite somente o nome.</p>}
+    {linked && <p className="muted">Vínculo externo preservado. Nesta tela, edite somente o nome.</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
     <div className="contact-form-actions"><button className="primary-button" type="submit" disabled={!canWrite || busy}>{busy ? 'Salvando…' : saved ? 'Atualizar tela' : 'Salvar contato'}</button>{onCancel && <button className="secondary-button" type="button" onClick={onCancel} disabled={busy}>Cancelar</button>}</div>
   </form>;

@@ -75,3 +75,5 @@ Homologação manual pelo usuário permanece pendente.
 A rota existente /app/settings/providers passa a oferecer gestão de conexão e QR
 quando o catálogo real do Core habilitar WhatsApp Web. Nenhuma rota interna do
 provider é acessada pelo navegador. [Comportamento e limites](WHATSAPP_WEB_CHECKPOINT3.md).
+
+Configurações → Provedores → Ver diagnóstico abre um painel contextual, sem rota privada do Provider ou ação de reprocessamento. Todas as consultas passam por `/api/v1/providers/{WHATSAPP_WEB|DEMO|META}/diagnostics` no Core; detalhe e saúde são consultas read-only. Inbox preserva `?scope=mine|all|unassigned|archived` em navegação e refresh, respeitando permissions efetivas.

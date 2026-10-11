@@ -19,7 +19,7 @@ afterEach(() => { vi.restoreAllMocks(); state.session.currentOrganizationId = 'o
 describe('M1 contacts browser', () => {
   it('lists names, identifiers, provider origin and details links', async () => {
     vi.spyOn(chatApi, 'listContacts').mockResolvedValue(page([{ ...ana, providers: ['DEMO'] }])); browser();
-    expect(await screen.findByText('Ana')).toBeInTheDocument(); expect(screen.getByText('ana@example.test')).toBeInTheDocument(); expect(screen.getByText('DEMO')).toBeInTheDocument(); expect(screen.getByRole('link', { name: /Ana/ })).toHaveAttribute('href', '/app/contacts/contact-1');
+    expect(await screen.findByText('Ana')).toBeInTheDocument(); expect(screen.getByText('ana@example.test')).toBeInTheDocument(); expect(screen.queryByText('DEMO')).not.toBeInTheDocument(); expect(screen.getByRole('link', { name: /Ana/ })).toHaveAttribute('href', '/app/contacts/contact-1');
   });
   it('searches on explicit submit and resets cursor pagination', async () => {
     const list = vi.spyOn(chatApi, 'listContacts').mockResolvedValueOnce(page()).mockResolvedValue(page([{ ...ana, name: 'Resultado' }])); browser(); await screen.findByText('Ana');
@@ -102,4 +102,11 @@ describe('M1 contacts mutations', () => {
     await act(async () => fail(new Error('Stale 500'))); expect(screen.queryByRole('alert')).not.toBeInTheDocument(); expect(screen.getByRole('heading', { name: 'Ana' })).toBeInTheDocument();
   });
 
+});
+
+it('keeps opaque legacy identities read-only even when an older record has no provider binding', async () => {
+ const linked = { ...ana, primaryIdentifier: 'web:11111111-1111-4111-8111-111111111111:80595094880359@lid', displayIdentifier: 'Contato contact', providers: [] };
+ const update = vi.spyOn(chatApi, 'updateContact').mockResolvedValue({ ...linked, name: 'Novo nome' }); vi.spyOn(realtimeBus, 'reconcile').mockResolvedValue();
+ render(<ContactForm contact={linked} onSaved={vi.fn()} />); expect(screen.getByLabelText('Identificador principal')).toHaveValue('Contato contact'); expect(screen.getByLabelText('Identificador principal')).toHaveAttribute('readonly');
+ fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Novo nome' } }); fireEvent.submit(screen.getByRole('form')); await waitFor(() => expect(update).toHaveBeenCalledWith(linked.id, { name: 'Novo nome' }));
 });

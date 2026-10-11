@@ -1,10 +1,10 @@
 export interface CursorPage<T> { items: T[]; nextCursor: string | null }
-export interface Contact { providers?: ('DEMO' | 'META' | 'WHATSAPP_WEB')[]; id: string; name: string; primaryIdentifier: string; createdAt: string; updatedAt: string }
+export interface Contact { providers?: ('DEMO' | 'META' | 'WHATSAPP_WEB')[]; id: string; name: string; primaryIdentifier: string; displayIdentifier?: string; createdAt: string; updatedAt: string }
 export type ConversationStatus = 'OPEN' | 'PENDING' | 'ARCHIVED';
 export type HistoryVisibility = 'FULL' | 'LIMITED' | 'NONE';
 export interface Conversation { id: string; contactId: string; contactName: string | null; lastMessagePreview: string | null; provider: 'DEMO' | 'META' | 'WHATSAPP_WEB' | null; outboundEnabled?: boolean; tagIds: string[]; status: ConversationStatus; assignedUserId: string | null; archivedAt: string | null; createdAt: string; updatedAt: string; lastMessageAt: string; visibility: HistoryVisibility }
 export type MessageStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
-export interface InternalTextMessage { id: string; conversationId: string; senderUserId: string | null; senderContactId: string | null; clientMessageId: string | null; direction: 'INTERNAL' | 'INBOUND' | 'OUTBOUND'; type: 'TEXT' | 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' | 'DOCUMENT'; body: string | null; status: MessageStatus; createdAt: string; updatedAt: string; historical?: boolean; media?: { mediaId: string; type: string; mimeType: string; fileName: string; size: number; state: string } | null }
+export interface InternalTextMessage { id: string; conversationId: string; senderUserId: string | null; senderContactId: string | null; senderName?: string | null; clientMessageId: string | null; direction: 'INTERNAL' | 'INBOUND' | 'OUTBOUND'; type: 'TEXT' | 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' | 'DOCUMENT'; body: string | null; status: MessageStatus; createdAt: string; updatedAt: string; historical?: boolean; media?: { mediaId: string; type: string; mimeType: string; fileName: string; size: number; state: string } | null }
 export interface Tag { id: string; name: string }
 export interface TeamMember { userId: string; name: string; email: string; status: 'ACTIVE'; canReceiveAssignment: boolean }
 export interface InternalNote { id: string; authorUserId: string; body: string; createdAt: string }

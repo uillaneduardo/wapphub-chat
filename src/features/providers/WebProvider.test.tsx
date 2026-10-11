@@ -113,7 +113,15 @@ describe('WhatsApp Web provider integration', () => {
   });
   it('shows bounded import awaiting authorization and preserves partial failures instead of claiming all history', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 2, conversations: 1, messages: 3, failures: 1, batches: 1, lastErrorCode: 'IDENTITY_MAPPING_CONFLICT', provider: { historyEnabled: false, phase: 'PARTIAL', queued: 0, contacts: 2, conversations: 1, messages: 3, failures: 0, limited: true, durationMs: 100 } } }) });
-    renderCard(); await screen.findByText('Sincronização parcial ou com falhas'); expect(screen.getByText(/até 500 contatos/)).toBeInTheDocument(); expect(screen.getByText(/total disponível é desconhecido/)).toBeInTheDocument(); expect(screen.getByRole('alert')).toHaveTextContent(/identidade externa/); expect(webProviderApi.command).not.toHaveBeenCalled();
+    renderCard(); await screen.findByText('Sincronização parcial ou com falhas'); expect(screen.getByText(/Histórico inicial desativado/)).toBeInTheDocument(); expect(screen.getByRole('alert')).toHaveTextContent(/identidade externa/); expect(webProviderApi.command).not.toHaveBeenCalled();
+  });
+  it('separates persisted counters from source failures and discloses missing legacy details', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 1, conversations: 0, messages: 1, failures: 0, batches: 1, provider: { historyEnabled: false, phase: 'PARTIAL', queued: 0, contacts: 1, conversations: 1, messages: 1, failures: 2, limited: false, durationMs: 10 } } }) });
+    renderCard(); await screen.findByText('Mensagens persistidas'); expect(screen.getByText(/Não é possível reconstruir/)).toBeInTheDocument(); expect(screen.getByText('Conversas criadas').nextElementSibling).toHaveTextContent('0'); expect(screen.getByText(/pode usar uma conversa já existente/)).toBeInTheDocument();
+  });
+  it('does not classify recovered persistence attempts as pending synchronization failure', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 1, conversations: 1, messages: 1, failures: 0, batches: 1, failedAttempts: 1, pendingFailures: 0, diagnosticsSince: new Date().toISOString(), provider: { historyEnabled: false, phase: 'MESSAGES', queued: 0, contacts: 1, conversations: 1, messages: 1, failures: 0, limited: false, durationMs: 10 } } }) });
+    renderCard(); await screen.findByText('Sincronização contínua ativa'); expect(screen.queryByText('Sincronização parcial ou com falhas')).not.toBeInTheDocument(); expect(screen.getByText('Tentativas com falha ao persistir').nextElementSibling).toHaveTextContent('1');
   });
   it('ends the processing label after continuous messages drain without claiming initial history complete', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', sync: { contacts: 1, conversations: 1, messages: 2, failures: 0, batches: 1, provider: { historyEnabled: false, phase: 'MESSAGES', queued: 0, contacts: 1, conversations: 1, messages: 2, failures: 0, limited: false, durationMs: 100 } } }) });

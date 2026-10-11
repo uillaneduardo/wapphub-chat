@@ -21,9 +21,9 @@ export function InboxList() {
   const canSupervise = session?.permissions.includes('conversations.supervise') ?? false;
   const canReadMessages = session?.permissions.includes('messages.read') ?? false;
   const canReadTags = session?.permissions.includes('tags.read') ?? false;
-  const [searchParams] = useSearchParams(); const requestedScope = searchParams.get('scope');
-  const [tab, setTab] = useState<InboxTab>('mine');
-  useEffect(() => { if (requestedScope === 'mine' || requestedScope === 'unassigned' || (requestedScope === 'all' && canSupervise)) setTab(requestedScope); }, [requestedScope, canSupervise]);
+  const [searchParams, setSearchParams] = useSearchParams(); const requestedScope = searchParams.get('scope');
+  const tab: InboxTab = requestedScope === 'mine' || requestedScope === 'unassigned' || requestedScope === 'archived' || requestedScope === 'all' && canSupervise ? requestedScope : canSupervise ? 'all' : 'unassigned';
+  const setTab = (scope: InboxTab) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set('scope', scope); return next; }, { replace: true });
   const [tagId, setTagId] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
   const [items, setItems] = useState<Conversation[]>([]);
@@ -104,8 +104,8 @@ export function InboxList() {
       {loading && <div className="list-state" role="status"><span className="spinner" />Carregando conversas…</div>}
       {!loading && error && <div className="list-state error-state" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadKey((value) => value + 1)}>Tentar novamente</button></div>}
       {!loading && !error && items.length === 0 && <div className="list-state"><span className="empty-mark">○</span><strong>Nenhuma conversa</strong><span>Quando houver conversas neste filtro, elas aparecerão aqui.</span></div>}
-      {!loading && !error && items.map((conversation) => <Link to={`/app/conversations/${conversation.id}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
-        <span className="contact-avatar">{(conversation.contactName ?? 'C').slice(0, 1).toUpperCase()}</span><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}</strong><small>{conversation.provider && <span className="channel-label">{conversation.provider === 'WHATSAPP_WEB' ? 'WhatsApp Web' : conversation.provider}</span>}{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
+      {!loading && !error && items.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
+        <span className="contact-avatar">{(conversation.contactName ?? 'C').slice(0, 1).toUpperCase()}</span><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}</strong><small>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
       </Link>)}
     </div>
     {!loading && !error && nextCursor && <button type="button" className="load-more-button" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Carregando…' : 'Carregar mais'}</button>}
