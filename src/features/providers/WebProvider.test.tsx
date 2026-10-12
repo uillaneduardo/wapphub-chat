@@ -32,6 +32,13 @@ describe('WhatsApp Web provider integration', () => {
     renderCard(); await screen.findByText('Não vinculado'); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.qr).not.toHaveBeenCalled();
     expect(screen.getByText(/protocolo não oficial/)).toBeInTheDocument(); expect(FakeSocket.instances[0]?.url).toContain('/api/v1/providers/realtime');
   });
+  it.each(['PAIRING_TRANSPORT_CLOSED','RECONNECT_LIMIT'])('reconciles first-pairing %s to an explicit attempt and matching synthetic QR', async errorCode => {
+    const failed=connection({state:'FAILED',uiState:'ERROR',version:9,errorCode,transportConfirmed:false,lifecycle:{linked:false,desired:false,recoveryEligible:false,pairingEligible:true},operation:{id:'previous',action:'connect',status:'COMPLETED',errorCode:null}});
+    vi.mocked(webProviderApi.read).mockResolvedValue({connection:failed});renderCard();await screen.findByText('Não foi possível vincular');expect(screen.getByText(errorCode==='RECONNECT_LIMIT'?/O limite de tentativas anterior/:/conexão encerrou antes/)).toBeInTheDocument();expect(screen.queryByText('Reconectando…')).not.toBeInTheDocument();expect(webProviderApi.command).not.toHaveBeenCalled();expect(webProviderApi.qr).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:'Vincular WhatsApp'}));await waitFor(()=>expect(webProviderApi.command).toHaveBeenCalledWith(expect.objectContaining({version:9}),'connect',expect.any(String),expect.any(AbortSignal)));expect(webProviderApi.command).toHaveBeenCalledOnce();
+    vi.mocked(webProviderApi.read).mockResolvedValue({connection:connection({state:'CONNECTING',uiState:'CONNECTING',version:10,transportConfirmed:false,pairingPhase:'GENERATING_QR'})});await act(async()=>FakeSocket.instances[0]!.event());await screen.findByText('Preparando vinculação…');expect(webProviderApi.qr).not.toHaveBeenCalled();
+    vi.mocked(webProviderApi.read).mockResolvedValue({connection:{...ready(),version:11}});await act(async()=>FakeSocket.instances[0]!.event('org-a','2'));await screen.findByRole('img',{name:'QR Code para vincular o WhatsApp'});expect(webProviderApi.qr).toHaveBeenCalledOnce();expect(webProviderApi.command).toHaveBeenCalledOnce();
+  });
   it('creates an idle connection only after an explicit action and blocks duplicate commands', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: null }); let complete!: (value: WebConnection) => void;
     vi.mocked(webProviderApi.create).mockImplementation(() => new Promise((done) => { complete = done; }));
