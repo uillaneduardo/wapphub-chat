@@ -1,3 +1,13 @@
+# Estado vigente — consolidação B5 publicada (12/10/2026)
+
+**PUBLICADO — AGUARDANDO_RECUPERACAO_DA_SESSAO.** Chat6e92234 / imagem `wapphub-chat:b5-6e92234` publicado com Core/Worker/Provider8dbd7fb e migration12. HTTPS/SPA/deeplinks/assets e API real verificados, seis serviços healthy. A conta WhatsApp permaneceFAILED/RECONNECT_LIMIT/attempts5, sem socket; não marcar B5 concluído nem B6 homologado.
+
+Gerenciamento oferece **Recuperar vínculo existente** conforme elegibilidade do Core e exige confirmação administrativa de uma tentativa. Parar conexão preserva o vínculo; Desvincular conta é ação distinta com resultado remoto explícito. Atendimento por contato/E.164 e imagem/áudio/voz/vídeo estão publicados tecnicamente, mas envio/mídiafalse por conexão e dependentes da conexão e ativação humana. Histórico remoto pausado/gatesfechados. Nenhum logout/QR/recuperação/envio/upload/fetch real executado por Codex.
+
+300/300 testes, lint/typecheck/build e CI do runtime6e92234 verdes. Validação foi HTTP/jsdom; layouts/gravação/players e fluxos reais serão homologados pelo usuário no notebook após confirmar conexão/recursos essenciais. [Progresso e roteiro no Core](https://github.com/uillaneduardo/wapphub-core/blob/main/docs/WHATSAPP_WEB_CONSOLIDATION_B5.md).
+
+Os registros abaixo são históricos; não afirmam conexão atual.
+
 # WhatsApp Web — Checkpoint 4 publicado tecnicamente (2026-10-10)
 
 Chat0b6b2ee publicado, com feedback de pareamento e sincronização independente
