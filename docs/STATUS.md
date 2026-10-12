@@ -1,3 +1,13 @@
+# Piloto de texto WappHub QA — publicado12/10/2026
+
+**QA_PRONTO_PARA_VINCULACAO.** Imagem `wapphub-chat:qa-text-7ae2018`, [PR25](https://github.com/uillaneduardo/wapphub-chat/pull/25), main integrado7ae2018db2cf624dd909f92ec30c8249e68aba83. Configurar atendimento oferece **Autorizar envio de texto**, confirma capability existente envio=true/mídia=false; timeout/cancelamento reutilizados, sem comando/QR automático. Core/Worker/Provider `p0link-e6aa1c6` preservados sem restart. Nenhuma migration.
+
+Organização independente WappHub QA ACTIVE, Owner existente/Membership oficial, próprio canal/sessão criptografada vazia, pairingEligibletrue e DISCONNECTED/attempts0. Envio/mídiafalse até autorização administrativa. QA consta na listagem real de organizações; nenhum contato/conversa/mensagem copiado, credenciais antigas preservadas. Supervisor/Agent aguardam identidades/e-mails reais; nenhum convite/login/senha fictício.
+
+Chat326/326 (32arquivos), Core134/134, Provider126/126, CI dos heads/mains/lint/typecheck/build/Prisma/OpenAPI/drift aprovados. Backup/restauração isolada, seishealthy/HTTPS/SPA/assets/readiness/Redis/realtime sem autenticação401 e smokes somente de leitura. Sessão antiga FAILED/RECONNECT_LIMIT/attempts10/sem transporte permanece distinta da QA; histórico1→1solicitações, nenhum QR/recuperação/logout/consulta/envio/upload/fetch real pelo Codex.
+
+Usuário deve selecionar QA → Vincular WhatsApp → ler QR → confirmar Conectado → Autorizar envio de texto → abrir conversa por número controlado e enviar1texto manualmente → observar no celular. Homologação visual/funcional/B6 pendente no notebook. Relatório/HOMOLOGACAO em20261012-qa-real-pilot/ e progresso canônico do Core. Registros abaixo são históricos.
+
 # P0 vínculo — publicado12/10/2026
 
 **INTERFACE_CORRIGIDA_PUBLICADA — AGUARDANDO_VINCULACAO_HUMANA.** Chat`p0link-49bc91d`, [PR23](https://github.com/uillaneduardo/wapphub-chat/pull/23), CI325/325 (32arquivos)/lint/typecheck/build aprovados. Consulta limitada por expiração/foco/visibilidade/rede com cancelamento/contexto, erro de consulta separado, Verificar novamente e resultado incerto sem spinner infinito. Nova vinculação após logoutUNCONFIRMED requer checkbox humano desmarcado e elegibilidade recente; não gera comandos por refresh. Core/Worker/Provider`p0link-e6aa1c6`,133/126 testes, metadados aditivos do outbox e rotação versionada256 com fencing.
