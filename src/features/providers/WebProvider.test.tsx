@@ -66,12 +66,12 @@ describe('WhatsApp Web provider integration', () => {
     await act(async () => { FakeSocket.instances[0]!.event('org-b'); await flush(); }); expect(webProviderApi.read).toHaveBeenCalledTimes(calls);
     act(() => FakeSocket.instances[0]!.onclose?.({ code: 4003 })); expect(auth.refreshSession).toHaveBeenCalledWith(true); expect(auth.expireSession).not.toHaveBeenCalled();
   });
-  it('confirms logout contextually and supports Escape, focus return and keyboard trapping', async () => {
+  it('confirms a reversible local stop contextually and supports Escape, focus return and keyboard trapping', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED' }) }); renderCard();
-    await screen.findByText('WhatsApp conectado.'); fireEvent.click(screen.getByText('Gerenciar conexão')); const button = await screen.findByRole('button', { name: 'Desconectar' }); fireEvent.click(button); const dialog = screen.getByRole('dialog'); expect(dialog).toHaveTextContent('revoga o vínculo'); expect(screen.getByRole('button', { name: 'Confirmar desconexão' })).toHaveFocus();
-    const cancel = screen.getByRole('button', { name: 'Cancelar' }); cancel.focus(); fireEvent.keyDown(cancel, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Confirmar desconexão' })).toHaveFocus();
+    await screen.findByText('WhatsApp conectado.'); fireEvent.click(screen.getByText('Gerenciar conexão')); const button = await screen.findByRole('button', { name: 'Parar conexão' }); fireEvent.click(button); const dialog = screen.getByRole('dialog'); expect(dialog).toHaveTextContent('não revoga o aparelho'); expect(screen.getByRole('button', { name: 'Confirmar parada' })).toHaveFocus();
+    const cancel = screen.getByRole('button', { name: 'Cancelar' }); cancel.focus(); fireEvent.keyDown(cancel, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Confirmar parada' })).toHaveFocus();
     fireEvent.keyDown(dialog, { key: 'Escape' }); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(button).toHaveFocus(); expect(webProviderApi.command).not.toHaveBeenCalled();
-    fireEvent.click(button); fireEvent.click(screen.getByRole('button', { name: 'Confirmar desconexão' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'disconnect', expect.any(String), expect.any(AbortSignal)));
+    fireEvent.click(button); fireEvent.click(screen.getByRole('button', { name: 'Confirmar parada' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'disconnect', expect.any(String), expect.any(AbortSignal)));
   });
   it('shows safe API failure text and retains genuine connection state', async () => {
     vi.mocked(webProviderApi.command).mockRejectedValue(new ApiError(503, 'server', 'secret-sensitive-server-detail', 'PROVIDER_UNAVAILABLE'));
@@ -131,6 +131,24 @@ describe('WhatsApp Web provider integration', () => {
   it('never claims the account is currently connected when the Core reports provider unavailability', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'CONNECTED', uiState: 'CONNECTED', errorCode: 'PROVIDER_UNAVAILABLE' }) });
     renderCard(); await screen.findByText('Último estado: Conectado'); expect(screen.queryByText('WhatsApp conectado.')).not.toBeInTheDocument(); expect(screen.getByText('Não foi possível verificar. Exibindo o último estado conhecido.')).toBeInTheDocument(); expect(screen.getByText('Último estado: Conectado')).not.toHaveClass('is-enabled'); expect(webProviderApi.command).not.toHaveBeenCalled();
+  });
+
+  it.each(['CONNECTED', 'DISCONNECTED', 'FAILED'] as const)('allows stop and unlink in %s without automatically calling the API', async state => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state, uiState: state === 'FAILED' ? 'ERROR' : state, errorCode: state === 'FAILED' ? 'RECONNECT_LIMIT' : null, lifecycle: { linked: true, desired: true, recoveryEligible: state !== 'CONNECTED' } }) }); renderCard();
+    const stop = await screen.findByRole('button', { name: 'Parar conexão' }); expect(stop).toBeEnabled(); expect(screen.getByRole('button', { name: 'Desvincular conta' })).toBeEnabled(); expect(screen.queryByRole('button', { name: 'Solicitar QR Code' })).not.toBeInTheDocument(); expect(webProviderApi.command).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Desvincular conta' })); expect(screen.getByRole('dialog')).toHaveTextContent('Se o serviço não conseguir confirmar'); fireEvent.click(screen.getByRole('button', { name: 'Confirmar desvinculação' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'logout', expect.any(String), expect.any(AbortSignal)));
+  });
+  it('requires explicit confirmation for one recovery and keeps stop available during recovery', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'FAILED', uiState: 'ERROR', errorCode: 'RECONNECT_LIMIT', lifecycle: { linked: true, desired: true, recoveryEligible: true } }) }); renderCard();
+    fireEvent.click(await screen.findByRole('button', { name: 'Recuperar vínculo existente' })); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(screen.getByRole('dialog')).toHaveTextContent('uma única tentativa'); fireEvent.click(screen.getByRole('button', { name: 'Autorizar uma tentativa' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'recover', expect.any(String), expect.any(AbortSignal)));
+  });
+  it('shows phone revocation guidance for unconfirmed unlink and does not claim remote success', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ lifecycle: { linked: true, desired: false, recoveryEligible: false, termination: { commandId: 'synthetic', action: 'logout', remote: 'UNCONFIRMED', requestedAt: new Date().toISOString() } } }) }); renderCard();
+    expect(await screen.findByText(/A remoção do aparelho no WhatsApp não foi confirmada/)).toHaveTextContent('Aparelhos conectados'); expect(screen.queryByText('Desvinculação remota confirmada pelo WhatsApp.')).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Recuperar vínculo existente' })).not.toBeInTheDocument();
+  });
+  it('revoked sessions offer termination but no automatic QR or recovery', async () => {
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ state: 'FAILED', uiState: 'ERROR', errorCode: 'SESSION_REVOKED', lifecycle: { linked: true, desired: false, recoveryEligible: false } }) }); renderCard();
+    expect(await screen.findByRole('button', { name: 'Parar conexão' })).toBeEnabled(); expect(screen.queryByRole('button', { name: 'Recuperar vínculo existente' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Solicitar QR Code' })).not.toBeInTheDocument(); expect(webProviderApi.qr).not.toHaveBeenCalled();
   });
 
 });
