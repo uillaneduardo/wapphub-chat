@@ -238,3 +238,7 @@ Autoria: nomes de mensagens persistidas vêm exclusivamente de senderName + send
 Operação: remover badges técnicos e nomes de providers de Inbox, cabeçalho, balões, contatos e mensagens de indisponibilidade. Estados de entrega, atribuição e arquivamento permanecem. Configurações/diagnóstico preservam identificação técnica; simulador tem rótulo funcional neutro, URL e autorização existentes. Metadados de provider e identidades externas não são apagados dos contratos/banco.
 
 Diagnóstico contextual usa somente Core, permissão administrativa + providers.diagnostics.read, aborta consultas na troca de tenant e coalesce invalidações por 200 ms. Etapas sem evidência aparecem explicitamente desconhecidas; registro realtime no Core não significa confirmação de renderização na Inbox. Contatos usam displayIdentifier fornecido pelo Core, mantendo fallback de compatibilidade para respostas antigas.
+
+## Vínculo WhatsApp — publicado12/10/2026
+
+Estado/contexto derivados por função tipada, atualizado pelo realtime e reconciliação REST; transporte confirmado/última verificação necessários paraConectado. Vincular sequencia create/prepare_link concluídos e connect, sem duplo clique/retry destrutivo409. QR integrado com revisão/expiração monotônica e contador; apenas memória, abortado ao sair/trocarusuário/organização/permissão. Uma ação principal e desvinculação contextual; detalhes técnicos/parada local recolhidos. Confirmações com foco/Escape/trap deTab; estilos existentes responsivos. Fluxos reais e aparência só homologados pelo usuário após publicação.
