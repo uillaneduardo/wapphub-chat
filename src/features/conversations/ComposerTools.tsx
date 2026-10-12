@@ -11,10 +11,10 @@ const tools: { label: string; icon: ReactNode }[] = [
   { label: 'Emojis', icon: <><circle cx="12" cy="12" r="9" /><path d="M8 14a4 4 0 0 0 8 0M8 9h.01M16 9h.01" /></> },
 ];
 
-export function ComposerTools() {
+export function ComposerTools({ mediaEnabled = false }: { mediaEnabled?: boolean }) {
   const id = useId();
   return <div className="composer-tools" role="group" aria-label="Recursos indisponíveis">
-    {tools.map(({ label, icon }, index) => <span key={label} className="tool-tip" tabIndex={0} role="group" aria-disabled="true" aria-label={`${label}: indisponível nesta versão`} aria-describedby={`${id}-${index}`}>
+    {tools.filter(tool => !mediaEnabled || !['Anexar arquivo', 'Imagem/vídeo', 'Áudio'].includes(tool.label)).map(({ label, icon }, index) => <span key={label} className="tool-tip" tabIndex={0} role="group" aria-disabled="true" aria-label={`${label}: indisponível nesta versão`} aria-describedby={`${id}-${index}`}>
       <button type="button" disabled aria-label={label} aria-describedby={`${id}-${index}`}>
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{icon}</svg>
       </button>

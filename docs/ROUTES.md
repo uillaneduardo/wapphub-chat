@@ -79,3 +79,21 @@ provider é acessada pelo navegador. [Comportamento e limites](WHATSAPP_WEB_CHEC
 Configurações → Provedores → Ver diagnóstico abre um painel contextual, sem rota privada do Provider ou ação de reprocessamento. Todas as consultas passam por `/api/v1/providers/{WHATSAPP_WEB|DEMO|META}/diagnostics` no Core; detalhe e saúde são consultas read-only. Inbox preserva `?scope=mine|all|unassigned|archived` em navegação e refresh, respeitando permissions efetivas.
 
 Configurações → Provedores → Histórico controlado usa somente a API Core scoped de histórico. O painel requer providers.manage + providers.diagnostics.read + conversations.supervise + messages.read; não concede acesso novo a agentes. Controles/limites e estados vêm do Core, versão e CSRF nas mutações. Nenhuma requisição automática de histórico na montagem ou na preparação.
+
+## Consolidação WhatsApp Web B3 — contratos reais, rotas existentes
+
+`/app/conversations/new` conserva abertura interna e oferece WhatsApp quando o
+Core confirma capacidade. Escolher contato ou número internacional com DDI;
+`GET /api/v1/channels` lista canais, `POST /api/v1/conversations/external` valida
+e abre/reutiliza conversa. A ação não envia. Troca de Organization aborta o fluxo
+e não navega para resposta do contexto anterior.
+
+`/app/conversations/:id` envia pela rota de mensagens existente (mediaId opcional),
+upload binário em `POST /api/v1/conversations/:id/media`, demanda autenticada em
+`GET /api/v1/conversations/:id/messages/:messageId/media`. O Chat não possui URL
+privada do Provider/WhatsApp. Resultado incerto mostra estado sem retry cego.
+
+Configurações → Provedores conserva cards/diagnóstico existentes; gerenciamento
+confirma autorização da conexão em `PUT /api/v1/providers/whatsapp-web/connections/:id/capabilities`.
+Backend aplica flags/RBAC; nenhum botão ignora bloqueio técnico. Demonstração
+continua isolada do transporte externo. Branch de revisão, sem deploy B5.

@@ -67,7 +67,13 @@ export function InboxList() {
         if (!signal.aborted) setTags(page.items);
         return;
       }
-      if (event.type === 'contacts.updated') { await refresh(signal); return; }
+      if (event.type === 'contacts.updated') {
+        // Contact metadata updates complement per-conversation events. Retain
+        // loaded pages and tag cache instead of rebuilding the entire inbox.
+        const page = await chatApi.listConversations(query, signal);
+        if (!signal.aborted) { setItems(current => page.items.reduce((items, row) => upsertInboxConversation(items, row, filter, userId), current)); setNextCursor(current => current ?? page.nextCursor); }
+        return;
+      }
       if (!conversationEvents.has(event.type)) return;
       const id = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (!id) return;

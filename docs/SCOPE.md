@@ -186,7 +186,7 @@ O app Android nativo é pós-MVP. O Chat Web não deve introduzir regras que imp
 
 ## Fora do MVP
 
-- vídeo;
+- vídeo fora do adaptador WhatsApp Web aprovado na consolidação B3;
 - Status;
 - chamadas;
 - marketing;
@@ -204,3 +204,17 @@ e permissions efetivas do Core controlam links e motivos de bloqueio.
 Refinamento: [PERMISSIONS_UI_POLISH.md](PERMISSIONS_UI_POLISH.md).
 Contrato, revalidação de sessão e limites: [M2_1_TEAM_PERMISSIONS.md](M2_1_TEAM_PERMISSIONS.md).
 Homologação manual pelo usuário permanece pendente.
+
+## Consolidação WhatsApp Web B1–B4 (branch de revisão)
+
+A revisão técnica do PR25 do Core aprovou texto, imagem, áudio/voz e vídeo pelo
+adaptador WhatsApp Web. Esta decisão específica substitui a exclusão antiga de
+mídia/vídeo para este trabalho; não amplia Meta, Demo ou demais milestones.
+O Chat usa contratos reais do Core: abrir conversa por contato ou número E.164
+novo, validação explícita de destinatário, envio com intenção durável e autoria,
+status/UNKNOWN, anexo/gravação/players sob demanda e capabilities por conexão.
+Digitação, seleção de contato e abertura não enviam mensagens. Realtime e
+paginação/posição de leitura existentes são reutilizados. Sem polling novo.
+Ainda não publicado/homologado; publicação B5 depende de autorização posterior.
+Detalhes de mídia: [MEDIA_EXPERIENCE](MEDIA_EXPERIENCE.md). Registro canônico:
+[wapphub-core PROGRESS](https://github.com/uillaneduardo/wapphub-core/blob/feat/consolidation-b2-b4/docs/WHATSAPP_WEB_CONSOLIDATION_PROGRESS.md).

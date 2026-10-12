@@ -17,7 +17,7 @@ function errorKind(status: number): ApiErrorKind {
   if (status === 422) return 'validation'; if (status === 429) return 'rate_limit'; if (status >= 500) return 'server'; return 'http';
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, blob = false): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const method = (init.method ?? 'GET').toUpperCase();
@@ -35,6 +35,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(response.status, errorKind(response.status), code ?? `Falha na requisição (${response.status}).`, code, requestId, payload);
   }
   if (response.status === 204) return undefined as T;
+  if (blob) return await response.blob() as T;
   const payload: unknown = await response.json();
   if (typeof payload === 'object' && payload !== null && 'csrfToken' in payload && typeof payload.csrfToken === 'string') setCsrfToken(payload.csrfToken);
   return payload as T;
@@ -53,3 +54,5 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   catch (reason) { if (timedOut) throw new ApiError(0, 'network', 'A consulta excedeu o tempo limite.'); throw reason; }
   finally { clearTimeout(timer); init.signal?.removeEventListener('abort', abort); }
 }
+
+export async function apiBlob(path: string, signal?: AbortSignal): Promise<Blob> { return request<Blob>(path, { signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(60000)]) }, true); }
