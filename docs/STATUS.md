@@ -1,3 +1,13 @@
+# Interface WhatsApp publicada — 12/10/2026, 14:55 UTC
+
+**INTERFACE_WHATSAPP_PUBLICADA — AGUARDANDO_HOMOLOGACAO.** Chat `dd731cb`, imagem `wapphub-chat:link-dd731cb`, publicado com Core/Worker/Providerc90099b. HTTPS/SPA/rotas/ativos/contrato e seis serviços healthy verificados. CI do main322/322, lint/typecheck/build aprovados.
+
+Card com uma ação principal contextual: Vincular WhatsApp, Restabelecer conexão quando elegível ou renovar QR expirado. Desvincular usa logout explícito; QR integrado em memória, expiração/revisão e contexto protegidos. Create/prepare_link aguarda recibo concluído antes de connect;409 não repete automaticamente. Parada local e indicadores técnicos ficam no diagnóstico recolhido; atendimento/histórico separados.
+
+**Conta atual parada, sem transporte:** logout solicitado pelo usuário antes da publicação resultouUNCONFIRMED. Credenciais/Signal/attempts5 preservados; nova vinculação requer confirmar remoção do aparelho no celular. Não oferecer recuperação quando backend a declara inelegível. Nenhuma ação real de WhatsApp pelo Codex; histórico remoto fechado e autorizações administrativas preexistentes preservadas. Não confundir healthy comWhatsAppConectado.
+
+Homologação visual/funcional no notebook exclusiva do usuário, B6 não homologado; nenhum browser/Playwright no homelab. [Fluxo e riscos canônicos no Core](https://github.com/uillaneduardo/wapphub-core/blob/main/docs/WHATSAPP_WEB_LINK_MANAGEMENT.md). Registros abaixo são publicações anteriores.
+
 # Estado vigente — consolidação B5 publicada (12/10/2026)
 
 **PUBLICADO — AGUARDANDO_RECUPERACAO_DA_SESSAO.** Chat6e92234 / imagem `wapphub-chat:b5-6e92234` publicado com Core/Worker/Provider8dbd7fb e migration12. HTTPS/SPA/deeplinks/assets e API real verificados, seis serviços healthy. A conta WhatsApp permaneceFAILED/RECONNECT_LIMIT/attempts5, sem socket; não marcar B5 concluído nem B6 homologado.
