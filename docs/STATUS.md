@@ -1,3 +1,13 @@
+# P0 primeiro pareamento QA — publicado em 12/10/2026
+
+**QA_AGUARDANDO_NOVA_TENTATIVA_DE_QR.** Chat `wapphub-chat:firstqr-0a58753`, [PR26](https://github.com/uillaneduardo/wapphub-chat/pull/26), main funcional `0a5875399a2cabb5e6a0633fa67d9448829f514a`, publicado com Core/API e Provider `firstqr-686a852`. Worker permanece `p0link-e6aa1c6`; MariaDB/Redis/demais aplicações e schema 12 preservados. CI dos heads/mains e validação local: Chat 332/332 em 32 arquivos, Core 134/134, Provider 136/136; lint/typecheck/build/Prisma/OpenAPI/drift aprovados.
+
+Falha de primeiro pareamento elegível apresenta **Não foi possível vincular** e **Vincular WhatsApp**. CONNECTING aguarda QR efetivo; revisão/expiração/tenant continuam protegidos. Backend encerra falha antes do QR sem ciclo de reconexão autenticada, com prazo de geração de 30 segundos dentro da autorização de 120 segundos. Nenhum comando automático no carregamento/restart, nenhuma identidade fictícia ou reset de tentativas. A razão remota dos fechamentos 428 anteriores não é comprovável; a nova tentativa humana ainda precisa confirmar QR e conexão.
+
+QA continua FAILED/RECONNECT_LIMIT/attempts=5, qrRevision=0 e sem vínculo autenticado, mas backend confirma pairingEligible=true/linked=false/desired=false e verificação recente. Organização anterior e credenciais preservadas; 1 connect COMPLETED e 10 eventos connection.updated preexistentes mantidos, zero contatos/conversas/mensagens QA. Envio/mídia false por conexão, histórico remoto fechado, solicitações históricas 1→1. Backup/restauração isolada e startup da imagem final sobre cópia real do Vault sem rede aprovados; seis serviços healthy e smokes HTTPS/SPA/assets/API/Redis/realtime aprovados. Nenhum QR, logout, recuperação, envio ou histórico real pelo Codex.
+
+Homologação exclusiva do usuário: selecionar **WappHub QA → Configurações → Provedores → WhatsApp → Vincular WhatsApp**, uma única vez. Aguardar QR e confirmar autenticação no navegador/celular; não confundir saúde dos containers com WhatsApp conectado. [Progresso canônico](https://github.com/uillaneduardo/wapphub-core/blob/main/docs/WHATSAPP_WEB_CONSOLIDATION_PROGRESS.md). Relatório/HOMOLOGACAO em `20261012-p0-first-pairing/`. Os registros abaixo são históricos.
+
 # Piloto de texto WappHub QA — publicado12/10/2026
 
 **QA_PRONTO_PARA_VINCULACAO.** Imagem `wapphub-chat:qa-text-7ae2018`, [PR25](https://github.com/uillaneduardo/wapphub-chat/pull/25), main integrado7ae2018db2cf624dd909f92ec30c8249e68aba83. Configurar atendimento oferece **Autorizar envio de texto**, confirma capability existente envio=true/mídia=false; timeout/cancelamento reutilizados, sem comando/QR automático. Core/Worker/Provider `p0link-e6aa1c6` preservados sem restart. Nenhuma migration.
