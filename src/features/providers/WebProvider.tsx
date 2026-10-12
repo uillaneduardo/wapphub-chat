@@ -5,11 +5,12 @@ import { HistoryControls } from './HistoryControls';
 import { ProviderDiagnosticsButton } from './ProviderDiagnostics';
 import { ApiError } from '../../lib/api';
 import { createRealtimeUrl, RealtimeClient } from '../../lib/realtime';
-import { webProviderApi, type WebAction, type WebConnection, type WebQr, type WebState } from '../../lib/webProviderApi';
+import { webProviderApi, type WebAction, type WebConnection, type WebQr } from '../../lib/webProviderApi';
 import { useSession } from '../session/SessionContext';
+import { connectionPending as pending, connectionPresentation } from './webConnectionPresentation';
 import './web-provider.css';
-const labels: Record<WebState, string> = { DISCONNECTED: 'Desconectado', CONNECTING: 'Conectando', QR_READY: 'QR disponível', CONNECTED: 'Conectado', RECONNECTING: 'Reconectando', ERROR: 'Erro de conexão' };
 const errors: Record<string, string> = {
+  LINK_PREPARATION_DENIED: 'O vínculo ainda não permite uma nova vinculação segura.', SESSION_ARCHIVE_LIMIT: 'O limite de sessões anteriores foi atingido. Consulte o administrador.',
   QR_NOT_AVAILABLE: 'O QR expirou ou ainda não foi gerado. Solicite um novo QR.', QR_EXPIRED: 'O QR expirou. Solicite um novo QR.', QR_CHANGED: 'O QR foi atualizado. Exiba o QR atual.',
   CONNECTION_VERSION_CONFLICT: 'A conexão mudou durante a operação. Confira o estado atual e tente novamente.', CONNECTION_OPERATION_PENDING: 'Há uma operação em andamento. Aguarde a atualização.',
   PROVIDER_UNAVAILABLE: 'O serviço está temporariamente indisponível. Tente novamente.', PROVIDER_NOT_ENABLED: 'A integração ainda não está habilitada.',
@@ -17,7 +18,6 @@ const errors: Record<string, string> = {
   RECOVERY_NOT_ELIGIBLE: 'A sessão não está elegível para recuperação segura.', RECOVERY_TIMEOUT: 'A recuperação não confirmou autenticação no prazo. Nenhuma nova tentativa será iniciada automaticamente.', RECOVERY_INTERRUPTED: 'A recuperação foi interrompida. Seu resultado precisa ser verificado antes de outra autorização.', LOGOUT_RESULT_UNKNOWN: 'O desligamento local foi concluído, mas a desvinculação remota não foi confirmada.', LOGOUT_REMOTE_FAILED: 'A desvinculação remota falhou. A conexão permanece parada localmente.', LOGOUT_TRANSPORT_UNAVAILABLE: 'Sem transporte disponível para confirmar a desvinculação remota.', CONTROLLED_RECOVERY_REQUIRED: 'Use a recuperação controlada para a sessão existente.', PAIRING_TIMEOUT: 'O prazo para vincular o aparelho terminou. Solicite um novo QR.', SESSION_REPLACED: 'A sessão foi substituída em outro aparelho.', SESSION_REVOKED: 'O vínculo foi revogado. Vincule o aparelho novamente.', RECONNECT_LIMIT: 'O limite de reconexões foi atingido. Uma tentativa de recuperação exige autorização explícita.', CONNECTION_LOST: 'Conexão interrompida. Confira o estado da recuperação antes de autorizar outra tentativa.', BAD_SESSION: 'O protocolo indicou uma sessão inválida. As credenciais foram preservadas para diagnóstico.', RECOVERY_START_FAILED: 'Não foi possível iniciar a recuperação com segurança. As credenciais foram preservadas para diagnóstico.',
 };
 const failure = (reason: unknown) => reason instanceof ApiError && reason.status === 403 ? 'Você não tem acesso para gerenciar esta conexão.' : reason instanceof ApiError ? errors[reason.code ?? ''] ?? 'Não foi possível concluir a operação. Confira a conexão e tente novamente.' : 'Não foi possível conectar à API. Tente novamente.';
-const pending = (connection: WebConnection | null) => !connection?.operation?.action.startsWith('history_') && ['PENDING', 'PROCESSING'].includes(connection?.operation?.status ?? '');
 function SyncProgress({ connection }: { connection: WebConnection }) {
   const sync = connection.sync; if (!sync) return null;
   const provider = sync.provider;
@@ -48,15 +48,26 @@ function QrImage({ value }: { value: string }) {
     return <svg className="web-provider-qr" role="img" aria-label="QR Code para vincular o WhatsApp" viewBox={`0 0 ${modules.size + 8} ${modules.size + 8}`} shapeRendering="crispEdges"><rect width="100%" height="100%" fill="white" /><path d={path.join('')} fill="black" /></svg>;
   } catch { return <p role="alert">Não foi possível representar o QR. Solicite um novo código.</p>; }
 }
+function QrExpiry({ ttl }: { ttl: number }) {
+  const [remaining, setRemaining] = useState(Math.ceil(ttl / 1000));
+  useEffect(() => {
+    const end = performance.now() + ttl;
+    const timer = setInterval(() => setRemaining(Math.max(0, Math.ceil((end - performance.now()) / 1000))), 1000);
+    return () => clearInterval(timer);
+  }, [ttl]);
+  return <p>Expira em {remaining} segundos.</p>;
+}
 // Parent mounts a new instance for each user/org/permission version. No QR or
 // lifecycle state survives navigation, a permission change or tenant switching.
 export function WebProviderCard({ organizationId }: { organizationId: string }) {
   const { expireSession, refreshSession } = useSession();
   const [connection, setConnection] = useState<WebConnection | null>(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [checkedAt, setCheckedAt] = useState(Date.now());
   const [capabilityConfirm, setCapabilityConfirm] = useState(false);
   const [historySummary, setHistorySummary] = useState('Não ativado');
-  const [wantsQr, setWantsQr] = useState(false), [qr, setQr] = useState<WebQr | null>(null), [qrLoading, setQrLoading] = useState(false), [expired, setExpired] = useState(false), [confirm, setConfirm] = useState<'disconnect' | 'logout' | 'recover' | null>(null), [live, setLive] = useState('connecting');
+  const [wantsQr, setWantsQr] = useState(true), [qr, setQr] = useState<WebQr | null>(null), [qrLoading, setQrLoading] = useState(false), [expired, setExpired] = useState(false), [confirm, setConfirm] = useState<'disconnect' | 'logout' | 'recover' | 'prepare_link' | null>(null), [live, setLive] = useState('connecting');
   const controller = useRef<AbortController | null>(null), commandBusy = useRef(false), readSequence = useRef(0), current = useRef<WebConnection | null>(null), disconnectButton = useRef<HTMLButtonElement>(null), confirmation = useRef<HTMLButtonElement>(null), confirmationTrigger = useRef<HTMLElement | null>(null);
+  const linkFlow = useRef<{ id: string; stage: 'create' | 'prepare_link' } | null>(null);
   const titleId = useId(), descriptionId = useId();
   const apply = useCallback((value: WebConnection | null) => {
     if (value && current.current?.id === value.id && value.version < current.current.version) return;
@@ -87,61 +98,85 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
       if (abort.signal.aborted || value.revision !== current.current?.qrRevision) return;
       const remaining = value.expiresInMs - (performance.now() - started);
       if (remaining <= 0) { setExpired(true); return; }
-      setError(''); setQr(value); timer = setTimeout(() => { setQr(null); setExpired(true); }, remaining);
+      setError(''); setQr({ ...value, expiresInMs: remaining }); timer = setTimeout(() => { setQr(null); setExpired(true); }, remaining);
     }).catch((reason) => { if (!abort.signal.aborted) { setError(failure(reason)); setExpired(true); } }).finally(() => { if (!abort.signal.aborted) setQrLoading(false); });
     return () => { abort.abort(); clearTimeout(timer); };
   }, [wantsQr, connection?.id, connection?.uiState, connection?.qrRevision, connection?.operation?.status, connection?.pairingPhase]);
+  useEffect(() => {
+    setCheckedAt(Date.now());
+    const age = connection?.lastCheckedAt ? Date.now() - Date.parse(connection.lastCheckedAt) : 30000;
+    if (age >= 30000) return;
+    const timer = setTimeout(() => setCheckedAt(Date.now()), 30000 - age);
+    return () => clearTimeout(timer);
+  }, [connection?.lastCheckedAt]);
   useEffect(() => { if (confirm) confirmation.current?.focus(); }, [confirm]);
   const cancel = () => { setConfirm(null); (confirmationTrigger.current ?? disconnectButton.current)?.focus(); };
-  async function command(action: WebAction | 'create') {
+  async function command(action: WebAction | 'create', removedOnPhone?: boolean) {
     const abort = controller.current; if (!abort || commandBusy.current || pending(current.current) && !['disconnect', 'logout'].includes(action)) return;
     commandBusy.current = true; setBusy(true); setError(''); setQr(null);
+    const commandId = crypto.randomUUID();
+    if (action === 'create' || action === 'prepare_link') linkFlow.current = { id: commandId, stage: action };
     try {
-      const value = action === 'create' ? await webProviderApi.create(crypto.randomUUID(), abort.signal) : current.current ? await webProviderApi.command(current.current, action, crypto.randomUUID(), abort.signal) : null;
-      if (abort.signal.aborted) return; apply(value); setWantsQr(action === 'connect' || action === 'refresh');
-    } catch (reason) { if (!abort.signal.aborted) { await load(abort.signal).catch(() => undefined); setError(failure(reason)); } }
+      const value = action === 'create' ? await webProviderApi.create(commandId, abort.signal) : current.current ? await (removedOnPhone === undefined ? webProviderApi.command(current.current, action, commandId, abort.signal) : webProviderApi.command(current.current, action, commandId, abort.signal, removedOnPhone)) : null;
+      if (abort.signal.aborted) return;
+      if (action === 'create' && value?.operation?.action === 'create') linkFlow.current = { id: value.operation.id, stage: 'create' };
+      apply(value); setWantsQr(action === 'connect' || action === 'refresh');
+    } catch (reason) { if (!abort.signal.aborted) { linkFlow.current = null; await load(abort.signal).catch(() => undefined); setError(failure(reason)); } }
     finally { commandBusy.current = false; if (!abort.signal.aborted) setBusy(false); }
   }
+  // Only the initiating gesture authorizes the second stage. REST/realtime
+  // supplies the completed receipt/version; never issue connect concurrently.
+  useEffect(() => {
+    const flow = linkFlow.current;
+    if (!flow || busy || !connection || connection.operation?.id !== flow.id) return;
+    if (connection.operation.status === 'FAILED') { linkFlow.current = null; return; }
+    if (connection.operation.status === 'COMPLETED') { linkFlow.current = null; void command('connect'); }
+  });
+  async function link() {
+    const abort = controller.current; if (!abort || commandBusy.current) return;
+    commandBusy.current = true; setBusy(true);
+    try {
+      const result = await webProviderApi.read(abort.signal); if (abort.signal.aborted) return;
+      apply(result.connection); const c = result.connection;
+      if (c?.operation?.action === 'create' && pending(c)) { linkFlow.current = { id: c.operation.id, stage: 'create' }; return; }
+      if (c?.lifecycle?.preparationEligible) { setConfirm('prepare_link'); return; }
+      if (c && !connectionPresentation(c, true, false).action) return;
+      commandBusy.current = false; await command(c ? 'connect' : 'create');
+    } catch (reason) { if (!abort.signal.aborted) setError(failure(reason)); }
+    finally { commandBusy.current = false; if (!abort.signal.aborted) setBusy(false); }
+  }
+  const verified = !error && !loading && (!connection || connection.errorCode !== 'PROVIDER_UNAVAILABLE' && !!connection.lastCheckedAt && checkedAt - Date.parse(connection.lastCheckedAt) < 30000);
+  const presentation = connectionPresentation(connection, verified, expired);
+  const confirmed = presentation.connected, state = connection?.uiState ?? 'DISCONNECTED';
   const recovering = ['RUNNING', 'AUTHENTICATED'].includes(connection?.lifecycle?.recovery?.state ?? '');
-  const disabled = loading || busy || pending(connection) || recovering, state = connection?.uiState ?? 'DISCONNECTED';
-  const confirmed = !error && !loading && connection?.errorCode !== "PROVIDER_UNAVAILABLE" && !!connection?.lastCheckedAt && Date.now() - Date.parse(connection.lastCheckedAt) < 30000;
+  const disabled = loading || busy || pending(connection) || recovering;
   return <section className="web-provider-stack"><article className="provider-card web-provider-card" aria-labelledby={titleId}>
-    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp</h2><p>Canal da organização selecionada.</p></div></div><span className={`provider-state ${state === 'CONNECTED' && confirmed ? 'is-enabled' : ''}`} role="status">{loading ? 'Carregando…' : connection ? `${!confirmed && state === 'CONNECTED' ? 'Último estado: ' : ''}${expired && state === 'QR_READY' ? 'QR indisponível' : labels[state]}` : 'Sem conexão'}</span></div>
-    {recovering && <p role="status">{connection?.lifecycle?.recovery?.state === 'AUTHENTICATED' ? 'Autenticação confirmada. Aguardando estabilidade da conexão…' : 'Uma tentativa de recuperação está em andamento.'}</p>}
-    {connection?.lifecycle?.recovery?.state === 'SUCCEEDED' && <p role="status">Recuperação confirmada após conexão estável.</p>}
+    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp</h2><p>Canal da organização selecionada.</p></div></div><span className={`provider-state ${confirmed ? 'is-enabled' : ''}`} role="status"><AppIcon name={confirmed ? 'providers' : 'status'} />{loading ? 'Carregando…' : presentation.status}</span></div>
+    <p role="status">{presentation.guidance}</p>
+    {connection?.lastCheckedAt && <p className="muted">Última verificação: {new Date(connection.lastCheckedAt).toLocaleString('pt-BR')}</p>}
+    {error && <p role="alert" className="error-text">{error}</p>}
     {connection?.lifecycle?.termination?.remote === 'CONFIRMED' && <p role="status">Desvinculação remota confirmada pelo WhatsApp.</p>}
-    {connection?.lifecycle?.termination?.remote === 'UNCONFIRMED' && <p role="status">Conexão parada localmente. A remoção do aparelho no WhatsApp não foi confirmada. No celular, abra WhatsApp → Aparelhos conectados e desconecte este aparelho.</p>}
+    {connection?.lifecycle?.termination?.remote === 'UNCONFIRMED' && <p role="status">A remoção do aparelho no WhatsApp não foi confirmada. No celular, abra WhatsApp → Aparelhos conectados e desconecte este aparelho.</p>}
     {connection?.lifecycle?.termination?.action === 'disconnect' && <p role="status">Conexão parada. O vínculo e as credenciais foram preservados.</p>}
-    {connection?.lastCheckedAt && <p className="muted">Última verificação: {new Date(connection.lastCheckedAt).toLocaleString("pt-BR")}</p>}
-    {error && <p role="alert" className="error-text">{error}</p>}{!error && connection?.errorCode && <p role="alert">{errors[connection.errorCode] ?? 'A operação falhou. Confira a conexão e tente novamente.'}</p>}
-    {live !== 'open' && <p role="status">Atualização de estado interrompida ou conectando. <button type="button" className="text-button" onClick={() => controller.current && void load(controller.current.signal).catch(() => undefined)}>Consultar estado</button></p>}
-    {!error && connection?.operation?.status === 'FAILED' && !connection.operation.action.startsWith('history_') && connection.operation.errorCode !== connection.errorCode && <p role="status">Última operação: {errors[connection.operation.errorCode ?? ''] ?? 'não foi possível concluir. Tente novamente.'}</p>}
-    {pending(connection) && <p role="status">Operação solicitada. Aguardando confirmação do serviço…</p>}
-    {(busy || pending(connection) || state === 'CONNECTING' || connection?.pairingPhase === 'AUTHENTICATING') && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />{connection?.pairingPhase === 'AUTHENTICATING' ? 'Autenticando…' : state === 'CONNECTING' && !pending(connection) ? 'Gerando QR Code…' : 'Preparando conexão…'}</p>}
-    {state === 'QR_READY' && !expired && connection?.pairingPhase !== 'AUTHENTICATING' && <p role="status">Aguardando leitura do QR Code.</p>}
-    {state === 'CONNECTED' && <p role="status">{!confirmed ? 'Não foi possível verificar. Exibindo o último estado conhecido.' : 'WhatsApp conectado.'}</p>}
-    <details className="provider-management" open={state !== "CONNECTED"}><summary>Gerenciar conexão</summary><p className="muted">Esta integração utiliza um protocolo não oficial, sujeito a desconexões e restrições do WhatsApp.</p>
-    <div className="provider-actions">
-      {!connection && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('create')}>{busy ? 'Criando…' : 'Criar conexão'}</button>}
-      {connection && ['DISCONNECTED', 'ERROR'].includes(state) && !connection.lifecycle?.linked && !['RECONNECT_LIMIT', 'SESSION_REVOKED', 'SESSION_REPLACED', 'BAD_SESSION'].includes(connection.errorCode ?? '') && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('connect')}>{busy ? 'Solicitando…' : 'Solicitar QR Code'}</button>}
-      {connection?.lifecycle?.recoveryEligible && <button type="button" className="primary-button" disabled={disabled} onClick={event => { confirmationTrigger.current = event.currentTarget; setConfirm('recover'); }}>Recuperar vínculo existente</button>}
-      {connection?.lifecycle?.linked && !connection.lifecycle.recoveryEligible && state === 'DISCONNECTED' && !connection.lifecycle.termination && !connection.errorCode && <button type="button" className="primary-button" disabled={disabled} onClick={() => void command('connect')}>Retomar conexão</button>}
-      {connection && state === 'QR_READY' && !wantsQr && <button type="button" className="primary-button" disabled={disabled} onClick={() => setWantsQr(true)}>Exibir QR Code</button>}
-      {connection && ['QR_READY', 'CONNECTING'].includes(state) && <button type="button" className="secondary-button" disabled={disabled || qrLoading || connection.pairingPhase === 'AUTHENTICATING'} onClick={() => { setWantsQr(false); void command('refresh'); }}>Atualizar QR Code</button>}
-      {connection && <button ref={disconnectButton} type="button" className="secondary-button" disabled={loading || busy} onClick={event => { confirmationTrigger.current = event.currentTarget; setConfirm('disconnect'); }}>Parar conexão</button>}
-      {connection && <button type="button" className="secondary-button" disabled={loading || busy} onClick={event => { confirmationTrigger.current = event.currentTarget; setConfirm('logout'); }}>Desvincular conta</button>}
+    <div className="provider-actions web-provider-primary-actions">
+      {presentation.action && <button type="button" className="primary-button" disabled={loading || busy || recovering || pending(connection) && connection?.operation?.action !== 'create'} onClick={event => { const action = presentation.action!.command; if (action === 'recover') { confirmationTrigger.current = event.currentTarget; setConfirm('recover'); } else if (action === 'link') { confirmationTrigger.current = event.currentTarget; void link(); } else void command(action, action === 'prepare_link' ? connection?.lifecycle?.removalConfirmationRequired === true : undefined); }}>{busy ? 'Aguarde…' : presentation.action.label}</button>}
+      {presentation.linked && <button type="button" className="secondary-button web-provider-unlink" disabled={loading || busy} onClick={event => { confirmationTrigger.current = event.currentTarget; setConfirm('logout'); }}>Desvincular WhatsApp</button>}
     </div>
-    {qrLoading && <p role="status">Buscando QR Code…</p>}{qr && connection?.uiState === 'QR_READY' && <div className="web-provider-pairing"><QrImage value={qr.qr} /><div><h3>Vincular aparelho</h3><ol><li>Abra o WhatsApp no telefone.</li><li>Acesse Aparelhos conectados e selecione Conectar um aparelho.</li><li>Escaneie este QR Code para autorizar o vínculo.</li></ol><p>O código expira em poucos segundos e será removido da tela. Você pode solicitar uma atualização.</p><button type="button" className="text-button" onClick={() => { setWantsQr(false); setQr(null); }}>Ocultar QR Code</button></div></div>}
-    {expired && <p role="status">QR Code expirado ou indisponível. Atualize o código para continuar.</p>}
-    {connection && <section aria-label="Permissões de atendimento"><h3>Atendimento pelo Chat</h3><p className="muted">Envio: {connection.sendingEnabled ? 'autorizado' : 'desativado'}. Mídia: {connection.mediaEnabled ? 'autorizada' : 'desativada'}.</p><button type="button" className="secondary-button" disabled={disabled} onClick={() => setCapabilityConfirm(true)}>Configurar atendimento</button>{capabilityConfirm && <div role="group" aria-label="Confirmar autorização de atendimento"><p>Autorizar esta conexão permite envios reais somente quando um atendente clicar em Enviar e acesso à mídia sob demanda. As permissões da organização continuam obrigatórias.</p><button type="button" className="primary-button" disabled={busy} onClick={() => { const abort = controller.current; if (!abort) return; setBusy(true); void webProviderApi.capabilities(connection.id, true, true, abort.signal).then(() => load(abort.signal)).catch(reason => { if (!abort.signal.aborted) setError(failure(reason)); }).finally(() => { if (!abort.signal.aborted) { setBusy(false); setCapabilityConfirm(false); } }); }}>Autorizar envio e mídia</button><button type="button" className="secondary-button" disabled={busy} onClick={() => { const abort = controller.current; if (!abort) return; setBusy(true); void webProviderApi.capabilities(connection.id, false, false, abort.signal).then(() => load(abort.signal)).catch(reason => { if (!abort.signal.aborted) setError(failure(reason)); }).finally(() => { if (!abort.signal.aborted) { setBusy(false); setCapabilityConfirm(false); } }); }}>Desativar atendimento</button><button type="button" className="text-button" onClick={() => setCapabilityConfirm(false)}>Cancelar</button></div>}</section>}
-    </details>
+    {(busy || pending(connection)) && <p role="status"><span className="web-provider-spinner" aria-hidden="true" />Processando solicitação…</p>}
+    {qrLoading && <p role="status">Buscando QR Code…</p>}
+    {qr && state === 'QR_READY' && <div className="web-provider-pairing"><QrImage value={qr.qr} /><div><h3>Vincular aparelho</h3><ol><li>Abra o WhatsApp no telefone.</li><li>Acesse Aparelhos conectados e selecione Conectar um aparelho.</li><li>Escaneie este QR Code para autorizar o vínculo.</li></ol><QrExpiry ttl={qr.expiresInMs} /><button type="button" className="text-button" onClick={() => { setWantsQr(false); setQr(null); }}>Ocultar QR Code</button></div></div>}
+    {state === 'QR_READY' && !wantsQr && !expired && <button type="button" className="text-button" onClick={() => setWantsQr(true)}>Exibir QR Code</button>}
+    {expired && <p role="status">QR Code expirado ou indisponível. Gere outro código para continuar.</p>}
+  </article>
+  {connection && <article className="provider-card">
+    <section aria-label="Permissões de atendimento"><h3>Atendimento pelo Chat</h3><p className="muted">Envio: {connection.sendingEnabled ? 'autorizado' : 'desativado'}. Mídia: {connection.mediaEnabled ? 'autorizada' : 'desativada'}.</p><button type="button" className="secondary-button" disabled={disabled} onClick={() => setCapabilityConfirm(true)}>Configurar atendimento</button>{capabilityConfirm && <div role="group" aria-label="Confirmar autorização de atendimento"><p>Autorizar esta conexão permite envios reais somente quando um atendente clicar em Enviar e acesso à mídia sob demanda. As permissões da organização continuam obrigatórias.</p><button type="button" className="primary-button" disabled={busy} onClick={() => { const abort = controller.current; if (!abort) return; setBusy(true); void webProviderApi.capabilities(connection.id, true, true, abort.signal).then(() => load(abort.signal)).catch(reason => { if (!abort.signal.aborted) setError(failure(reason)); }).finally(() => { if (!abort.signal.aborted) { setBusy(false); setCapabilityConfirm(false); } }); }}>Autorizar envio e mídia</button><button type="button" className="secondary-button" disabled={busy} onClick={() => { const abort = controller.current; if (!abort) return; setBusy(true); void webProviderApi.capabilities(connection.id, false, false, abort.signal).then(() => load(abort.signal)).catch(reason => { if (!abort.signal.aborted) setError(failure(reason)); }).finally(() => { if (!abort.signal.aborted) { setBusy(false); setCapabilityConfirm(false); } }); }}>Desativar atendimento</button><button type="button" className="text-button" onClick={() => setCapabilityConfirm(false)}>Cancelar</button></div>}</section>
+  </article>}
     {confirm && <div className="web-provider-backdrop"><section className="web-provider-dialog" role="dialog" aria-modal="true" aria-labelledby={`${titleId}-disconnect`} aria-describedby={descriptionId} onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); cancel(); }
       if (event.key === 'Tab') { const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button')]; const first = buttons[0], last = buttons.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } }
-    }}><h2 id={`${titleId}-disconnect`}>{confirm === 'recover' ? 'Recuperar vínculo existente?' : confirm === 'logout' ? 'Desvincular conta WhatsApp?' : 'Parar conexão?'}</h2><p id={descriptionId}>{confirm === 'recover' ? 'Autoriza uma única tentativa com as credenciais existentes. Não gera QR nem inicia outro ciclo automático. O sucesso só será confirmado após autenticação estável.' : confirm === 'logout' ? 'Solicita a remoção deste aparelho no WhatsApp e interrompe a conexão local. Se o serviço não conseguir confirmar a remoção, revogue o aparelho no celular. Histórico, contatos, tags e atribuições permanecem preservados.' : 'Interrompe a conexão e as tentativas pendentes, preservando as credenciais e os dados. A parada local não revoga o aparelho no WhatsApp.'}</p><button ref={confirmation} type="button" className="primary-button" onClick={() => { const action = confirm; cancel(); setWantsQr(false); if (action) void command(action); }}>{confirm === 'recover' ? 'Autorizar uma tentativa' : confirm === 'logout' ? 'Confirmar desvinculação' : 'Confirmar parada'}</button><button type="button" className="secondary-button" onClick={cancel}>Cancelar</button></section></div>}
-  </article>
+    }}><h2 id={`${titleId}-disconnect`}>{confirm === 'prepare_link' ? 'Vincular WhatsApp novamente?' : confirm === 'recover' ? 'Restabelecer conexão?' : confirm === 'logout' ? 'Desvincular conta WhatsApp?' : 'Parar conexão?'}</h2><p id={descriptionId}>{confirm === 'prepare_link' ? (connection?.lifecycle?.removalConfirmationRequired ? 'Confirme que você já removeu este aparelho em WhatsApp → Aparelhos conectados no celular. Somente depois desta confirmação as credenciais anteriores serão aposentadas e um novo QR poderá ser solicitado. O histórico interno será preservado.' : 'A desvinculação remota foi confirmada. As credenciais anteriores serão aposentadas com segurança antes de solicitar um novo QR. O histórico interno será preservado.') : confirm === 'recover' ? 'Vamos tentar restabelecer o vínculo utilizando as credenciais existentes. Nenhum novo QR será gerado. Apenas uma tentativa será autorizada.' : confirm === 'logout' ? 'Solicita a remoção deste aparelho no WhatsApp e interrompe a conexão local. Se o serviço não conseguir confirmar a remoção, revogue o aparelho no celular. Histórico, contatos, tags e atribuições permanecem preservados.' : 'Interrompe a conexão e as tentativas pendentes, preservando as credenciais e os dados. A parada local não revoga o aparelho no WhatsApp.'}</p><button ref={confirmation} type="button" className="primary-button" onClick={() => { const action = confirm; cancel(); setWantsQr(false); if (action) void command(action, action === 'prepare_link' ? connection?.lifecycle?.removalConfirmationRequired === true : undefined); }}>{confirm === 'prepare_link' ? (connection?.lifecycle?.removalConfirmationRequired ? 'Já removi o aparelho; vincular novamente' : 'Confirmar nova vinculação') : confirm === 'recover' ? 'Autorizar uma tentativa' : confirm === 'logout' ? 'Confirmar desvinculação' : 'Confirmar parada'}</button><button type="button" className="secondary-button" onClick={cancel}>Cancelar</button></section></div>}
     {connection && <article className="provider-card"><div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="conversations" /></span><div><h2>Sincronização de mensagens</h2><p>Recebimento automático de novas mensagens.</p></div></div><span className={`provider-state ${confirmed && state === 'CONNECTED' ? 'is-enabled' : ''}`}>{confirmed && state === 'CONNECTED' ? 'Ativa' : 'Aguardando conexão confirmada'}</span></div><p>Mensagens recebidas e enviadas pelo celular são incorporadas à Inbox em tempo real.</p><p className="muted">Histórico: {historySummary}</p><p className="muted">Última atividade confirmada: {connection.sync?.lastProcessedAt ? new Date(connection.sync.lastProcessedAt).toLocaleString('pt-BR') : 'Ainda sem atividade registrada'}</p>{!!connection.sync?.pendingFailures && <p role="status">Alguns dados aguardam nova tentativa. Consulte o diagnóstico.</p>}</article>}
     {connection && <HistoryControls connectionId={connection.id} revision={connection.version} connected={confirmed && state === 'CONNECTED' && !connection.errorCode} onStatus={setHistorySummary} />}
-    <details className="provider-card provider-advanced"><summary>Diagnóstico avançado</summary><div className="provider-actions"><ProviderDiagnosticsButton provider="WHATSAPP_WEB" revision={connection?.version ?? 0} /></div>{connection && <SyncProgress connection={connection} />}</details>
+    <details className="provider-card provider-advanced"><summary>Diagnóstico avançado</summary><p className="muted">Esta integração utiliza um protocolo não oficial, sujeito a desconexões e restrições do WhatsApp.</p><p>Transporte: {connection?.transportConfirmed ? 'confirmado' : 'indisponível'}. Estado registrado: {connection?.state ?? 'sem registro'}.</p>{connection?.errorCode && <p role="alert">{errors[connection.errorCode] ?? 'Confira o diagnóstico do serviço.'} Código: {connection.errorCode}</p>}{connection?.operation?.status === 'FAILED' && <p>Última operação: {connection.operation.action} — {connection.operation.errorCode ?? 'falhou'}.</p>}{live !== 'open' && <p role="status">Atualização de estado interrompida ou conectando. <button type="button" className="text-button" onClick={() => controller.current && void load(controller.current.signal).catch(() => undefined)}>Consultar estado</button></p>}<div className="provider-actions">{connection && <button ref={disconnectButton} type="button" className="secondary-button" disabled={loading || busy} onClick={event => { confirmationTrigger.current = event.currentTarget; setConfirm('disconnect'); }}>Parar conexão</button>}<ProviderDiagnosticsButton provider="WHATSAPP_WEB" revision={connection?.version ?? 0} /></div>{connection && <SyncProgress connection={connection} />}</details>
   </section>;
 }

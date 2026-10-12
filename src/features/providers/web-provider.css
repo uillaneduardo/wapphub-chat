@@ -46,3 +46,10 @@
 .web-provider-stack .provider-actions { margin-top: 16px; }
 .other-providers { margin-top: 20px; }
 @media (max-width: 720px) { .web-provider-stack button { min-height: 44px; } }
+
+.web-provider-primary-actions { justify-content: flex-start; }
+.web-provider-unlink { color: var(--danger, var(--text)); margin-left: auto; }
+.web-provider-stack .provider-state { display: inline-flex; align-items: center; gap: 6px; }
+.web-provider-stack .provider-state .app-icon { width: 16px; height: 16px; }
+.web-provider-pairing { justify-items: center; }
+@media (max-width: 720px) { .web-provider-primary-actions { flex-direction: column; align-items: stretch; } .web-provider-unlink { margin-left: 0; } }
