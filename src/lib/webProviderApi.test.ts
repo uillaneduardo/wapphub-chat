@@ -18,4 +18,10 @@ describe('Core-only WhatsApp Web API', () => {
     const pending = webProviderApi.qr(connection.id, abort.signal); abort.abort();
     expect(fetch.mock.calls.at(-1)![1].signal.aborted).toBe(true); await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
+  it('records explicit preparation and phone-removal confirmation in the existing versioned Core command', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(connection), { status: 200 })); vi.stubGlobal('fetch', fetch); setCsrfToken('synthetic-csrf');
+    await webProviderApi.command(connection, 'prepare_link', 'synthetic-command', new AbortController().signal, true);
+    expect(JSON.parse(fetch.mock.calls[0]![1].body)).toEqual({ action: 'prepare_link', commandId: 'synthetic-command', expectedVersion: 7, confirmed: true, removedOnPhone: true }); expect(fetch.mock.calls[0]![1].credentials).toBe('include');
+  });
+
 });
