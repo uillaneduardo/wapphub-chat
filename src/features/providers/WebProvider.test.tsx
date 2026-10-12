@@ -202,4 +202,12 @@ describe('WhatsApp Web provider integration', () => {
     await act(async () => { resolve({connection: connection({operation,lastCheckedAt:new Date().toISOString()})}); await flush(); }); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.create).not.toHaveBeenCalled();
   });
 
+  it('authorizes only text on the selected connection after confirmation, without creating or sending anything', async () => {
+    const capability = vi.spyOn(webProviderApi, 'capabilities').mockResolvedValue({ outboundEnabled: true, mediaEnabled: false });
+    renderCard(); fireEvent.click(await screen.findByRole('button', { name: 'Configurar atendimento' })); expect(capability).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Autorizar envio de texto' }));
+    await waitFor(() => expect(capability).toHaveBeenCalledWith('channel', true, false, expect.any(AbortSignal)));
+    expect(capability).toHaveBeenCalledOnce(); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.qr).not.toHaveBeenCalled();
+  });
+
 });

@@ -14,7 +14,7 @@ export interface WebQr { qr: string; revision: number; expiresAt: string; expire
 const base = '/providers/whatsapp-web/connections';
 const mutationSignal = (signal: AbortSignal) => AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
 export const webProviderApi = {
-  capabilities: (id: string, outboundEnabled: boolean, mediaEnabled: boolean, signal: AbortSignal) => apiRequest<{ outboundEnabled: boolean; mediaEnabled: boolean }>(`${base}/${encodeURIComponent(id)}/capabilities`, { method: 'PUT', body: JSON.stringify({ outboundEnabled, mediaEnabled }), signal }),
+  capabilities: (id: string, outboundEnabled: boolean, mediaEnabled: boolean, signal: AbortSignal) => apiRequest<{ outboundEnabled: boolean; mediaEnabled: boolean }>(`${base}/${encodeURIComponent(id)}/capabilities`, { method: 'PUT', body: JSON.stringify({ outboundEnabled, mediaEnabled }), signal: mutationSignal(signal) }),
   read: (signal: AbortSignal) => apiRequest<{ connection: WebConnection | null }>(base, { signal }),
   create: (commandId: string, signal: AbortSignal) => apiRequest<WebConnection>(base, { method: 'POST', body: JSON.stringify({ commandId }), signal: mutationSignal(signal) }),
   command: (connection: WebConnection, action: WebAction, commandId: string, signal: AbortSignal, removedOnPhone?: boolean) => apiRequest<WebConnection>(`${base}/${encodeURIComponent(connection.id)}/commands`, { method: 'POST', body: JSON.stringify({ commandId, action, expectedVersion: connection.version, ...(removedOnPhone === undefined ? {} : { removedOnPhone }), ...(['recover', 'logout', 'prepare_link'].includes(action) ? { confirmed: true } : {}) }), signal: mutationSignal(signal) }),
