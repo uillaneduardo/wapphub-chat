@@ -1,3 +1,9 @@
+# P0 vínculo — publicado12/10/2026
+
+**INTERFACE_CORRIGIDA_PUBLICADA — AGUARDANDO_VINCULACAO_HUMANA.** Chat`p0link-49bc91d`, [PR23](https://github.com/uillaneduardo/wapphub-chat/pull/23), CI325/325 (32arquivos)/lint/typecheck/build aprovados. Consulta limitada por expiração/foco/visibilidade/rede com cancelamento/contexto, erro de consulta separado, Verificar novamente e resultado incerto sem spinner infinito. Nova vinculação após logoutUNCONFIRMED requer checkbox humano desmarcado e elegibilidade recente; não gera comandos por refresh. Core/Worker/Provider`p0link-e6aa1c6`,133/126 testes, metadados aditivos do outbox e rotação versionada256 com fencing.
+
+Seisserviçoshealthy/smokes de leitura aprovados, backups/restauração isolada; nenhuma migration nova. WhatsApp continuaDISCONNECTED/sem transporte/logoutUNCONFIRMED/attempts5; credenciais/histórico/Signal preservados. Nenhum QR/logout/recover/preparação/envio/upload/histórico real executado por Codex. Envio/mídia por conexãofalse, requests históricos1→1. Homologação humana no notebook pendente; usuário só deve confirmar remoção pelo celular após realizá-la. Progresso/relatórios canônicos no Core e20261012-p0-link-reconciliation/. Registros abaixo preservam entregas anteriores.
+
 # Interface WhatsApp publicada — 12/10/2026, 14:55 UTC
 
 **INTERFACE_WHATSAPP_PUBLICADA — AGUARDANDO_HOMOLOGACAO.** Chat `dd731cb`, imagem `wapphub-chat:link-dd731cb`, publicado com Core/Worker/Providerc90099b. HTTPS/SPA/rotas/ativos/contrato e seis serviços healthy verificados. CI do main322/322, lint/typecheck/build aprovados.
