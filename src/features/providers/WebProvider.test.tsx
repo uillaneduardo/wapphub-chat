@@ -74,7 +74,7 @@ describe('WhatsApp Web provider integration', () => {
   });
   it('shows safe API failure text and retains genuine connection state', async () => {
     vi.mocked(webProviderApi.command).mockRejectedValue(new ApiError(503, 'server', 'secret-sensitive-server-detail', 'PROVIDER_UNAVAILABLE'));
-    renderCard(); fireEvent.click(await screen.findByRole('button', { name: 'Vincular WhatsApp' })); expect(await screen.findByRole('alert')).toHaveTextContent('temporariamente indisponível'); expect(screen.queryByText('secret-sensitive-server-detail')).not.toBeInTheDocument(); expect(screen.getByText('Não foi possível verificar')).toBeInTheDocument();
+    renderCard(); fireEvent.click(await screen.findByRole('button', { name: 'Vincular WhatsApp' })); expect(await screen.findByRole('alert')).toHaveTextContent('temporariamente indisponível'); expect(screen.queryByText('secret-sensitive-server-detail')).not.toBeInTheDocument(); expect(screen.getByText('Não vinculado')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Vincular WhatsApp' })).toBeEnabled();
   });
   it('discards an aborted late QR response after navigation and closes the subscription', async () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: ready() }); let done!: (value: Awaited<ReturnType<typeof webProviderApi.qr>>) => void;
@@ -166,6 +166,7 @@ describe('WhatsApp Web provider integration', () => {
     vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ lifecycle: { linked: true, desired: false, recoveryEligible: false, preparationEligible: true, removalConfirmationRequired: removedOnPhone } }) });
     vi.mocked(webProviderApi.command).mockImplementation(async (c, action, id) => connection({ version: c.version + 1, operation: { id, action, status: 'PENDING', errorCode: null } }));
     renderCard(); fireEvent.click(await screen.findByRole('button', { name: 'Vincular WhatsApp' })); const dialog = await screen.findByRole('dialog'); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(dialog).toHaveTextContent(removedOnPhone ? 'já removeu este aparelho' : 'desvinculação remota foi confirmada');
+    if (removedOnPhone) { expect(screen.getByRole('button', { name: 'Já removi o aparelho; vincular novamente' })).toBeDisabled(); fireEvent.click(screen.getByRole('checkbox', { name: /Já removi este aparelho/ })); }
     fireEvent.click(screen.getByRole('button', { name: removedOnPhone ? 'Já removi o aparelho; vincular novamente' : 'Confirmar nova vinculação' })); await waitFor(() => expect(webProviderApi.command).toHaveBeenCalledOnce()); expect(webProviderApi.command).toHaveBeenCalledWith(expect.anything(), 'prepare_link', expect.any(String), expect.any(AbortSignal), removedOnPhone);
     const id = vi.mocked(webProviderApi.command).mock.calls[0]![2]; vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ version: 8, operation: { id, action: 'prepare_link', status: 'COMPLETED', errorCode: null }, lifecycle: { linked: false, desired: false, recoveryEligible: false, pairingEligible: true } }) });
     await act(async () => { FakeSocket.instances[0]!.event(); await flush(); }); expect(webProviderApi.command).toHaveBeenCalledWith(expect.objectContaining({ version: 8 }), 'connect', expect.any(String), expect.any(AbortSignal)); expect(webProviderApi.command).toHaveBeenCalledTimes(2);
@@ -175,6 +176,30 @@ describe('WhatsApp Web provider integration', () => {
   });
   it('keeps technical stop in a collapsed advanced section and exposes only the main decision', async () => {
     renderCard(); await screen.findByRole('button', { name: 'Vincular WhatsApp' }); expect(screen.getByRole('button', { name: 'Parar conexão' }).closest('details')).not.toHaveAttribute('open'); expect(screen.getByText('Diagnóstico avançado').closest('details')).not.toHaveAttribute('open'); expect(screen.queryByRole('button', { name: 'Criar conexão' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Solicitar QR Code' })).not.toBeInTheDocument();
+  });
+
+  it('revalidates expiry without realtime and reconciles the exact unconfirmed/pending fixture', async () => {
+    vi.useFakeTimers(); const lifecycle = { linked: true, desired: false, recoveryEligible: false, preparationEligible: true, removalConfirmationRequired: true, termination: { commandId: 'synthetic', action: 'logout' as const, remote: 'UNCONFIRMED' as const, requestedAt: new Date().toISOString() } };
+    const createdAt = new Date().toISOString();
+    vi.mocked(webProviderApi.read).mockResolvedValueOnce({ connection: connection({ transportConfirmed: false, lifecycle, operation: { id: 'synthetic', action: 'prepare_link', status: 'PROCESSING', errorCode: null, createdAt } }) }).mockImplementation(async () => ({ connection: connection({ version: 2, lastCheckedAt: new Date().toISOString(), transportConfirmed: false, lifecycle, operation: { id: 'synthetic', action: 'prepare_link', status: 'FAILED', errorCode: 'SESSION_COMMAND_LIMIT', createdAt } }) }));
+    renderCard(); await act(flush); expect(screen.getByText('Processando solicitação…')).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(30001); await flush(); });
+    expect(webProviderApi.read).toHaveBeenCalledTimes(2); expect(screen.queryByText('Processando solicitação…')).not.toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Vincular WhatsApp' })).toBeEnabled(); expect(screen.getByText(/A última solicitação não foi concluída/)).toHaveTextContent('limite de recibos'); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.qr).not.toHaveBeenCalled();
+  });
+  it('preserves the known session on failed expiry query and provides manual verification', async () => {
+    vi.useFakeTimers(); vi.mocked(webProviderApi.read).mockResolvedValueOnce({ connection: connection({ lifecycle: { linked: true, desired: false, recoveryEligible: true } }) }).mockRejectedValue(new Error('synthetic'));
+    renderCard(); await act(flush); await act(async () => { await vi.advanceTimersByTimeAsync(30001); await flush(); });
+    expect(screen.getByText('Não foi possível verificar')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Verificar novamente' })).toBeEnabled(); expect(screen.getByText(/Consulta do estado:/)).toHaveTextContent('último estado registrado foi preservado');
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ lifecycle: { linked: true, desired: false, recoveryEligible: true }, lastCheckedAt: new Date().toISOString() }) });
+    fireEvent.click(screen.getByRole('button', { name: 'Verificar novamente' })); await act(flush); expect(screen.getByRole('button', { name: 'Restabelecer conexão' })).toBeEnabled(); expect(webProviderApi.command).not.toHaveBeenCalled();
+  });
+  it('coalesces focus, network and visibility reads and does not replay an uncertain operation', async () => {
+    vi.useFakeTimers(); const operation = { id: 'synthetic', action: 'prepare_link' as const, status: 'PROCESSING' as const, errorCode: 'PROVIDER_UNAVAILABLE', createdAt: new Date(Date.now() - 180000).toISOString() };
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ lastCheckedAt: new Date(Date.now() - 31000).toISOString(), operation, lifecycle: { linked: true, desired: false, recoveryEligible: false, preparationEligible: true, removalConfirmationRequired: true } }) });
+    renderCard(); await act(flush); expect(screen.queryByText('Processando solicitação…')).not.toBeInTheDocument(); expect(screen.getByText(/O resultado desta solicitação ainda não foi confirmado/)).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(10001); }); let resolve!: (v: {connection: WebConnection}) => void;
+    vi.mocked(webProviderApi.read).mockImplementation(() => new Promise(done => { resolve=done; })); fireEvent.focus(window); fireEvent.online(window); fireEvent(document, new Event('visibilitychange')); expect(webProviderApi.read).toHaveBeenCalledTimes(2);
+    await act(async () => { resolve({connection: connection({operation,lastCheckedAt:new Date().toISOString()})}); await flush(); }); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.create).not.toHaveBeenCalled();
   });
 
 });
