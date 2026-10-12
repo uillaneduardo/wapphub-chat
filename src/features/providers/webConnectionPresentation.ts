@@ -18,6 +18,7 @@ export function connectionPresentation(c: WebConnection | null, verified: boolea
   if (c.uiState === 'RECONNECTING') return view('Reconectando…', 'Restabelecendo o transporte sem gerar um novo QR.');
   if (lifecycle?.recoveryEligible) return view('Não foi possível restabelecer a conexão', 'O vínculo existente pode receber uma tentativa de recuperação autorizada.', { label: 'Restabelecer conexão', command: 'recover' });
   if (lifecycle?.preparationEligible) return view(lifecycle.removalConfirmationRequired ? 'Remoção do aparelho não confirmada' : 'Não vinculado', lifecycle.removalConfirmationRequired ? 'A integração está parada. Remova este aparelho no WhatsApp do celular antes de vincular novamente.' : 'A desvinculação anterior foi confirmada. Você pode iniciar um novo vínculo.', { label: 'Vincular WhatsApp', command: 'link' });
+  if (lifecycle?.pairingEligible && c.errorCode) return view('Não foi possível vincular', 'A tentativa anterior não confirmou o vínculo. Você pode autorizar uma nova tentativa.', { label: 'Vincular WhatsApp', command: 'link' });
   if (lifecycle?.pairingEligible || !lifecycle && c.uiState === 'DISCONNECTED' && !c.errorCode) return view('Não vinculado', 'Vincule seu WhatsApp para disponibilizar o atendimento.', { label: 'Vincular WhatsApp', command: 'link' });
   return view('Conexão temporariamente indisponível', 'Consulte o diagnóstico avançado para verificar o vínculo existente.');
 }
