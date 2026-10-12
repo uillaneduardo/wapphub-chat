@@ -53,3 +53,6 @@
 .web-provider-stack .provider-state .app-icon { width: 16px; height: 16px; }
 .web-provider-pairing { justify-items: center; }
 @media (max-width: 720px) { .web-provider-primary-actions { flex-direction: column; align-items: stretch; } .web-provider-unlink { margin-left: 0; } }
+
+.web-provider-removal-confirmation { display: flex; align-items: flex-start; gap: .75rem; margin: 1rem 0; }
+.web-provider-removal-confirmation input { flex: none; margin-top: .25rem; }
