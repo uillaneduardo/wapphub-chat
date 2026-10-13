@@ -48,6 +48,8 @@ function ConversationViewContent() {
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
   const contactNameRef = useRef(contact?.name);
   contactNameRef.current = contact?.name;
+  const sendIntents = useRef(new Map<string, { body: string; attachment?: Attachment | null; media?: NonNullable<InternalTextMessage['media']> }>());
+  const attachmentRetry = useRef<string | null>(null);
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false); const [attachment, setAttachment] = useState<Attachment | null>(null);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
@@ -205,29 +207,68 @@ function ConversationViewContent() {
     finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
   async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null) {
-    const failedMessage = retryClientMessageId ? messages.find(message => message.clientMessageId === retryClientMessageId) : undefined;
+    const failedMessage = retryClientMessageId ? messagesRef.current.find(message => message.clientMessageId === retryClientMessageId) : undefined;
+    const previousIntent = retryClientMessageId ? sendIntents.current.get(retryClientMessageId) : undefined;
+    selectedAttachment = selectedAttachment ?? previousIntent?.attachment;
+    body = previousIntent?.body ?? body;
     if ((!body.trim() && !selectedAttachment && !failedMessage?.media) || body.length > 8000 || !can('messages.send') || conversation?.outboundEnabled === false || conversation?.status === 'ARCHIVED') return;
     const clientMessageId = retryClientMessageId ?? createClientMessageId();
     if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && (failedMessage?.status !== 'FAILED' || failedMessage.deliveryOutcome === 'UNKNOWN'))) return;
     pendingSends.current.add(clientMessageId);
+    const intent = previousIntent ?? { body, attachment: selectedAttachment }; sendIntents.current.set(clientMessageId, intent);
+    if (selectedAttachment) attachmentRetry.current = clientMessageId;
     const optimistic = failedMessage ? { ...failedMessage, status: 'PENDING' as const, updatedAt: new Date().toISOString() } : createOptimisticMessage(conversationId, sessionUserId, body.trim(), clientMessageId, session?.user.name);
     setDetailError(''); setMessages((current) => mergeMessages(current, [optimistic]));
     const text = conversation?.provider === 'WHATSAPP_WEB' ? body : body.trim();
     const controller = new AbortController(); reads.current.add(controller); let intentSubmitted = false;
     try {
-      const media = selectedAttachment ? await chatApi.uploadMedia(conversationId, selectedAttachment.file, selectedAttachment.type, controller.signal) : failedMessage?.media ?? undefined;
+      const media = intent.media ?? (selectedAttachment ? await chatApi.uploadMedia(conversationId, selectedAttachment.file, selectedAttachment.type, controller.signal) : failedMessage?.media ?? undefined);
+      if (media) intent.media = media;
       if (!mounted.current || controller.signal.aborted) return;
       intentSubmitted = true;
       const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
-      if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) setAttachment(null); }
+      if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) { setAttachment(null); attachmentRetry.current = null; } sendIntents.current.delete(clientMessageId); }
     }
-    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId && !['SENT', 'DELIVERED', 'READ'].includes(message.status) ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
+    catch (reason) { if (!mounted.current) return;
+      const rejectedBeforeCommit = reason instanceof ApiError && [400, 401, 403, 404, 409, 413, 415, 422, 429].includes(reason.status);
+      const uncertain = conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted && !rejectedBeforeCommit;
+      setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId && !['SENT', 'DELIVERED', 'READ'].includes(message.status) ? uncertain ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); const code = reason instanceof ApiError && reason.code && /^[A-Z][A-Z0-9_]{0,79}$/.test(reason.code) ? reason.code : 'CONNECTION_FAILED';
+      setDetailError(uncertain ? `Não foi possível confirmar o registro da mensagem (${code}). Aguarde a confirmação; a mensagem não será reenviada automaticamente.` : selectedAttachment ? `Falha ${intentSubmitted ? 'ao registrar a mensagem' : 'no upload da mídia'} (${code}). O anexo foi preservado. Tente novamente.` : `Não foi possível enviar a mensagem (${code}). Tente novamente.`);
+      if (!uncertain && body) setDraft(current => current || body); }
     finally { reads.current.delete(controller); pendingSends.current.delete(clientMessageId); }
   }
+  useEffect(() => {
+    const clientId = attachmentRetry.current;
+    if (!clientId) return;
+    const intent = sendIntents.current.get(clientId);
+    if (messages.some(message => message.clientMessageId === clientId && !message.id.startsWith('optimistic:') && ['SENT', 'DELIVERED', 'READ'].includes(message.status))) {
+      setAttachment(current => current?.file === intent?.attachment?.file ? null : current);
+      attachmentRetry.current = null; sendIntents.current.delete(clientId);
+    }
+  }, [messages]);
   function sendDraft() {
     if (composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
     composerBusy.current = true; setSending(true); const body = draft; setDraft('');
-    void submitMessage(body, undefined, attachment).finally(() => { composerBusy.current = false; setSending(false); });
+    const retryId = attachmentRetry.current;
+    const retryMessage = retryId ? messagesRef.current.find(message => message.clientMessageId === retryId) : undefined;
+    const oldIntent = retryId ? sendIntents.current.get(retryId) : undefined;
+    if (retryId && oldIntent?.attachment?.file === attachment?.file && retryMessage?.deliveryOutcome === 'UNKNOWN') {
+      composerBusy.current = false; setSending(false);
+      setDetailError('Resultado do registro incerto. Aguarde confirmação ou use Verificar envio. A gravação permanece disponível.'); return;
+    }
+    void submitMessage(body, retryId && oldIntent?.attachment?.file === attachment?.file ? retryId : undefined, attachment).finally(() => { composerBusy.current = false; setSending(false); });
+  }
+  async function verifyUncertainSend(clientMessageId: string) {
+    const controller = new AbortController(); reads.current.add(controller);
+    try {
+      const page = await chatApi.listMessages(conversationId, undefined, controller.signal);
+      if (controller.signal.aborted || !mounted.current) return;
+      setMessages(current => mergeMessages(current, page.items));
+      const confirmed = page.items.find(message => message.clientMessageId === clientMessageId);
+      if (confirmed) { setAttachment(null); attachmentRetry.current = null; sendIntents.current.delete(clientMessageId); setDetailError(''); }
+      else setDetailError('O Core ainda não confirmou o registro. A gravação foi preservada e não será reenviada automaticamente.');
+    } catch { if (!controller.signal.aborted) setDetailError('Não foi possível verificar o envio. Tente verificar novamente.'); }
+    finally { reads.current.delete(controller); }
   }
   function submitComposer(event: FormEvent<HTMLFormElement>) { event.preventDefault(); sendDraft(); }
   async function submitNote(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = noteDraft.trim(); if (!body || !can('notes.create')) return; setActionBusy(true); setDetailError(''); try { const created = await chatApi.createNote(conversationId, body); setNotes((current) => [...current, created]); setNoteDraft(''); } catch (reason) { setDetailError(reason instanceof Error ? reason.message : 'Não foi possível criar a nota.'); } finally { setActionBusy(false); } }
@@ -252,7 +293,7 @@ function ConversationViewContent() {
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
         {messages.length === 0 ? <div className="message-empty">Ainda não há mensagens nesta conversa.</div> : messages.map((message) => <article key={messageScrollKey(message)} data-message-key={messageScrollKey(message)} className={`message-bubble${message.senderUserId === sessionUserId || message.direction === 'OUTBOUND' ? ' own-message' : ''}`}>
-          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <MessageMedia message={message} />}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : message.deliveryOutcome === 'UNKNOWN' ? 'Resultado incerto — aguardando confirmação' : messageStatusLabel[message.status]}</span>{message.status === 'FAILED' && message.deliveryOutcome !== 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
+          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <MessageMedia message={message} />}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : message.deliveryOutcome === 'UNKNOWN' ? 'Resultado incerto — aguardando confirmação' : messageStatusLabel[message.status]}</span>{message.deliveryOutcome === 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void verifyUncertainSend(message.clientMessageId!)}>Verificar envio</button>}{message.status === 'FAILED' && message.deliveryOutcome !== 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
