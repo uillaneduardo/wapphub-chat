@@ -1,3 +1,13 @@
+# Regressão QR — correção publicada em 13/10/2026
+
+**CORRECAO_PUBLICADA — AGUARDANDO_HOMOLOGACAO_REAL.** Chat `wapphub-chat:qrfix-dbab1ae`, [PR27](https://github.com/uillaneduardo/wapphub-chat/pull/27), main funcionaldbab1aec709b9a3026079ad3dbce1d2dabfd7192, publicado com Providerqrfix-06fafb6. Uma leituraREST adicional conserva eventos realtime recebidos durante GET em voo; só uma consulta concorrente, versões/aborts/contexto protegidos, nenhum comando/QR automático ou polling novo. Interface/layout/contratos existentes preservados.
+
+Chat332/332/32arquivos, Core134/134, Provider136/136, lint/typecheck/build/Prisma/OpenAPI e CI heads/mains aprovados. Backup/restauração isolada e Vault real networknone/factory0 comprovados. Seishealthy/smokes/HTTPS/SPA/ativos públicos byte-idênticos à imagem. API/Worker/DB/Redis/demais containers não reiniciados, schema12 mantido. Provider restaura identificaçãoWeb padrão após regressãoDesktop49c2252; SDKrc14 e segurança mantidos.
+
+QA sem autenticação, FAILED/PAIRING_TRANSPORT_CLOSED/attempts9/qrRevision0, pairingEligibletrue/desiredfalse, comandos5→5/Inbox18→18 e Owner/permissões/canal/dados preservados. AntigaFAILED10/credenciais preservadas; envio/mídiafalse, histórico remoto fechado e solicitações1→1. Nenhum QR, logout, recovery, preparo de sessão, envio ou histórico real pelo Codex.
+
+Homologação exclusiva do usuário: abrir https://chat.wapphub.com.br → WappHub QA → Configurações → Provedores → WhatsApp → Vincular WhatsApp uma única vez → visualizar QR real/escanear no celular → confirmar Conectado. Não QR_HOMOLOGADO/B6 concluído. Se falhar, informar somente código/horário; diagnóstico sanitizado permite localizar a fronteira. [Auditoria canônica](https://github.com/uillaneduardo/wapphub-core/blob/main/docs/WHATSAPP_WEB_QR_REGRESSION.md); relatórios20261013-qr-regression/. Registros abaixo são históricos.
+
 # P0 primeiro pareamento QA — publicado em 12/10/2026
 
 **QA_AGUARDANDO_NOVA_TENTATIVA_DE_QR.** Chat `wapphub-chat:firstqr-0a58753`, [PR26](https://github.com/uillaneduardo/wapphub-chat/pull/26), main funcional `0a5875399a2cabb5e6a0633fa67d9448829f514a`, publicado com Core/API e Provider `firstqr-686a852`. Worker permanece `p0link-e6aa1c6`; MariaDB/Redis/demais aplicações e schema 12 preservados. CI dos heads/mains e validação local: Chat 332/332 em 32 arquivos, Core 134/134, Provider 136/136; lint/typecheck/build/Prisma/OpenAPI/drift aprovados.
