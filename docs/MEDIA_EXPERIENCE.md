@@ -1,6 +1,6 @@
 # Experiência de mídia — consolidação B3
 
-Implementação em branch de revisão, **não publicada ou homologada**. A aprovação técnica do [PR25 do Core](https://github.com/uillaneduardo/wapphub-core/pull/25#pullrequestreview-5484867318) inclui vídeo e substitui a exclusão antiga de MVP neste escopo. Progresso canônico e plano B5 estão no Core; não criar acompanhamento paralelo.
+P1 publicado em 13/10,19:33UTC, [PR28](https://github.com/uillaneduardo/wapphub-chat/pull/28)/runtimebaaee36; **aguardando homologação real de mídia**. Core/ProviderPR39/runtime763981a. A aprovação técnica do [PR25 do Core](https://github.com/uillaneduardo/wapphub-core/pull/25#pullrequestreview-5484867318) inclui vídeo e substitui a exclusão antiga de MVP neste escopo. Progresso canônico e plano B5 estão no Core; não criar acompanhamento paralelo.
 
 ## Experiência implementada
 
@@ -18,6 +18,6 @@ Mensagem de envio é PENDING até recibo/echo confirmado. Resultado UNKNOWN não
 
 ## Validação e limites
 
-Jsdom verifica demanda explícita, erro/expiração, cleanup/abort e indisponibilidade da gravação. Core/Provider têm integração SQL/journal e runtime Docker sintético sem rede com imagem/áudio/voz/vídeo e conversão WebM. Não houve browser/Playwright no homelab, upload/envio real ou deploy. Qualidade de gravação/players, layouts e mídias reais dependem de homologação humana após B5 autorizado.
+Jsdom verifica demanda explícita, erro/expiração, cleanup/abort e indisponibilidade da gravação. Core/Provider têm integração SQL/journal e runtime Docker sintético sem rede com imagem/áudio/voz/vídeo e conversão WebM. Não houve browser/Playwright no homelab ou upload/envio real por automação. DeployP1autorizado concluído,346testes/CIverdes, healthy/HTTP200/assets conferidos. Smokes autenticados de mídia/Range na imagemCore comDBtest eSDK/Provider semrede aprovados. Qualidade de gravação/players, layouts e mídias reais dependem de homologação humana após B5 autorizado.
 
 Galeria, gerenciador global de arquivos e storage comercial permanecem fora deste escopo; Demo conserva sua experiência de texto.

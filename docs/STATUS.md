@@ -1,4 +1,4 @@
-> P1 mídias recebidas (13/10): A2 aprovada, implementação em validação; publicação/homologação real pendentes. Retenção segura, cancelamento, erros e players sob demanda no escopo. Sem migration/reset/logout/envio real. Progresso canônico e evidências em wapphub-core/docs/WHATSAPP_WEB_RECEIVED_MEDIA_P1.md. Registros anteriores abaixo são históricos.
+> P1 mídias recebidas publicado13/10,19:33UTC: Chatbaaee36/CoreProvider763981a. **PUBLICADO — AGUARDANDO HOMOLOGAÇÃO REAL DE MÍDIA.** PR28 merged,346/346 e lint/typecheck/build/CI50 verdes, containerhealthy/HTTP200/assets verificados. Progresso/rollback canônicos: wapphub-core/docs/WHATSAPP_WEB_RECEIVED_MEDIA_P1.md. Sem envio/logout/QR por automação.
 
 # Regressão QR — correção publicada em 13/10/2026
 
