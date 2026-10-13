@@ -1,4 +1,4 @@
-import { apiRequest, apiBlob } from './api';
+import { apiRequest, apiBlob, apiMediaSource } from './api';
 import type { Contact, Conversation, CreateConversationResult, CursorPage, DemoContact, InternalNote, InternalTextMessage, Provider, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
 
 export type ConversationScope = 'mine' | 'unassigned' | 'all';
@@ -21,6 +21,7 @@ export const chatApi = {
     return apiRequest<NonNullable<InternalTextMessage['media']>>(`/conversations/${idPath(conversationId)}/media?${query}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file, signal });
   },
   messageMedia: (conversationId: string, messageId: string, signal?: AbortSignal) => apiBlob(`/conversations/${idPath(conversationId)}/messages/${idPath(messageId)}/media`, signal),
+  messageMediaSource: (conversationId: string, messageId: string, signal?: AbortSignal) => apiMediaSource(`/conversations/${idPath(conversationId)}/messages/${idPath(messageId)}/media`, signal),
   listProviders: (signal?: AbortSignal) => apiRequest<{ items: Provider[] }>('/providers', { signal }),
   setDemoProvider: (enabled: boolean) => apiRequest<{ enabled: boolean }>('/providers/demo', { method: 'PUT', body: JSON.stringify({ enabled }) }),
   listDemoContacts: (signal?: AbortSignal) => apiRequest<{ enabled: boolean; items: DemoContact[] }>('/providers/demo/contacts', { signal }),
