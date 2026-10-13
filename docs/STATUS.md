@@ -1,3 +1,5 @@
+> P1 mídias recebidas (13/10): A2 aprovada, implementação em validação; publicação/homologação real pendentes. Retenção segura, cancelamento, erros e players sob demanda no escopo. Sem migration/reset/logout/envio real. Progresso canônico e evidências em wapphub-core/docs/WHATSAPP_WEB_RECEIVED_MEDIA_P1.md. Registros anteriores abaixo são históricos.
+
 # Regressão QR — correção publicada em 13/10/2026
 
 **CORRECAO_PUBLICADA — AGUARDANDO_HOMOLOGACAO_REAL.** Chat `wapphub-chat:qrfix-dbab1ae`, [PR27](https://github.com/uillaneduardo/wapphub-chat/pull/27), main funcionaldbab1aec709b9a3026079ad3dbce1d2dabfd7192, publicado com Providerqrfix-06fafb6. Uma leituraREST adicional conserva eventos realtime recebidos durante GET em voo; só uma consulta concorrente, versões/aborts/contexto protegidos, nenhum comando/QR automático ou polling novo. Interface/layout/contratos existentes preservados.
