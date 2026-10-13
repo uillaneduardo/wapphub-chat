@@ -39,6 +39,34 @@ describe('ConversationView', () => {
     expect(view.container.querySelectorAll('.channel-label')).toHaveLength(0); expect(screen.queryByText('WhatsApp Web')).not.toBeInTheDocument(); expect(screen.queryByText('DEMO')).not.toBeInTheDocument(); expect(screen.queryByText('META')).not.toBeInTheDocument();
     expect(screen.getByText('Maria:').tagName).toBe('STRONG'); expect(screen.getByText(/conteúdo original/)).toBeInTheDocument();
   });
+  it('preserves history, draft and players on an identical session refresh with a fresh permissions array', async () => {
+    mockBase(); vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [message('saved', 'client', 'Persistida')], nextCursor: null });
+    const view = renderDetail(); await screen.findByText('Persistida');
+    const history = screen.getByRole('region', { name: 'Histórico de mensagens' });
+    const draft = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    fireEvent.change(draft, { target: { value: 'Rascunho preservado' } });
+    state.session.permissions = [...state.session.permissions];
+    view.rerender(<MemoryRouter initialEntries={['/app/conversations/conv-1']}><Link to="/app/conversations/conv-2">Outra conversa</Link><Routes><Route path="/app/conversations/:conversationId" element={<ConversationView />} /><Route path="/app/conversations" element={<p>Inbox</p>} /></Routes></MemoryRouter>);
+    await act(async () => {});
+    expect(chatApi.listMessages).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history);
+    expect(screen.getByRole('textbox', { name: 'Escrever mensagem' })).toBe(draft);
+    expect(draft).toHaveValue('Rascunho preservado');
+  });
+  it('keeps messages and the history node while reconnect reconciliation is in flight', async () => {
+    mockBase(); vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [message('saved', 'client', 'Persistida')], nextCursor: null });
+    renderDetail(); await screen.findByText('Persistida');
+    const history = screen.getByRole('region', { name: 'Histórico de mensagens' });
+    let finish!: (value: Conversation) => void;
+    vi.mocked(chatApi.getConversation).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    let reconcile!: Promise<void>;
+    act(() => { reconcile = realtimeBus.reconcile('org-1'); });
+    await waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(screen.getByText('Persistida')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history);
+    await act(async () => { finish(conversation); await reconcile; });
+    expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history);
+  });
   it('keeps WhatsApp Web outbound disabled according to Core capability and identifies device authorship', async () => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', outboundEnabled: false });
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [{ ...message('device', '', 'Texto do aparelho'), senderUserId: null, clientMessageId: null, direction: 'OUTBOUND' }], nextCursor: null });
@@ -184,4 +212,20 @@ describe('ConversationView', () => {
     expect(screen.getByText('Histórico reconciliado')).toBeInTheDocument();
   });
 
+});
+
+it.each(['resolved', 'rejected'])('P1.2 keeps Core DELIVERED when delayed POST is %s after message.updated REST', async outcome => {
+  mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+  let finish!: (value: InternalTextMessage) => void, fail!: (reason: Error) => void;
+  const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
+  const view = renderDetail(); await screen.findByRole('textbox', { name: 'Escrever mensagem' });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Escrever mensagem' }), { target: { value: 'Status sintético' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Enviando');
+  const pending = { ...message('persisted-status', send.mock.calls[0]![1].clientMessageId, 'Status sintético'), status: 'PENDING' as const };
+  vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [{ ...pending, status: 'DELIVERED' }], nextCursor: null });
+  await act(async () => { await realtimeBus.emit({ version: 1, eventId: '17', organizationId: 'org-1', type: 'message.updated', entityId: pending.id, occurredAt: pending.updatedAt, payload: { resourceId: pending.id, conversationId: 'conv-1' } }); });
+  await screen.findByText('Entregue');
+  await act(async () => { if (outcome === 'resolved') finish(pending); else fail(new Error('synthetic lost POST response')); });
+  expect(screen.getByText('Entregue')).toBeInTheDocument(); expect(screen.queryByText('Enviando')).toBeNull(); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1);
+  localStorage.clear(); vi.restoreAllMocks();
 });

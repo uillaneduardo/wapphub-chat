@@ -39,7 +39,9 @@ export function ConversationView() {
 
 function ConversationViewContent() {
   const { conversationId = '' } = useParams(); const navigate = useNavigate(); const location = useLocation(); const { session } = useSession();
-  const permissions = session?.permissions ?? noPermissions; const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
+  const permissions = session?.permissions ?? noPermissions;
+  const permissionKey = [...permissions].sort().join(',');
+  const can = useCallback((permission: string) => permissionKey.split(',').includes(permission), [permissionKey]);
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
   const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
@@ -95,8 +97,11 @@ function ConversationViewContent() {
       cursor = page.nextCursor;
     }
     if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
-    messageCursors.current = cursors;
-    setMessageCursor(pages.at(-1)?.nextCursor ?? null);
+    // Pagination may have appended another page during this read. Keep its cursor.
+    if (reset || messageCursors.current.length === count) {
+      messageCursors.current = cursors;
+      setMessageCursor(pages.at(-1)?.nextCursor ?? null);
+    }
     const incoming = pages.flatMap((page) => page.items);
     const authorizedIds = new Set(incoming.map((message) => message.id));
     setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
@@ -147,7 +152,7 @@ function ConversationViewContent() {
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
     }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
       await bootstrap.current;
-      if (!signal.aborted) { await refreshConversation(signal, true); await refreshTags(signal); }
+      if (!signal.aborted) { await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal, true); await refreshTags(signal); }
     } });
   }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
 
@@ -178,7 +183,7 @@ function ConversationViewContent() {
       const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
       if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) setAttachment(null); }
     }
-    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
+    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId && !['SENT', 'DELIVERED', 'READ'].includes(message.status) ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
     finally { reads.current.delete(controller); pendingSends.current.delete(clientMessageId); }
   }
   function sendDraft() {
