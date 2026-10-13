@@ -229,3 +229,16 @@ it.each(['resolved', 'rejected'])('P1.2 keeps Core DELIVERED when delayed POST i
   expect(screen.getByText('Entregue')).toBeInTheDocument(); expect(screen.queryByText('Enviando')).toBeNull(); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1);
   localStorage.clear(); vi.restoreAllMocks();
 });
+
+
+it('P1.2 rejects a pagination response from before authorization reconciliation without clearing the current view', async () => {
+  mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(chatApi.listMessages).mockResolvedValueOnce({ items: [message('old', 'old-client', 'Antes')], nextCursor: 'old-cursor' });
+  renderDetail(); await screen.findByText('Antes'); const history = screen.getByRole('region', { name: 'Histórico de mensagens' });
+  let finish!: (value: { items: InternalTextMessage[]; nextCursor: null }) => void;
+  vi.mocked(chatApi.listMessages).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValue({ items: [message('new', 'new-client', 'Autorizada agora')], nextCursor: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Carregar mensagens anteriores' })); await waitFor(() => expect(finish).toBeTypeOf('function'));
+  await act(async () => { await realtimeBus.reconcile('org-1'); }); await screen.findByText('Autorizada agora');
+  await act(async () => finish({ items: [message('stale-page', 'stale-client', 'Página anterior ao novo escopo')], nextCursor: null }));
+  expect(screen.queryByText('Página anterior ao novo escopo')).toBeNull(); expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history); localStorage.clear(); vi.restoreAllMocks();
+});

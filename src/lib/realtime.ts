@@ -98,7 +98,11 @@ export class RealtimeClient {
     diagnose({ kind: 'realtime.resume', reason: 'focus', checkpoint: this.checkpoint });
     this.queue = this.queue.then(async () => {
       if (!controller.signal.aborted) await this.options.onReconcile?.(controller.signal);
-    }).catch(() => { if (!controller.signal.aborted) this.socket?.close(); }).finally(() => { this.resuming = false; });
+    }).catch((reason: unknown) => {
+      if (controller.signal.aborted) return;
+      if (reason && typeof reason === 'object' && 'status' in reason && reason.status === 401) { this.close(); this.options.onUnauthorized?.(); }
+      else this.socket?.close();
+    }).finally(() => { this.resuming = false; });
   }
   connect(): void {
     if (this.closed) return;
@@ -121,7 +125,7 @@ export class RealtimeClient {
     const socket = this.socket = new this.Socket(url.toString());
     const armWatchdog = () => {
       if (this.watchdog) this.clearTimer(this.watchdog);
-      this.watchdog = this.setTimer(() => { if (current()) { diagnose({ kind: 'realtime.retry', reason: 'silence', checkpoint: this.checkpoint }); socket.close(); } }, 20_000);
+      this.watchdog = this.setTimer(() => { if (current()) { if (queued > 0) { armWatchdog(); return; } diagnose({ kind: 'realtime.retry', reason: 'silence', checkpoint: this.checkpoint }); socket.close(); } }, 20_000);
     };
     armWatchdog();
     socket.onmessage = (message) => {

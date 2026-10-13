@@ -175,3 +175,19 @@ describe('P1.2 silence, focus and unconfirmed replay', () => {
     expect(reconcile).toHaveBeenCalledTimes(1); expect(FakeSocket.instances).toHaveLength(1); expect(client.lastEventId).toBe('0'); client.close();
   });
 });
+
+
+it('P1.2 expires immediately if focus reconciliation detects REST401', async () => {
+  const expired = vi.fn();
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', onEvent: vi.fn(), onReconcile: () => Promise.reject({ status: 401 }), onUnauthorized: expired, WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); client.resume(); await flushQueue(); expect(expired).toHaveBeenCalledTimes(1); client.close(); FakeSocket.instances = [];
+});
+
+
+it('P1.2 does not interrupt accepted replay while projections are still applying', async () => {
+  vi.useFakeTimers(); let finish!: () => void;
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', lastEventId: '0', onEvent: () => new Promise<void>(resolve => { finish = resolve; }), WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); const socket = FakeSocket.instances[0]!;
+  socket.onmessage?.({ data: JSON.stringify(event('1')) }); socket.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '1', hasMore: false }) }); await flushQueue();
+  vi.advanceTimersByTime(25_000); expect(socket.close).not.toHaveBeenCalled(); finish(); await flushQueue(); expect(client.lastEventId).toBe('1'); client.close(); FakeSocket.instances = []; vi.useRealTimers();
+});

@@ -152,7 +152,7 @@ function ConversationViewContent() {
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
     }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
       await bootstrap.current;
-      if (!signal.aborted) { await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal, true); await refreshTags(signal); }
+      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal, true); await refreshTags(signal); }
     } });
   }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
 

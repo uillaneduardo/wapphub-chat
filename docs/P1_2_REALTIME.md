@@ -57,3 +57,9 @@ status, comparar REST/DOM e logs; atrasar POST/GET e derrubar WS; retornar de fo
 verificar rascunho, conversa, scroll, players e painel lateral; repetir alteração
 real de permissões, troca de tenant e expiração. Reload manual deve reconstruir
 estado autorizado pela API. Mídia automática/lightbox em PR seguinte.
+
+Revisão final: reconciliação invalida respostas de paginação iniciadas antes dela,
+sem abortar uploads/envios ou apagar a vista. REST401 no retorno de foco expira
+sessão imediatamente. Watchdog não interrompe trabalho aceito de replay em voo;
+REST continua limitado pelo realtimeBus/cliente API. Três regressões adicionais
+passam nos focados; CI do novo head repete a suíte completa.
