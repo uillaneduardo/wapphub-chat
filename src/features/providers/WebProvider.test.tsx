@@ -206,7 +206,12 @@ describe('WhatsApp Web provider integration', () => {
     renderCard(); await act(flush); expect(screen.queryByText('Processando solicitação…')).not.toBeInTheDocument(); expect(screen.getByText(/O resultado desta solicitação ainda não foi confirmado/)).toBeInTheDocument();
     await act(async () => { await vi.advanceTimersByTimeAsync(10001); }); let resolve!: (v: {connection: WebConnection}) => void;
     vi.mocked(webProviderApi.read).mockImplementation(() => new Promise(done => { resolve=done; })); fireEvent.focus(window); fireEvent.online(window); fireEvent(document, new Event('visibilitychange')); expect(webProviderApi.read).toHaveBeenCalledTimes(2);
-    await act(async () => { resolve({connection: connection({operation,lastCheckedAt:new Date().toISOString()})}); await flush(); }); expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.create).not.toHaveBeenCalled();
+    await act(async () => { FakeSocket.instances.at(-1)!.event(); await flush(); });
+    expect(webProviderApi.read).toHaveBeenCalledTimes(2); // never concurrent
+    vi.mocked(webProviderApi.read).mockResolvedValue({ connection: connection({ version: 3, operation, lastCheckedAt: new Date().toISOString(), lifecycle: { linked: true, desired: false, recoveryEligible: false } }) });
+    await act(async () => { resolve({connection: connection({operation,lastCheckedAt:new Date().toISOString()})}); await flush(); });
+    expect(webProviderApi.read).toHaveBeenCalledTimes(3); // event wasn't discarded
+    expect(webProviderApi.command).not.toHaveBeenCalled(); expect(webProviderApi.create).not.toHaveBeenCalled(); expect(webProviderApi.qr).not.toHaveBeenCalled();
   });
 
   it('authorizes only text on the selected connection after confirmation, without creating or sending anything', async () => {

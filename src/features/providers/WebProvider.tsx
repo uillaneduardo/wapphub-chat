@@ -70,6 +70,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
   const [connection, setConnection] = useState<WebConnection | null>(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [checkedAt, setCheckedAt] = useState(Date.now()), [queryError, setQueryError] = useState(''), [checking, setChecking] = useState(false), [removedOnPhone, setRemovedOnPhone] = useState(false);
   const reading = useRef<Promise<void> | null>(null), lastRead = useRef(0);
+  const reconcileAgain = useRef(false);
   const [capabilityConfirm, setCapabilityConfirm] = useState(false);
   const [historySummary, setHistorySummary] = useState('Não ativado');
   const [wantsQr, setWantsQr] = useState(true), [qr, setQr] = useState<WebQr | null>(null), [qrLoading, setQrLoading] = useState(false), [expired, setExpired] = useState(false), [confirm, setConfirm] = useState<'disconnect' | 'logout' | 'recover' | 'prepare_link' | null>(null), [live, setLive] = useState('connecting');
@@ -81,7 +82,9 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     current.current = value; setConnection(value);
   }, []);
   const load = useCallback((signal: AbortSignal): Promise<void> => {
-    if (reading.current) return reading.current;
+    // An event arriving during an older GET must still trigger a fresh read.
+    // Keep one request in flight and coalesce later events into one follow-up.
+    if (reading.current) { reconcileAgain.current = true; return reading.current; }
     const sequence = ++readSequence.current; lastRead.current = Date.now(); setChecking(true);
     const task = (async () => {
       try { const value = await webProviderApi.read(signal); if (!signal.aborted && sequence === readSequence.current) { apply(value.connection); setQueryError(''); setCheckedAt(Date.now()); } }
@@ -89,7 +92,11 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
       finally { if (!signal.aborted && sequence === readSequence.current) { setLoading(false); setChecking(false); } }
     })();
     reading.current = task;
-    void task.finally(() => { if (reading.current === task) reading.current = null; }).catch(() => undefined);
+    void task.finally(() => {
+      if (reading.current !== task) return;
+      reading.current = null;
+      if (reconcileAgain.current && !signal.aborted) { reconcileAgain.current = false; void load(signal).catch(() => undefined); }
+    }).catch(() => undefined);
     return task;
   }, [apply]);
   useEffect(() => {
@@ -105,7 +112,7 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
     client.connect(); window.addEventListener('online', online); window.addEventListener('focus', revalidate); document.addEventListener('visibilitychange', revalidate);
     // Bounded REST fallback when unchanged backend metadata emits no realtime.
     const timer = setInterval(revalidate, 30000);
-    return () => { abort.abort(); reading.current = null; client.close(); controller.current = null; clearInterval(timer); window.removeEventListener('online', online); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate); };
+    return () => { abort.abort(); reading.current = null; reconcileAgain.current = false; client.close(); controller.current = null; clearInterval(timer); window.removeEventListener('online', online); window.removeEventListener('focus', revalidate); document.removeEventListener('visibilitychange', revalidate); };
   }, [organizationId, load, expireSession, refreshSession]);
   useEffect(() => {
     setQr(null); setExpired(false);
