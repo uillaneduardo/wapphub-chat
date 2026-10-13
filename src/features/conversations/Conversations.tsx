@@ -6,6 +6,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FormattedMessage } from '../../components/FormattedMessage';
 import { useSession } from '../session/SessionContext';
+import { MediaTransfers } from '../../lib/mediaTransfers';
 import { ApiError } from '../../lib/api';
 import { chatApi } from '../../lib/chatApi';
 import { contactIdentifier } from '../../lib/contactIdentifier';
@@ -50,6 +51,8 @@ function ConversationViewContent() {
   contactNameRef.current = contact?.name;
   const sendIntents = useRef(new Map<string, { body: string; attachment?: Attachment | null; media?: NonNullable<InternalTextMessage['media']> }>());
   const attachmentRetry = useRef<string | null>(null);
+  const [mediaTransfers] = useState(() => new MediaTransfers());
+  useEffect(() => () => mediaTransfers.dispose(), [mediaTransfers]);
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false); const [attachment, setAttachment] = useState<Attachment | null>(null);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
@@ -301,7 +304,7 @@ function ConversationViewContent() {
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
         {messages.length === 0 ? <div className="message-empty">Ainda não há mensagens nesta conversa.</div> : messages.map((message) => <article key={messageScrollKey(message)} data-message-key={messageScrollKey(message)} className={`message-bubble${message.senderUserId === sessionUserId || message.direction === 'OUTBOUND' ? ' own-message' : ''}`}>
-          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <MessageMedia message={message} />}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : message.deliveryOutcome === 'UNKNOWN' ? 'Resultado incerto — aguardando confirmação' : messageStatusLabel[message.status]}</span>{message.deliveryOutcome === 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void verifyUncertainSend(message.clientMessageId!)}>Verificar envio</button>}{message.status === 'FAILED' && message.deliveryOutcome !== 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
+          {(message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderUserId ? message.senderName : null) && <strong className="message-author">{message.direction === 'INBOUND' ? message.senderName ?? conversation.contactName : message.senderName}</strong>}<p>{message.body ? <FormattedMessage body={message.body} /> : message.body}</p>{message.type !== 'TEXT' && <MessageMedia message={message} transfers={mediaTransfers} />}<footer><time>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>{message.direction === 'INBOUND' ? 'Recebida' : message.deliveryOutcome === 'UNKNOWN' ? 'Resultado incerto — aguardando confirmação' : messageStatusLabel[message.status]}</span>{message.deliveryOutcome === 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void verifyUncertainSend(message.clientMessageId!)}>Verificar envio</button>}{message.status === 'FAILED' && message.deliveryOutcome !== 'UNKNOWN' && message.clientMessageId && <button type="button" className="retry-button" onClick={() => void submitMessage(message.body ?? '', message.clientMessageId!)}>Tentar novamente</button>}</footer>
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
