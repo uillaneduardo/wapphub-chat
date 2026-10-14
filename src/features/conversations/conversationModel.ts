@@ -1,3 +1,4 @@
+import { diagnose } from '../../lib/diagnostics';
 import type { Conversation, InternalTextMessage } from '../../types/chat';
 import type { ConversationScope } from '../../lib/chatApi';
 
@@ -14,13 +15,27 @@ export function upsertInboxConversation(items: Conversation[], conversation: Con
   if (!matchesInboxFilter(conversation, filter, currentUserId)) return filtered;
   return [conversation, ...filtered].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt) || b.id.localeCompare(a.id));
 }
+const confirmedRank = { PENDING: 0, FAILED: 0, SENT: 1, DELIVERED: 2, READ: 3 };
+function preferredMessage(previous: InternalTextMessage, incoming: InternalTextMessage): InternalTextMessage {
+  // Local clocks and retries cannot overrule persisted receipt evidence.
+  if (incoming.id.startsWith('optimistic:') && !previous.id.startsWith('optimistic:')) return previous;
+  if (previous.id.startsWith('optimistic:') && !incoming.id.startsWith('optimistic:')) return incoming;
+  const oldRank = confirmedRank[previous.status], newRank = confirmedRank[incoming.status];
+  if (oldRank !== newRank) return oldRank > newRank ? previous : incoming;
+  return previous.updatedAt > incoming.updatedAt ? previous : incoming;
+}
 export function mergeMessages(existing: InternalTextMessage[], incoming: InternalTextMessage[]): InternalTextMessage[] {
-  const merged = new Map(existing.map((message) => [message.id, message]));
-  for (const message of incoming) {
-    const previous = merged.get(message.id);
-    const optimistic = message.clientMessageId ? [...merged.values()].find((candidate) => candidate.clientMessageId === message.clientMessageId) : undefined;
-    if (optimistic) merged.delete(optimistic.id);
-    merged.set(message.id, previous && previous.updatedAt > message.updatedAt ? previous : message);
+  const merged = new Map<string, InternalTextMessage>();
+  const aliases = new Map<string, string>();
+  for (const message of [...existing, ...incoming]) {
+    const alias = message.clientMessageId ? JSON.stringify([message.conversationId, message.senderUserId, message.clientMessageId]) : null;
+    const previousId = alias ? aliases.get(alias) : undefined;
+    const previous = merged.get(message.id) ?? (previousId ? merged.get(previousId) : undefined);
+    const selected = previous ? preferredMessage(previous, message) : message;
+    if (previous && previous.status !== selected.status) diagnose({ kind: 'message.status', from: previous.status, to: selected.status });
+    if (previous) merged.delete(previous.id);
+    merged.set(selected.id, selected);
+    if (alias) aliases.set(alias, selected.id);
   }
   return [...merged.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }

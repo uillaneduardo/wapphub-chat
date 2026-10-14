@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { diagnosticSnapshot } from './diagnostics';
 import { createRealtimeUrl, RealtimeClient } from './realtime';
 
 class FakeSocket {
@@ -147,4 +148,57 @@ describe('P1 replay pressure and policy close', () => {
     client.connect(); const close = FakeSocket.instances[0]!.onclose as unknown as (event: { code: number }) => void;
     close({ code: 1008 }); expect(expired).toHaveBeenCalledTimes(1); vi.advanceTimersByTime(60_000); expect(FakeSocket.instances).toHaveLength(1);
   });
+});
+
+describe('P1.2 silence, focus and unconfirmed replay', () => {
+  afterEach(() => { FakeSocket.instances = []; vi.useRealTimers(); sessionStorage.clear(); });
+  it('reapplies work that ran before a disconnect without a checkpoint', async () => {
+    vi.useFakeTimers(); const apply = vi.fn();
+    const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', lastEventId: '0', onEvent: apply, WebSocketImpl: FakeSocket as unknown as typeof WebSocket, random: () => 0.5 });
+    client.connect(); FakeSocket.instances[0]!.onmessage?.({ data: JSON.stringify(event('1')) }); await flushQueue();
+    FakeSocket.instances[0]!.onclose?.(); vi.advanceTimersByTime(500);
+    FakeSocket.instances[1]!.onmessage?.({ data: JSON.stringify(event('1')) }); await flushQueue();
+    expect(apply).toHaveBeenCalledTimes(2); expect(client.lastEventId).toBe('0'); client.close();
+  });
+  it('recovers a socket with no frames and keeps recovery bounded', async () => {
+    vi.useFakeTimers(); const states = vi.fn();
+    const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', onEvent: vi.fn(), onState: states, WebSocketImpl: FakeSocket as unknown as typeof WebSocket, random: () => 0.5 });
+    client.connect();
+    for (let i = 0; i < 9; i++) { vi.advanceTimersByTime(20_000); if (i < 8) vi.advanceTimersByTime(Math.min(30_000, 500 * 2 ** Math.min(i, 6))); }
+    expect(states).toHaveBeenLastCalledWith('stale'); const count = FakeSocket.instances.length;
+    vi.advanceTimersByTime(120_000); expect(FakeSocket.instances).toHaveLength(count);
+    client.resume(); expect(FakeSocket.instances).toHaveLength(count + 1); client.close();
+  });
+  it('reconciles on focus once without reconnecting or advancing a cursor', async () => {
+    vi.useFakeTimers(); const reconcile = vi.fn();
+    const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', lastEventId: '0', onEvent: vi.fn(), onReconcile: reconcile, WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+    client.connect(); client.resume(); client.resume(); await flushQueue();
+    expect(reconcile).toHaveBeenCalledTimes(1); expect(FakeSocket.instances).toHaveLength(1); expect(client.lastEventId).toBe('0'); client.close();
+  });
+});
+
+
+it('P1.2 expires immediately if focus reconciliation detects REST401', async () => {
+  const expired = vi.fn();
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', onEvent: vi.fn(), onReconcile: () => Promise.reject({ status: 401 }), onUnauthorized: expired, WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); client.resume(); await flushQueue(); expect(expired).toHaveBeenCalledTimes(1); client.close(); FakeSocket.instances = [];
+});
+
+
+it('P1.2 does not interrupt accepted replay while projections are still applying', async () => {
+  vi.useFakeTimers(); let finish!: () => void;
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', lastEventId: '0', onEvent: () => new Promise<void>(resolve => { finish = resolve; }), WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); const socket = FakeSocket.instances[0]!;
+  socket.onmessage?.({ data: JSON.stringify(event('1')) }); socket.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '1', hasMore: false }) }); await flushQueue();
+  vi.advanceTimersByTime(25_000); expect(socket.close).not.toHaveBeenCalled(); finish(); await flushQueue(); expect(client.lastEventId).toBe('1'); client.close(); FakeSocket.instances = []; vi.useRealTimers();
+});
+
+
+it('P1.2 records reconnect codes without retaining private socket reason strings', () => {
+  sessionStorage.setItem('wapphub-chat:diagnostics', '1'); const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', onEvent: vi.fn(), WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); const close = FakeSocket.instances.at(-1)!.onclose as unknown as (event: { code: number; reason: string }) => void;
+  close({ code: 1006, reason: 'PRIVATE_SOCKET_REASON' });
+  expect(diagnosticSnapshot().at(-1)).toMatchObject({ kind: 'realtime.retry', reason: 'closed', closeCode: 1006 });
+  expect(JSON.stringify(diagnosticSnapshot())).not.toContain('PRIVATE_SOCKET_REASON'); client.close(); FakeSocket.instances = []; sessionStorage.removeItem('wapphub-chat:diagnostics'); log.mockRestore();
 });
