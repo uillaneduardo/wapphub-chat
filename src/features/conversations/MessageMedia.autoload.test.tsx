@@ -29,13 +29,13 @@ it('uses the history root, autoloads only visible images and reconstructs them a
   view.unmount(); expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:visible');
   const next = render(<div className="message-history"><MessageMedia message={message} /></div>); expect(read).toHaveBeenCalledTimes(1); show(next); await screen.findByRole('img'); expect(read).toHaveBeenCalledTimes(2);
 });
-it('limits visible image transfers to two, cancels exit and never downloads an offscreen message', async () => {
+it('serializes cold-media transfers, cancels exit and never downloads an offscreen message', async () => {
   const signals: AbortSignal[] = [];
   const read = vi.spyOn(chatApi, 'messageMedia').mockImplementation((_c, _m, signal) => new Promise((_resolve, reject) => { signals.push(signal!); signal!.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError'))); }));
   const pool = new MediaTransfers(); const view = render(<div className="message-history">{[1,2,3,4].map(id => <MessageMedia key={id} transfers={pool} message={{ ...message, id: String(id), media: { ...message.media!, mediaId: String(id) } }} />)}</div>);
   const nodes = view.container.querySelectorAll('.message-media');
-  act(() => { for (const node of [...nodes].slice(0,3)) Observer.instances[0]!.show(node, true); }); expect(read).toHaveBeenCalledTimes(2);
-  act(() => Observer.instances[0]!.show(nodes[0]!, false)); await waitFor(() => expect(read).toHaveBeenCalledTimes(3)); expect(signals[0]!.aborted).toBe(true); expect(read.mock.calls.map(call => call[1])).toEqual(['1','2','3']);
+  act(() => { for (const node of [...nodes].slice(0,3)) Observer.instances[0]!.show(node, true); }); expect(read).toHaveBeenCalledTimes(1);
+  act(() => Observer.instances[0]!.show(nodes[0]!, false)); await waitFor(() => expect(read).toHaveBeenCalledTimes(2)); expect(signals[0]!.aborted).toBe(true); expect(read.mock.calls.map(call => call[1])).toEqual(['1','2']);
   view.unmount(); pool.dispose();
 });
 it('cancels a tenant response and does not create a URL for late private bytes', async () => {

@@ -10,7 +10,7 @@ const cancelled = () => new DOMException('Media transfer cancelled', 'AbortError
 export class MediaTransfers {
   private entries = new Map<string, Entry>(); private queue: Entry[] = [];
   private active = 0; private bytes = 0; private retainedBytes = 0; private disposing = false;
-  constructor(private readonly concurrency = 2, private readonly maximumBytes = 32 * 1024 * 1024) {}
+  constructor(private readonly concurrency = 1, private readonly maximumBytes = 32 * 1024 * 1024) {}
   acquire(key: string, bytes: number, load: Entry['load'], metadata = false, retain = !metadata): MediaLease {
     let entry = this.entries.get(key);
     if (!entry) {

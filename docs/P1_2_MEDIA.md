@@ -11,7 +11,7 @@ entrada carrega imagem ou prepara URL Core autenticada via Range0-0 para players
 Sem suporte ao observer, permanece ação manual acessível. Refresh completo
 reconstrói fontes das mensagens autorizadas e visíveis pela API, sem bytes em storage.
 
-Fila da conversa aceita duas transferências e reserva até32MiB de arquivos em voo,
+Fila da conversa aceita uma transferência por vez (limite remoto atual do Provider) e reserva até32MiB de arquivos em voo,
 considerando tamanho completo de áudio/vídeo mesmo para metadados. Autoload nativo
 usa preload=metadata, muda para none após metadados, segura admissão até idle/suspend,
 tem prazo30s e nunca autoplay. Reprodução solicitada pelo usuário usa streaming/Range
@@ -45,7 +45,7 @@ Arquivos: MessageMedia.tsx/MediaLightbox.tsx/media.css, Conversations.tsx (pool 
 lib/mediaTransfers.ts/mediaVisibility.ts, styles/tokens.css e testes do pool/autoload.
 Nenhum contrato REST/realtime/schema/dependência alterado. Média de requests para
 duas representações simultâneas do mesmo mediaId:2→1 em teste; fonte nativa nunca
-faz apiBlob automático. Limite concorrência2 e byte budget/cancel/cleanup testados.
+faz apiBlob automático. Limite padrão de concorrência1 (configuração2 também testada no pool) e byte budget/cancel/cleanup testados.
 
 Validação inicial:372/372 em36 arquivos, lint/typecheck/build. Doze casos novos
 cobrem root/visibilidade, remount/manual refresh, mesmo status sem substituir player,
@@ -61,10 +61,16 @@ aba retorna. Pode voltar imagem media-p1-baaee362cc16 com regressões anteriores
 Sem SQL/filas/Vault/auth ou dados persistidos para restaurar.
 
 Homologação no notebook após autorização: carregar conversa longa com DevTools
-Network; mídias fora do viewport não são buscadas, scroll ativa no máximo dois
-preparos e interrompe os dispensados. Refresh manual reconstrói mídias visíveis;
+Network; mídias fora do viewport não são buscadas, scroll ativa no máximo um
+preparo e interrompe os dispensados. Refresh manual reconstrói mídias visíveis;
 áudio/vídeo só preparam metadados, controles/seek/velocidade e reprodução por gesto.
 Ampliar imagem/vídeo sem outra aba, Escape/Tab/ShiftTab/foco/zoom/fit/download,
 mobile. Testar erro/retry, scroll durante playback/modal, tenant/permissão alterados
 com mídia em voo e status realtime/rascunho/painel preservados. Validar codecs e
 comportamento de metadata/Range em browsers reais; jsdom não reproduz decodificação.
+
+Revisão final alinha cold loads ao guard global de uma transferência remota do
+Provider, evitando429MEDIA_BUSY gerado por duas mídias visíveis concorrentes.
+Reprodução explícita libera admissão de metadados e seu timer, para não cancelar
+um áudio/vídeo em reprodução por ter ultrapassado30s de download/buffering.
+A revisão final PR30 foi incorporada antes da CI/suíte finais.
