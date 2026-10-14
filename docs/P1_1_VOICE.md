@@ -32,3 +32,8 @@ Confirmação tardia de um envio antigo nunca apaga uma gravação nova selecion
 MediaRecorder libera handlers, chunks e referências ao stream ao concluir;
 prévia autorizada permanece até sucesso, descarte ou saída da conversa.
 Duas regressões adicionais cobrem descarte e confirmação após substituição.
+
+Após integrar a revisão final realtime (incluindo Core GET/readScope), a suíte
+completa da branch de voz passou370/370 em34arquivos. Duas regressões adicionais
+verificam descarte e confirmação após substituição. CI e os SHAs finais ficam
+no progresso/evidência de entrega do Core; permanece sem publicação.
