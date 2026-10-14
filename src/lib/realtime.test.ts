@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { diagnosticSnapshot } from './diagnostics';
 import { createRealtimeUrl, RealtimeClient } from './realtime';
 
 class FakeSocket {
@@ -190,4 +191,14 @@ it('P1.2 does not interrupt accepted replay while projections are still applying
   client.connect(); const socket = FakeSocket.instances[0]!;
   socket.onmessage?.({ data: JSON.stringify(event('1')) }); socket.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '1', hasMore: false }) }); await flushQueue();
   vi.advanceTimersByTime(25_000); expect(socket.close).not.toHaveBeenCalled(); finish(); await flushQueue(); expect(client.lastEventId).toBe('1'); client.close(); FakeSocket.instances = []; vi.useRealTimers();
+});
+
+
+it('P1.2 records reconnect codes without retaining private socket reason strings', () => {
+  sessionStorage.setItem('wapphub-chat:diagnostics', '1'); const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+  const client = new RealtimeClient({ url: 'ws://local.test', organizationId: 'org-1', onEvent: vi.fn(), WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+  client.connect(); const close = FakeSocket.instances.at(-1)!.onclose as unknown as (event: { code: number; reason: string }) => void;
+  close({ code: 1006, reason: 'PRIVATE_SOCKET_REASON' });
+  expect(diagnosticSnapshot().at(-1)).toMatchObject({ kind: 'realtime.retry', reason: 'closed', closeCode: 1006 });
+  expect(JSON.stringify(diagnosticSnapshot())).not.toContain('PRIVATE_SOCKET_REASON'); client.close(); FakeSocket.instances = []; sessionStorage.removeItem('wapphub-chat:diagnostics'); log.mockRestore();
 });

@@ -242,3 +242,16 @@ it('P1.2 rejects a pagination response from before authorization reconciliation 
   await act(async () => finish({ items: [message('stale-page', 'stale-client', 'Página anterior ao novo escopo')], nextCursor: null }));
   expect(screen.queryByText('Página anterior ao novo escopo')).toBeNull(); expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history); localStorage.clear(); vi.restoreAllMocks();
 });
+
+
+it('P1.2 preserves loaded authorized notes during reconnect reconciliation', async () => {
+  mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+  const recent = { id: 'recent-note', authorUserId: 'user-1', body: 'Nota recente', createdAt: '2026-10-13T00:00:02Z' };
+  const older = { ...recent, id: 'older-note', body: 'Nota anterior carregada', createdAt: '2026-10-13T00:00:01Z' };
+  vi.mocked(chatApi.listNotes).mockResolvedValueOnce({ items: [recent], nextCursor: 'notes-old' }).mockResolvedValueOnce({ items: [older], nextCursor: null });
+  renderDetail(); await screen.findByText('Nota recente'); fireEvent.click(screen.getByRole('button', { name: 'Carregar notas anteriores' }));
+  const node = await screen.findByText('Nota anterior carregada');
+  vi.mocked(chatApi.listNotes).mockResolvedValueOnce({ items: [recent], nextCursor: 'notes-old' }).mockResolvedValueOnce({ items: [older], nextCursor: null });
+  await act(async () => { await realtimeBus.reconcile('org-1'); }); expect(screen.getByText('Nota anterior carregada')).toBe(node); expect(chatApi.listNotes).toHaveBeenCalledTimes(4);
+  localStorage.clear(); vi.restoreAllMocks();
+});

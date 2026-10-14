@@ -1,6 +1,6 @@
 import type { MessageStatus } from '../types/chat';
 
-type Diagnostic = { kind: 'document.start' | 'document.leave' | 'shell.mount' | 'shell.unmount' | 'realtime.connect' | 'realtime.event' | 'realtime.checkpoint' | 'realtime.retry' | 'realtime.resume' | 'message.status'; reason?: 'manual' | 'online' | 'focus' | 'silence' | 'closed' | 'failure'; eventId?: string; checkpoint?: string; from?: MessageStatus; to?: MessageStatus };
+type Diagnostic = { kind: 'document.start' | 'document.leave' | 'shell.mount' | 'shell.unmount' | 'realtime.connect' | 'realtime.event' | 'realtime.checkpoint' | 'realtime.retry' | 'realtime.resume' | 'message.status'; reason?: 'manual' | 'online' | 'focus' | 'silence' | 'closed' | 'failure' | 'permissions' | 'unauthorized'; closeCode?: number; eventId?: string; checkpoint?: string; from?: MessageStatus; to?: MessageStatus };
 const instanceId = globalThis.crypto?.randomUUID?.() ?? String(Date.now());
 const records: (Diagnostic & { instanceId: string; at: number; navigationType: string })[] = [];
 const navigationType = (performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined)?.type ?? 'unknown';

@@ -63,3 +63,9 @@ sem abortar uploads/envios ou apagar a vista. REST401 no retorno de foco expira
 sessão imediatamente. Watchdog não interrompe trabalho aceito de replay em voo;
 REST continua limitado pelo realtimeBus/cliente API. Três regressões adicionais
 passam nos focados; CI do novo head repete a suíte completa.
+
+Revisão do contexto lateral: páginas de notas já carregadas são reconsultadas e
+mescladas com o mesmo limite/epoch do histórico, em vez de perder as páginas mais
+antigas a cada reconexão. Registros fora da autorização atual são removidos.
+Diagnóstico de reconnect inclui reason/code técnicos; reason bruto do socket
+nunca é registrado. Regressões adicionais de notas e privacidade passaram.

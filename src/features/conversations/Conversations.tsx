@@ -53,6 +53,8 @@ function ConversationViewContent() {
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
   const contentEpoch = useRef(0);
+  const noteCursors = useRef<(string | undefined)[]>([undefined]);
+  const notesRef = useRef(notes); notesRef.current = notes;
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const reads = useRef(new Set<AbortController>());
@@ -60,7 +62,7 @@ function ConversationViewContent() {
   useEffect(() => { const requests = reads.current; mounted.current = true; return () => { mounted.current = false; requests.forEach((read) => read.abort()); }; }, []);
 
   useEffect(() => {
-    let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); setNotesCursor(null); setTags([]);
+    let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); noteCursors.current = [undefined]; setNotesCursor(null); setTags([]);
     bootstrap.current = chatApi.getConversation(conversationId, controller.signal).then(async (current) => {
       if (!active) return; setConversation(current);
       const tasks = await Promise.allSettled([
@@ -108,11 +110,17 @@ function ConversationViewContent() {
   }, [conversationId, can]);
   const refreshNotes = useCallback(async (signal?: AbortSignal, reset = false) => {
     if (!can('notes.read')) { setNotes([]); return; }
-    const requestEpoch = contentEpoch.current;
-    const page = await chatApi.listNotes(conversationId, undefined, signal);
-    if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
-    setNotes((current) => [...page.items, ...(reset ? [] : current.filter((note) => !page.items.some((incoming) => incoming.id === note.id)))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
-    setNotesCursor(page.nextCursor);
+    const requestEpoch = contentEpoch.current, count = reset ? 1 : noteCursors.current.length;
+    const previousIds = new Set(notesRef.current.map(note => note.id));
+    const pages: CursorPage<InternalNote>[] = [], cursors: (string | undefined)[] = []; let cursor: string | undefined;
+    for (let i = 0; i < count; i++) {
+      cursors.push(cursor); const page = await chatApi.listNotes(conversationId, cursor, signal);
+      if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
+      pages.push(page); if (!page.nextCursor) break; cursor = page.nextCursor;
+    }
+    if (reset || noteCursors.current.length === count) { noteCursors.current = cursors; setNotesCursor(pages.at(-1)?.nextCursor ?? null); }
+    const incoming = pages.flatMap(page => page.items), ids = new Set(incoming.map(note => note.id));
+    setNotes(current => [...incoming, ...(reset ? [] : current.filter(note => !ids.has(note.id) && !previousIds.has(note.id)))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
   }, [conversationId, can]);
   const refreshTags = useCallback(async (signal?: AbortSignal) => {
     if (can('tags.read')) { const page = await chatApi.listTags(undefined, signal); if (!signal?.aborted && mounted.current) setTags(page.items); }
@@ -121,7 +129,7 @@ function ConversationViewContent() {
   const prepareHistoryUpdate = scroll.preparePrepend;
   useEffect(() => {
     const refreshConversation = async (signal: AbortSignal, reset: boolean) => {
-      if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
+      if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); noteCursors.current = [undefined]; messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
       try {
         const updated = await chatApi.getConversation(conversationId, signal);
         if (signal.aborted) return;
@@ -152,7 +160,7 @@ function ConversationViewContent() {
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
     }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
       await bootstrap.current;
-      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal, true); await refreshTags(signal); }
+      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal); await refreshTags(signal); }
     } });
   }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
 
@@ -198,7 +206,7 @@ function ConversationViewContent() {
     if (!notesCursor || loadingMoreNotes) return;
     const requestEpoch = contentEpoch.current; const controller = new AbortController(); reads.current.add(controller);
     setLoadingMoreNotes(true);
-    try { const page = await chatApi.listNotes(conversationId, notesCursor, controller.signal); if (controller.signal.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return; setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); }
+    try { const page = await chatApi.listNotes(conversationId, notesCursor, controller.signal); if (controller.signal.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return; setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); noteCursors.current = [...noteCursors.current, notesCursor]; }
     catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); }
     finally { reads.current.delete(controller); if (mounted.current) setLoadingMoreNotes(false); }
   }

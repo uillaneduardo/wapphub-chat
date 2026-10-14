@@ -171,6 +171,7 @@ export class RealtimeClient {
     };
     socket.onclose = (event) => {
       if (!current()) return;
+      diagnose({ kind: 'realtime.retry', reason: event?.code === 4003 ? 'permissions' : event?.code === 1008 ? 'unauthorized' : 'closed', checkpoint: this.checkpoint, ...(typeof event?.code === 'number' ? { closeCode: event.code } : {}) });
       controller.abort();
       if (this.watchdog) this.clearTimer(this.watchdog); this.watchdog = undefined;
       // A policy close needs a fresh authenticated context, not unlimited retry.
