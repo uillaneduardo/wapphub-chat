@@ -74,3 +74,10 @@ Provider, evitando429MEDIA_BUSY gerado por duas mídias visíveis concorrentes.
 Reprodução explícita libera admissão de metadados e seu timer, para não cancelar
 um áudio/vídeo em reprodução por ter ultrapassado30s de download/buffering.
 A revisão final PR30 foi incorporada antes da CI/suíte finais.
+
+Validação final integrada:382/382 em36arquivos; lint/typecheck/build aprovados.
+Rebase final sobre Chatvoz1ff5d7a/Chatrealtimeeab33a7; contrato CorePR42.
+JS538,04kB/gzip169,05kB; CSS52,25kB/gzip9,62kB (aviso >500kB preexistente).
+Comparação com branch realtime: +10,85kB JS/minificado, +3,30kB gzip para voz+
+autoload/viewer; sem dependências novas. CI dos heads finais e números de PR
+constam no relatório/progresso Core, sem homologação visual simulada.
