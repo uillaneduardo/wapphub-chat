@@ -25,3 +25,10 @@ Rollback: reverter apenas este commit Chat preservando correção realtime PR30;
 sem DB/filas/sessão. Pode voltar imagem publicada baaee36, reintroduzindo também
 as corridas realtime. Homologar gravação curta e1min, falha/retry, UNKNOWN,
 negação/troca de tenant e imagem/vídeo/áudio anteriores.
+
+Revisão de limpeza: descarte explícito remove a referência ao File e o intent
+local que falhou antes de persistir, preservando linhas UNKNOWN já submetidas.
+Confirmação tardia de um envio antigo nunca apaga uma gravação nova selecionada.
+MediaRecorder libera handlers, chunks e referências ao stream ao concluir;
+prévia autorizada permanece até sucesso, descarte ou saída da conversa.
+Duas regressões adicionais cobrem descarte e confirmação após substituição.
