@@ -22,7 +22,7 @@ export function MediaComposer({ attachment, onChange, disabled }: { attachment: 
       stream.current = media; const instance = new MediaRecorder(media, { mimeType: 'audio/webm;codecs=opus' }); recorder.current = instance;
       const chunks: Blob[] = []; let bytes = 0, rejected = false; const timer = setTimeout(() => { if (instance.state === 'recording') instance.stop(); }, 600000);
       instance.ondataavailable = event => { bytes += event.data.size; if (bytes > 16 * 1024 * 1024) { rejected = true; if (instance.state === 'recording') instance.stop(); } else chunks.push(event.data); };
-      instance.onstop = () => { clearTimeout(timer); media.getTracks().forEach(track => track.stop()); if (!active.current) return; setRecording(false); if (rejected) setError('A gravação atingiu o limite de segurança.'); else select(new File(chunks, 'mensagem-de-voz.webm', { type: 'audio/webm' }), true); };
+      instance.onstop = () => { clearTimeout(timer); media.getTracks().forEach(track => track.stop()); const file = !rejected && active.current ? new File(chunks, 'mensagem-de-voz.webm', { type: 'audio/webm' }) : undefined; chunks.length = 0; instance.ondataavailable = null; instance.onstop = null; if (recorder.current === instance) recorder.current = null; if (stream.current === media) stream.current = null; if (!active.current) return; setRecording(false); if (rejected) setError('A gravação atingiu o limite de segurança.'); else select(file, true); };
       instance.start(1000); setRecording(true); setError('');
     } catch { if (active.current) setError('Não foi possível acessar o microfone.'); }
   }

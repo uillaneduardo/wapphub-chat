@@ -315,7 +315,7 @@ it.each(['upload', 'message'])('P1.1 retains the recording and reuses intent and
   delete (navigator as unknown as { mediaDevices?: unknown }).mediaDevices; localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
-it('P1.1 does not submit a new voice intent when POST response is UNKNOWN; verifies via REST', async () => {
+it.each([false, true])('P1.1 UNKNOWN confirmation preserves a replacement recording=%s without resending', async replaced => {
   mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
   vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
   const media = { mediaId: 'voice-unknown', type: 'VOICE', mimeType: 'audio/ogg', fileName: 'voice.ogg', size: 10, state: 'READY' };
@@ -330,9 +330,24 @@ it('P1.1 does not submit a new voice intent when POST response is UNKNOWN; verif
   await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
   expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(screen.getByLabelText('Prévia do áudio')).toBeInTheDocument();
+  if (replaced) { fireEvent.click(screen.getByRole('button', { name: 'Descartar anexo' })); fireEvent.change(input, { target: { files: [new File(['second'], 'nova-gravacao.webm', { type: 'audio/webm' })] } }); }
   const saved = { ...message('unknown-persisted', send.mock.calls[0]![1].clientMessageId, ''), status: 'DELIVERED' as const, direction: 'OUTBOUND' as const, type: 'AUDIO' as const, media };
   vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [saved], nextCursor: null });
   fireEvent.click(screen.getByRole('button', { name: 'Verificar envio' })); await screen.findByText('Entregue');
-  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1); expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
+  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1); if (replaced) expect(screen.getByText('nova-gravacao.webm')).toBeInTheDocument(); else expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
   localStorage.clear(); vi.restoreAllMocks();
+});
+
+it('P1.1 explicit discard removes the failed local intent and allows a fresh attachment', async () => {
+ mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+ vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+ const upload = vi.spyOn(chatApi, 'uploadMedia').mockRejectedValue(new ApiError(503, 'server', 'MEDIA_UPLOAD_FAILED', 'MEDIA_UPLOAD_FAILED'));
+ const send = vi.spyOn(chatApi, 'sendMessage');
+ Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:preview') }); Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+ const view = renderDetail(); await screen.findByRole('button', { name: 'Anexar mídia' }); const input = view.container.querySelector('input[type=file]')!;
+ fireEvent.change(input, { target: { files: [new File(['voice'], 'discard.webm', { type: 'audio/webm' })] } });
+ fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
+ fireEvent.click(screen.getByRole('button', { name: 'Descartar anexo' })); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(0); expect(screen.queryByText('discard.webm')).toBeNull();
+ fireEvent.change(input, { target: { files: [new File(['new'], 'new.webm', { type: 'audio/webm' })] } }); fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
+ expect(upload).toHaveBeenCalledTimes(2); expect(upload.mock.calls[1]![1].name).toBe('new.webm'); expect(send).not.toHaveBeenCalled(); localStorage.clear(); vi.restoreAllMocks();
 });

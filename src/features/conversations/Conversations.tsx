@@ -246,6 +246,14 @@ function ConversationViewContent() {
       attachmentRetry.current = null; sendIntents.current.delete(clientId);
     }
   }, [messages]);
+  function changeAttachment(next: Attachment | null) {
+    const clientId = attachmentRetry.current;
+    if (clientId && sendIntents.current.get(clientId)?.attachment?.file !== next?.file) {
+      sendIntents.current.delete(clientId); attachmentRetry.current = null;
+      setMessages(current => current.filter(message => !(message.clientMessageId === clientId && message.id.startsWith('optimistic:') && message.status === 'FAILED')));
+    }
+    setAttachment(next);
+  }
   function sendDraft() {
     if (composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
     composerBusy.current = true; setSending(true); const body = draft; setDraft('');
@@ -265,7 +273,7 @@ function ConversationViewContent() {
       if (controller.signal.aborted || !mounted.current) return;
       setMessages(current => mergeMessages(current, page.items));
       const confirmed = page.items.find(message => message.clientMessageId === clientMessageId);
-      if (confirmed) { setAttachment(null); attachmentRetry.current = null; sendIntents.current.delete(clientMessageId); setDetailError(''); }
+      if (confirmed) { const intent = sendIntents.current.get(clientMessageId); setAttachment(current => intent?.attachment && current?.file === intent.attachment.file ? null : current); if (attachmentRetry.current === clientMessageId) attachmentRetry.current = null; sendIntents.current.delete(clientMessageId); setDetailError(''); }
       else setDetailError('O Core ainda não confirmou o registro. A gravação foi preservada e não será reenviada automaticamente.');
     } catch { if (!controller.signal.aborted) setDetailError('Não foi possível verificar o envio. Tente verificar novamente.'); }
     finally { reads.current.delete(controller); }
@@ -297,7 +305,7 @@ function ConversationViewContent() {
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
-      {can('messages.send') && conversation.outboundEnabled !== false && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer">{conversation.mediaEnabled && <MediaComposer attachment={attachment} onChange={setAttachment} disabled={sending || conversation.status === 'ARCHIVED'} />}<ComposerTools mediaEnabled={conversation.mediaEnabled} /><div className="composer-send-controls"><button className="primary-button" disabled={sending || (!draft.trim() && !attachment) || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
+      {can('messages.send') && conversation.outboundEnabled !== false && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer">{conversation.mediaEnabled && <MediaComposer attachment={attachment} onChange={changeAttachment} disabled={sending || conversation.status === 'ARCHIVED'} />}<ComposerTools mediaEnabled={conversation.mediaEnabled} /><div className="composer-send-controls"><button className="primary-button" disabled={sending || (!draft.trim() && !attachment) || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
       {conversation.outboundEnabled === false && <p className="provider-warning" role="status">Envio indisponível nesta conversa. O histórico autorizado permanece acessível.</p>}
     </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
       {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}
