@@ -50,7 +50,7 @@ preexistente de chunk >500 kB, sem falha. Sem benchmark de carga comercial.
 
 Rollback: reverter imagem Chat para `wapphub-chat:media-p1-baaee362cc16`, mantendo
 Core/Provider, banco, histórico, sessões e filas. Reintroduz as corridas corrigidas.
-Sem schema, contratos públicos, dependências ou dados persistidos novos.
+Sem schema, dependências ou dados persistidos novos. Contrato aditivo Core: GET de mensagem por ID e readScope de Conversation.
 
 Homologação no notebook após publicação autorizada: observar progressão real dos
 status, comparar REST/DOM e logs; atrasar POST/GET e derrubar WS; retornar de foco;
@@ -69,3 +69,25 @@ mescladas com o mesmo limite/epoch do histórico, em vez de perder as páginas m
 antigas a cada reconexão. Registros fora da autorização atual são removidos.
 Diagnóstico de reconnect inclui reason/code técnicos; reason bruto do socket
 nunca é registrado. Regressões adicionais de notas e privacidade passaram.
+
+Revisão da janela REST: comprovado em teste que avançar a página retirava um
+registro antigo ainda carregado (e seu player). Core adiciona GET
+`/conversations/:id/messages/:messageId`, com o mesmo RBAC, tenancy, piso de
+visibilidade e fronteira histórica da listagem. Eventos de mensagem consultam
+apenas esse ID; erros transitórios impedem confirmação do checkpoint. Um Core
+anterior (404 NOT_FOUND de rota) mantém a reconciliação conservadora anterior.
+
+`Conversation.readScope` é um hash opaco do escopo efetivo de leitura. Não é
+credencial e não autoriza requisições. Quando permanece igual, páginas REST
+podem avançar sem apagar registros já autorizados; quando muda, conteúdo é
+invalidado e reconstruído. Transferências/atribuições continuam invalidando
+imediatamente. Foco/reconnect verificam até oito PENDING persistidos visíveis
+por ID, sem timer de polling. Paginação preserva corridas e permite percorrer
+fronteiras deslocadas sem duplicar linhas. Notas seguem a mesma invalidação.
+Três testes adicionais comprovam consulta pontual, estabilidade do elemento,
+retenção de página antiga e remoção após mudança real de escopo.
+
+Validação final: 365/365 em34arquivos, lint/typecheck/build aprovados;
+29/29 ConversationView repetidos após limpeza de mocks. JS527,19kB/gzip165,75kB,
+CSS50,54kB/gzip9,34kB; aviso preexistente >500kB. Core PR42 fornece o contrato
+aditivo (156/156 + checks), empilhado sobre Core PR41. Chat PR30 permanece draft.

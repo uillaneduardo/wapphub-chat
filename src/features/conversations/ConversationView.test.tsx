@@ -1,3 +1,4 @@
+import { ApiError } from '../../lib/api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -18,6 +19,7 @@ function emitMessage(conversationId = 'conv-1', type: ChatEventType = 'message.c
   act(() => { void realtimeBus.emit({ version: 1, eventId: 'scroll-event', organizationId, type, entityId: 'new-message', occurredAt: '2026-10-08T00:00:02Z', payload: { resourceId: 'new-message', conversationId } }); });
 }
 function mockBase() {
+  vi.spyOn(chatApi, 'getMessage').mockRejectedValue(new ApiError(404, 'http', 'NOT_FOUND', 'NOT_FOUND'));
   vi.spyOn(chatApi, 'getConversation').mockResolvedValue(conversation); vi.spyOn(chatApi, 'getContact').mockResolvedValue(contact);
   vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [], nextCursor: null }); vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null }); vi.spyOn(chatApi, 'listNotes').mockResolvedValue({ items: [], nextCursor: null });
 }
@@ -255,3 +257,24 @@ it('P1.2 preserves loaded authorized notes during reconnect reconciliation', asy
   await act(async () => { await realtimeBus.reconcile('org-1'); }); expect(screen.getByText('Nota anterior carregada')).toBe(node); expect(chatApi.listNotes).toHaveBeenCalledTimes(4);
   localStorage.clear(); vi.restoreAllMocks();
 });
+
+ it('P1.2 point receipts update an older row without replacing history or querying pages', async () => {
+   mockBase(); vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, readScope: 'scope-a' });
+   const pending = { ...message('older-row', 'stable-client', 'Voz antiga'), status: 'PENDING' as const };
+   vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [pending], nextCursor: null });
+   vi.mocked(chatApi.getMessage).mockResolvedValue({ ...pending, status: 'DELIVERED' });
+   renderDetail(); await screen.findByText('Enviando');
+   const node = screen.getByText('Voz antiga').closest('article');
+   await act(async () => { await realtimeBus.emit({ version: 1, eventId: 'point-1', organizationId: 'org-1', type: 'message.updated', entityId: pending.id, occurredAt: pending.updatedAt, payload: { resourceId: pending.id, conversationId: 'conv-1' } }); });
+   expect(screen.getByText('Entregue')).toBeInTheDocument(); expect(screen.getByText('Voz antiga').closest('article')).toBe(node);
+   expect(chatApi.listMessages).toHaveBeenCalledTimes(1); expect(chatApi.getMessage).toHaveBeenCalledWith('conv-1', pending.id, expect.any(AbortSignal)); localStorage.clear(); vi.restoreAllMocks();
+ });
+ it.each([false, true])('P1.2 revalidation with scope changed=%s retains only authorized loaded rows', async changed => {
+   mockBase(); vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, readScope: 'scope-a' });
+   vi.mocked(chatApi.listMessages).mockResolvedValueOnce({ items: [message('older', 'older-client', 'Página carregada')], nextCursor: null }).mockResolvedValue({ items: [message('new', 'new-client', 'Janela nova')], nextCursor: null });
+   renderDetail(); await screen.findByText('Página carregada'); const node = screen.getByText('Página carregada').closest('article');
+   vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, readScope: changed ? 'scope-b' : 'scope-a' });
+   await act(async () => { await realtimeBus.reconcile('org-1'); });
+   await screen.findByText('Janela nova');
+   if (changed) expect(screen.queryByText('Página carregada')).not.toBeInTheDocument(); else expect(screen.getByText('Página carregada').closest('article')).toBe(node); localStorage.clear(); vi.restoreAllMocks();
+ });

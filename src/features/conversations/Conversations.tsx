@@ -6,6 +6,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FormattedMessage } from '../../components/FormattedMessage';
 import { useSession } from '../session/SessionContext';
+import { ApiError } from '../../lib/api';
 import { chatApi } from '../../lib/chatApi';
 import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -53,6 +54,7 @@ function ConversationViewContent() {
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
   const contentEpoch = useRef(0);
+  const readScope = useRef<string | undefined>(undefined);
   const noteCursors = useRef<(string | undefined)[]>([undefined]);
   const notesRef = useRef(notes); notesRef.current = notes;
   const messagesRef = useRef(messages);
@@ -64,7 +66,7 @@ function ConversationViewContent() {
   useEffect(() => {
     let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); noteCursors.current = [undefined]; setNotesCursor(null); setTags([]);
     bootstrap.current = chatApi.getConversation(conversationId, controller.signal).then(async (current) => {
-      if (!active) return; setConversation(current);
+      if (!active) return; readScope.current = current.readScope; setConversation(current);
       const tasks = await Promise.allSettled([
         can('contacts.read') ? chatApi.getContact(current.contactId, controller.signal) : Promise.resolve(null),
         can('messages.read') ? chatApi.listMessages(conversationId, undefined, controller.signal) : Promise.resolve(null),
@@ -106,7 +108,7 @@ function ConversationViewContent() {
     }
     const incoming = pages.flatMap((page) => page.items);
     const authorizedIds = new Set(incoming.map((message) => message.id));
-    setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
+    setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => Boolean(readScope.current) || message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
   }, [conversationId, can]);
   const refreshNotes = useCallback(async (signal?: AbortSignal, reset = false) => {
     if (!can('notes.read')) { setNotes([]); return; }
@@ -120,7 +122,7 @@ function ConversationViewContent() {
     }
     if (reset || noteCursors.current.length === count) { noteCursors.current = cursors; setNotesCursor(pages.at(-1)?.nextCursor ?? null); }
     const incoming = pages.flatMap(page => page.items), ids = new Set(incoming.map(note => note.id));
-    setNotes(current => [...incoming, ...(reset ? [] : current.filter(note => !ids.has(note.id) && !previousIds.has(note.id)))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+    setNotes(current => [...incoming, ...(reset ? [] : current.filter(note => !ids.has(note.id) && (Boolean(readScope.current) || !previousIds.has(note.id))))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
   }, [conversationId, can]);
   const refreshTags = useCallback(async (signal?: AbortSignal) => {
     if (can('tags.read')) { const page = await chatApi.listTags(undefined, signal); if (!signal?.aborted && mounted.current) setTags(page.items); }
@@ -133,7 +135,11 @@ function ConversationViewContent() {
       try {
         const updated = await chatApi.getConversation(conversationId, signal);
         if (signal.aborted) return;
-        setConversation(updated); setError('');
+        if (!reset && readScope.current !== updated.readScope) {
+          reset = true; contentEpoch.current += 1; reads.current.forEach(read => read.abort());
+          setMessages([]); setNotes([]); messageCursors.current = [undefined]; noteCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null);
+        }
+        readScope.current = updated.readScope; setConversation(updated); setError('');
         if (!reset && can('contacts.read') && updated.contactName !== null && updated.contactName !== contactNameRef.current) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
         if (reset) {
           if (can('contacts.read')) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
@@ -146,6 +152,23 @@ function ConversationViewContent() {
         } else throw reason;
       }
     };
+    const refreshMessage = async (id: string, signal: AbortSignal) => {
+      const epoch = contentEpoch.current;
+      try {
+        const saved = await chatApi.getMessage(conversationId, id, signal);
+        if (!signal.aborted && mounted.current && epoch === contentEpoch.current) setMessages(current => mergeMessages(current, [saved]));
+      } catch (reason) {
+        if (signal.aborted) return;
+        // A previous Core has no point-read route. Preserve its conservative reconciliation.
+        if (reason instanceof ApiError && reason.status === 404 && reason.code === 'NOT_FOUND') { await refreshVisibleMessages(signal); return; }
+        if (reason instanceof ApiError && (reason.status === 403 || reason.status === 404)) {
+          await refreshConversation(signal, false);
+          if (!signal.aborted) setMessages(current => current.filter(message => message.id !== id));
+          return;
+        }
+        throw reason;
+      }
+    };
     return realtimeBus.subscribe(async (event, signal) => {
       if (!chatEventTypes.has(event.type) || event.organizationId !== session?.currentOrganizationId) return;
       await bootstrap.current;
@@ -154,15 +177,22 @@ function ConversationViewContent() {
       if (event.type === 'contacts.updated') { await refreshConversation(signal, false); return; }
       const related = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (related !== conversationId) return;
-      if (event.type === 'conversation.history.updated') { prepareHistoryUpdate(); await refreshVisibleMessages(signal); await refreshConversation(signal, false); return; }
-      if (event.type.startsWith('message.')) { await refreshVisibleMessages(signal); return; }
+      if (event.type === 'conversation.history.updated') { prepareHistoryUpdate(); await refreshConversation(signal, false); await refreshVisibleMessages(signal); return; }
+      if (event.type.startsWith('message.')) { await refreshMessage(event.entityId, signal); return; }
       if (event.type === 'note.created') { await refreshNotes(signal); return; }
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
     }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
       await bootstrap.current;
-      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal); await refreshTags(signal); }
+      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal); await refreshTags(signal);
+        // Bounded recovery of visible unconfirmed rows, once per focus/reconnect (no polling).
+        const root = scroll.historyRef.current, viewport = root?.getBoundingClientRect();
+        if (readScope.current && root && viewport && viewport.height > 0) {
+          const visible = new Set([...root.querySelectorAll<HTMLElement>('[data-message-key]')].filter(node => { const rect = node.getBoundingClientRect(); return rect.bottom > viewport.top && rect.top < viewport.bottom; }).map(node => node.dataset.messageKey));
+          for (const message of messagesRef.current.filter(message => message.status === 'PENDING' && !message.id.startsWith('optimistic:') && visible.has(messageScrollKey(message))).slice(0, 8)) { if (signal.aborted) break; await refreshMessage(message.id, signal); }
+        }
+      }
     } });
-  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
+  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate, scroll.historyRef]);
 
   async function loadOlderMessages() {
     if (!messageCursor || loadingOlder) return;

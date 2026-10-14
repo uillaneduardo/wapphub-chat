@@ -1,3 +1,4 @@
+import { ApiError } from './api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -35,6 +36,7 @@ function detail() { return render(<MemoryRouter initialEntries={['/app/conversat
 
 describe('P1 transport + actual REST projections (synthetic)', () => {
   beforeEach(() => {
+  vi.spyOn(chatApi, 'getMessage').mockRejectedValue(new ApiError(404, 'http', 'NOT_FOUND', 'NOT_FOUND'));
     vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [conversation], nextCursor: null });
     vi.spyOn(chatApi, 'getConversation').mockResolvedValue(conversation);
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [message('Histórico inicial')], nextCursor: null });
