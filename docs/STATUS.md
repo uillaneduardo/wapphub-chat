@@ -1,3 +1,5 @@
+> P1.2 autoload/lightbox validado localmente, 372 testes; sem publicação. [Limites, testes e homologação](P1_2_MEDIA.md).
+
 > P1.1 voz: preservação/retry seguros validados localmente, 360 testes; sem publicação. [Detalhes](P1_1_VOICE.md). Homologação humana pendente.
 
 > P1.2 realtime validado localmente, em revisão e sem publicação. [Causas, testes, limites e rollback](P1_2_REALTIME.md). Homologação humana pendente.

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Download } from 'lucide-react';
+import { MediaTransfers, type MediaAsset, type MediaLease } from '../../lib/mediaTransfers';
+import { observeMedia } from '../../lib/mediaVisibility';
+import { MediaLightbox } from './MediaLightbox';
 import { chatApi } from '../../lib/chatApi';
 import { ApiError } from '../../lib/api';
 import type { InternalTextMessage } from '../../types/chat';
@@ -15,51 +17,79 @@ function mediaError(reason: unknown): string {
   }
   return 'Esta mídia não está disponível.';
 }
-/** Explicit demand only. Native players use cookie-authenticated Core URLs. */
-export function MessageMedia({ message }: { message: InternalTextMessage }) {
-  const [source, setSource] = useState({ url: '', identity: '' }), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const identity = `${message.conversationId}:${message.id}`, url = source.identity === identity ? source.url : '';
-  const objectUrl = useRef(''), request = useRef<AbortController | null>(null), player = useRef<HTMLMediaElement | null>(null);
+/** Source ownership follows visibility and the authorized conversation lifetime. */
+export function MessageMedia({ message, transfers }: { message: InternalTextMessage; transfers?: MediaTransfers }) {
+  const [localTransfers] = useState(() => new MediaTransfers()), manager = transfers ?? localTransfers;
+  const [source, setSource] = useState<{ identity: string; asset: MediaAsset } | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [expanded, setExpanded] = useState(false), [downloadBusy, setDownloadBusy] = useState(false);
+  const identity = `${message.conversationId}:${message.id}:${message.media?.mediaId}:${message.type}`, asset = source?.identity === identity ? source.asset : undefined;
+  const node = useRef<HTMLDivElement>(null), lease = useRef<MediaLease | null>(null), downloadLease = useRef<MediaLease | null>(null), player = useRef<HTMLMediaElement | null>(null);
+  const visible = useRef(false), playing = useRef(false), inModal = useRef(false), failed = useRef(false), mounted = useRef(true);
+  const currentMessage = useRef(message); currentMessage.current = message;
+  const clearSource = useCallback(() => {
+    const current = lease.current; lease.current = null; current?.release();
+    if (player.current) { player.current.pause(); player.current.removeAttribute('src'); player.current.load(); }
+    setSource(null); setBusy(false);
+  }, []);
+  const start = useCallback(() => {
+    const current = currentMessage.current;
+    if (lease.current || failed.current || !current.media || current.type === 'DOCUMENT') return;
+    setBusy(true); setError('');
+    const native = current.type !== 'IMAGE'; let prepared = false;
+    const next = manager.acquire(`${current.type}:${current.media.mediaId}`, current.media.size, async signal => {
+      if (native) return { url: await chatApi.messageMediaSource(current.conversationId, current.id, signal), blob: false };
+      const bytes = await chatApi.messageMedia(current.conversationId, current.id, signal); signal.throwIfAborted();
+      return { url: URL.createObjectURL(bytes), blob: true };
+    }, native);
+    lease.current = next;
+    next.signal.addEventListener('abort', () => {
+      if (mounted.current && lease.current === next && prepared) { clearSource(); failed.current = true; setError('Não foi possível preparar os metadados. Tente novamente.'); }
+    }, { once: true });
+    void next.ready.then(value => { if (mounted.current && lease.current === next && !next.signal.aborted) { prepared = true; setSource({ identity, asset: value }); } }).catch(reason => {
+      if (mounted.current && lease.current === next && !next.signal.aborted) { lease.current = null; next.release(); setBusy(false); failed.current = true; setError(mediaError(reason)); }
+    }).finally(() => { if (mounted.current && lease.current === next) setBusy(false); });
+  }, [manager, identity, clearSource]);
   useEffect(() => {
-    setSource({ url: '', identity: '' }); setBusy(false); setError('');
-    return () => {
-      request.current?.abort();
-      if (objectUrl.current) { URL.revokeObjectURL(objectUrl.current); objectUrl.current = ''; }
-      if (player.current) { player.current.pause(); player.current.removeAttribute('src'); player.current.load(); }
-    };
-  }, [message.conversationId, message.id]);
-  async function load() {
-    if (busy || url || !message.media) return;
-    const controller = new AbortController(); request.current = controller; setBusy(true); setError('');
-    try {
-      if (message.type === 'IMAGE') {
-        const blob = await chatApi.messageMedia(message.conversationId, message.id, controller.signal);
-        if (!controller.signal.aborted) { objectUrl.current = URL.createObjectURL(blob); setSource({ url: objectUrl.current, identity }); }
-      } else {
-        const source = await chatApi.messageMediaSource(message.conversationId, message.id, controller.signal);
-        if (!controller.signal.aborted) setSource({ url: source, identity });
-      }
-    } catch (reason) { if (!controller.signal.aborted) setError(mediaError(reason)); }
-    finally { if (!controller.signal.aborted) setBusy(false); }
-  }
-  function playbackError() {
-    const code = player.current?.error?.code;
-    setError(code === 2 ? 'A reprodução foi interrompida. Abra a mídia novamente.' : 'Este navegador não conseguiu reproduzir o formato ou codec. Você pode baixar o arquivo.');
-  }
+    mounted.current = true; failed.current = false; visible.current = false; playing.current = false; inModal.current = false; setExpanded(false); setError(''); setSource(null); setBusy(false);
+    const element = node.current;
+    const stop = element ? observeMedia(element, value => {
+      visible.current = value;
+      if (value) start(); else if (!playing.current && !inModal.current) clearSource();
+    }) : () => undefined;
+    return () => { mounted.current = false; stop(); clearSource(); downloadLease.current?.release(); downloadLease.current = null; };
+  }, [identity, start, clearSource]);
   const setPlayer = useCallback((element: HTMLMediaElement | null) => {
     const previous = player.current;
     if (previous && previous !== element) { previous.pause(); previous.removeAttribute('src'); previous.load(); }
     player.current = element;
   }, []);
-  function retry() {
-    if (objectUrl.current) { URL.revokeObjectURL(objectUrl.current); objectUrl.current = ''; }
-    setSource({ url: '', identity: '' }); setError('');
+  const close = useCallback(() => { inModal.current = false; setExpanded(false); if (!visible.current && !playing.current && typeof IntersectionObserver !== 'undefined') clearSource(); }, [clearSource]);
+  function open() { inModal.current = true; player.current?.pause(); lease.current?.metadataReady(); setExpanded(true); }
+  function metadataLoaded() { if (player.current) { player.current.preload = 'none'; if (player.current.networkState !== 2) lease.current?.metadataReady(); } }
+  function metadataSuspended() { if (player.current && player.current.readyState >= 1) lease.current?.metadataReady(); }
+  function playbackError() { lease.current?.metadataReady(); failed.current = true; setError(player.current?.error?.code === 2 ? 'A reprodução foi interrompida. Tente novamente.' : 'Este navegador não conseguiu reproduzir o formato ou codec. Você pode baixar o arquivo.'); }
+  function retry() { clearSource(); failed.current = false; setError(''); start(); }
+  function save(url: string, name: string) { const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; document.body.append(anchor); anchor.click(); anchor.remove(); }
+  async function download() {
+    if (!asset || !message.media || downloadLease.current) return;
+    if (asset.blob) { save(asset.url, message.media.fileName); return; }
+    setDownloadBusy(true);
+    const current = manager.acquire(`download:${message.media.mediaId}`, message.media.size, async signal => {
+      const bytes = await chatApi.messageMedia(message.conversationId, message.id, signal); signal.throwIfAborted();
+      return { url: URL.createObjectURL(bytes), blob: true };
+    }, false, false);
+    downloadLease.current = current;
+    try { const result = await current.ready; if (!current.signal.aborted && mounted.current) save(result.url, message.media.fileName); }
+    catch (reason) { if (!current.signal.aborted && mounted.current) setError(mediaError(reason)); }
+    finally { setTimeout(() => current.release(), 250); if (downloadLease.current === current) downloadLease.current = null; if (mounted.current) setDownloadBusy(false); }
   }
   if (!message.media || message.type === 'DOCUMENT') return <p className="muted">Arquivo indisponível nesta versão.</p>;
-  return <div className="message-media"><p className="muted">{message.media.fileName}</p>
-    {!url ? <button type="button" className="secondary-button" disabled={busy} onClick={() => void load()}><Download size={16} aria-hidden="true" />{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button>
-      : message.type === 'IMAGE' ? <a href={url} target="_blank" rel="noreferrer" aria-label="Ampliar imagem"><img src={url} alt={message.body || 'Imagem recebida'} onError={() => setError('Não foi possível exibir esta imagem. Você pode baixar o arquivo.')} /></a>
-        : message.type === 'VIDEO' ? <video ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={url} aria-label="Vídeo da mensagem" onError={playbackError} />
-          : <><audio ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={url} aria-label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} onError={playbackError} /><label>Velocidade <select defaultValue="1" onChange={event => { if (player.current) player.current.playbackRate = Number(event.target.value); }}><option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label></>}
-    {url && <a href={url} download={message.media.fileName} target="_blank" rel="noreferrer">Baixar arquivo</a>}{error && <><p role="status">{error}</p>{url && <button type="button" className="secondary-button" onClick={retry}>Tentar novamente</button>}</>}</div>;
+  return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node}><p className="muted">{message.media.fileName}</p>
+    {!asset ? error ? null : typeof IntersectionObserver === 'undefined' ? <button type="button" className="secondary-button" disabled={busy} onClick={start}>{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button> : <div className="media-placeholder" aria-live="polite">{busy ? 'Carregando mídia…' : 'Aguardando mídia ficar visível'}</div>
+      : message.type === 'IMAGE' ? <button type="button" className="media-preview-button" onClick={open} aria-label="Ampliar imagem"><img src={asset.url} alt={message.body || 'Imagem recebida'} onError={() => { failed.current = true; setError('Não foi possível exibir esta imagem. Tente novamente.'); }} /></button>
+        : <>{message.type === 'VIDEO' ? expanded ? null : <video ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label="Vídeo da mensagem" onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />
+          : <><audio ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} /><label>Velocidade <select defaultValue="1" onChange={event => { if (player.current) player.current.playbackRate = Number(event.target.value); }}><option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label></>}{message.type === 'VIDEO' && <button type="button" className="secondary-button" onClick={open}>Ampliar vídeo</button>}</>}
+    {asset && <a href={asset.url} download={message.media.fileName} aria-disabled={downloadBusy} onClick={event => { event.preventDefault(); void download(); }}>{downloadBusy ? 'Baixando…' : 'Baixar arquivo'}</a>}
+    {error && <><p role="status">{error}</p><button type="button" className="secondary-button" onClick={retry}>Tentar novamente</button></>}
+    {expanded && asset && <MediaLightbox url={asset.url} video={message.type === 'VIDEO'} alt={message.body || 'Imagem recebida'} onClose={close} onRetry={() => { close(); retry(); }} onDownload={() => void download()} downloadBusy={downloadBusy} fallbackFocus={node.current?.closest<HTMLElement>('.message-history') ?? null} />}
+  </div>;
 }
