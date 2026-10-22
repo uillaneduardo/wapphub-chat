@@ -49,6 +49,7 @@ describe('audio player — accessible seek and native lifecycle', () => {
     expect(media.playbackRate).toBe(1.5);
     fireEvent.click(screen.getByRole('button', { name: 'Pausar áudio' }));
     expect(pause).toHaveBeenCalledOnce();
+    pausedState = true;
     fireEvent.pause(media);
     expect(paused).toHaveBeenCalledOnce();
     fireEvent.ended(media);
