@@ -3,7 +3,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 export type SendShortcut = 'enter' | 'shift-enter';
 interface Preferences { sidebarCollapsed: boolean; contextWidth: number; sendShortcut: SendShortcut }
 export const DEFAULT_CONTEXT_WIDTH = 300;
-const defaults: Preferences = { sidebarCollapsed: false, contextWidth: DEFAULT_CONTEXT_WIDTH, sendShortcut: 'enter' };
+const defaults: Preferences = { sidebarCollapsed: true, contextWidth: DEFAULT_CONTEXT_WIDTH, sendShortcut: 'enter' };
 const eventName = 'wapphub:ui-preference';
 const memory = new Map<string, Preferences>();
 export const preferenceKey = (userId: string) => `wapphub:ui:v1:${encodeURIComponent(userId)}`;
@@ -16,7 +16,7 @@ function read(userId?: string): Preferences {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== 'object') return defaults;
     const fields = value as Partial<Preferences>;
-    return { sidebarCollapsed: fields.sidebarCollapsed === true, contextWidth: typeof fields.contextWidth === 'number' && Number.isFinite(fields.contextWidth) ? Math.min(480, Math.max(240, fields.contextWidth)) : DEFAULT_CONTEXT_WIDTH, sendShortcut: fields.sendShortcut === 'shift-enter' ? 'shift-enter' : 'enter' };
+    return { sidebarCollapsed: fields.sidebarCollapsed === undefined ? defaults.sidebarCollapsed : fields.sidebarCollapsed === true, contextWidth: typeof fields.contextWidth === 'number' && Number.isFinite(fields.contextWidth) ? Math.min(480, Math.max(240, fields.contextWidth)) : DEFAULT_CONTEXT_WIDTH, sendShortcut: fields.sendShortcut === 'shift-enter' ? 'shift-enter' : 'enter' };
   } catch { return memory.get(userId) ?? defaults; }
 }
 

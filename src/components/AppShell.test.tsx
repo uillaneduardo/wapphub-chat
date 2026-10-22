@@ -9,12 +9,43 @@ const state = vi.hoisted(() => ({ session: { user: { id: 'u', name: 'Ana' }, org
 vi.mock('../features/session/SessionContext', () => ({ useSession: () => state }));
 vi.mock('../lib/realtime', async (importOriginal) => ({ ...await importOriginal<typeof import('../lib/realtime')>(), createRealtimeUrl: () => 'ws://local.test', RealtimeClient: class { connect() {} close() {} } }));
 describe('conversation shell scope and navigation', () => {
-  beforeEach(() => { localStorage.clear(); state.session.resources = resourceFixture; state.session.organizations = []; state.session.user.id = 'u'; state.session.organization = { id: 'org', name: 'Equipe' }; state.session.permissions = ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read', 'team.read']; state.logout.mockReset(); });
+  beforeEach(() => { localStorage.clear(); localStorage.setItem(preferenceKey('u'), JSON.stringify({ sidebarCollapsed: false, contextWidth: 300, sendShortcut: 'enter' })); state.session.resources = resourceFixture; state.session.organizations = []; state.session.user.id = 'u'; state.session.organization = { id: 'org', name: 'Equipe' }; state.session.permissions = ['conversations.read', 'contacts.read', 'providers.manage', 'providers.simulate', 'messages.read', 'team.read']; state.logout.mockReset(); });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   it.each(['/app/conversations', '/app/conversations/conv-1'])('bounds the shell only for the inbox route %s', (route) => {
     render(<MemoryRouter initialEntries={[route]}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations/*" element={<p>Atendimento sintético</p>} /></Route></Routes></MemoryRouter>);
     expect(screen.getByText('Atendimento sintético').closest('.app-shell')).toHaveClass('chat-app-shell');
     expect(screen.getByRole('link', { name: 'Conversas' })).toHaveClass('active');
+  });
+  it('marks a deep conversation route to hide the global mobile bar without unmounting the chat', () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<MemoryRouter initialEntries={['/app/conversations/conv-1?scope=mine']}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations/*" element={<p>Chat preservado</p>} /></Route></Routes></MemoryRouter>);
+    const shell = screen.getByText('Chat preservado').closest('.app-shell');
+    expect(shell).toHaveClass('chat-app-shell', 'is-conversation-detail');
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mais áreas' })).toBeInTheDocument();
+  });
+  it('keeps the mobile inbox bar visible on its root route', () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<MemoryRouter initialEntries={['/app/conversations?scope=mine']}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations" element={<p>Lista preservada</p>} /></Route></Routes></MemoryRouter>);
+    const shell = screen.getByText('Lista preservada').closest('.app-shell');
+    expect(shell).toHaveClass('chat-app-shell');
+    expect(shell).not.toHaveClass('is-conversation-detail');
+    expect(screen.getByRole('button', { name: 'Mais áreas' })).toBeInTheDocument();
+  });
+  it('provides mobile logout and realtime recovery only through More without losing the organization menu', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    state.session.organizations = [{ id: 'org', name: 'Equipe' }, { id: 'other', name: 'Outra' }];
+    const retry = vi.fn();
+    render(<MemoryRouter initialEntries={['/app/conversations']}><Sidebar realtimeState="stale" onRealtimeRetry={retry} /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: 'Sair da conta' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' }));
+    const more = screen.getByRole('region', { name: 'Menu Mais áreas' });
+    expect(within(more).getByRole('link', { name: 'Trocar organização' })).toHaveAttribute('href', '/organizations');
+    expect(within(more).getByRole('status')).toHaveTextContent('Tempo real indisponível');
+    fireEvent.click(within(more).getByRole('button', { name: 'Tentar reconexão novamente' }));
+    expect(retry).toHaveBeenCalledOnce();
+    fireEvent.click(within(more).getByRole('button', { name: 'Sair da conta' }));
+    await waitFor(() => expect(state.logout).toHaveBeenCalledTimes(1));
   });
   it('keeps other application pages outside the viewport-bound shell', () => {
     render(<MemoryRouter initialEntries={['/app/settings/providers']}><Routes><Route path="/app" element={<AppShell />}><Route path="settings/providers" element={<p>Provedores</p>} /></Route></Routes></MemoryRouter>);
@@ -51,10 +82,10 @@ describe('conversation shell scope and navigation', () => {
     fireEvent.click(trigger); screen.getByRole('button', { name: 'Plano e assinatura' }).parentElement!.focus(); fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); expect(screen.getByRole('button', { name: 'Sair da conta' })).toHaveFocus();
     fireEvent.click(trigger); fireEvent.pointerDown(screen.getByText('Destino Provedores')); expect(screen.queryByRole('region', { name: 'Menu Gestão' })).not.toBeInTheDocument();
   });
-  it('restores collapse on remount and keeps a second account expanded by default', () => {
+  it('restores a saved collapse and defaults a second account to the compact rail', () => {
     const view = renderNav(); fireEvent.click(screen.getByRole('button', { name: 'Recolher menu' })); expect(JSON.parse(localStorage.getItem(preferenceKey('u'))!).sidebarCollapsed).toBe(true); view.unmount();
     const second = renderNav(); expect(screen.getByRole('button', { name: 'Expandir menu' })).toBeInTheDocument(); second.unmount();
-    state.session.user.id = 'other-user'; renderNav(); expect(screen.getByRole('button', { name: 'Recolher menu' })).toBeInTheDocument();
+    state.session.user.id = 'other-user'; renderNav(); expect(screen.getByRole('button', { name: 'Expandir menu' })).toBeInTheDocument();
   });
   it('preserves permission-based route blocking with visible items in expanded and collapsed modes', () => {
     state.session.permissions = []; renderNav(); expect(screen.queryByRole('link', { name: 'Conversas' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Contatos' })).not.toBeInTheDocument(); expect(screen.queryByRole('link', { name: 'Canais e integrações' })).not.toBeInTheDocument();
@@ -69,7 +100,8 @@ describe('conversation shell scope and navigation', () => {
     expect(within(screen.getByRole('region', { name: 'Menu Mais áreas' })).getByRole('link', { name: 'Canais e integrações' })).toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole('region', { name: 'Menu Mais áreas' }), { key: 'Escape' }); fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' }));
     const extra = screen.getByRole('region', { name: 'Menu Mais áreas' }); expect(within(extra).queryByRole('link', { name: 'Arquivos' })).not.toBeInTheDocument(); expect(within(extra).queryByRole('link', { name: 'Etiquetas' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
+    expect(within(extra).getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
+    expect(within(extra).getByRole('status')).toHaveTextContent('Tempo real indisponível');
   });
 
   it('preserves context order and shows unlaunched resources without active links', () => {
@@ -144,7 +176,7 @@ describe('conversation shell scope and navigation', () => {
 });
 
 describe('permanent navigation availability', () => {
-  beforeEach(() => { localStorage.clear(); state.session.resources = resourceFixture; state.session.permissions = []; state.session.organizations = []; });
+  beforeEach(() => { localStorage.clear(); state.session.user.id = 'u'; localStorage.setItem(preferenceKey('u'), JSON.stringify({ sidebarCollapsed: false, contextWidth: 300, sendShortcut: 'enter' })); state.session.resources = resourceFixture; state.session.permissions = []; state.session.organizations = []; });
   afterEach(() => vi.unstubAllGlobals());
   it('shows disabled generic labels with short accessible reasons and tooltips when collapsed', async () => {
     render(<MemoryRouter><Sidebar /></MemoryRouter>);
@@ -160,7 +192,7 @@ describe('permanent navigation availability', () => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
     render(<MemoryRouter><Sidebar /></MemoryRouter>); const nav = screen.getByRole('navigation'); expect(within(nav).getAllByRole('button')).toHaveLength(3); expect(within(nav).getByRole('button', { name: 'Conversas' })).toBeDisabled(); expect(within(nav).getByRole('button', { name: 'Contatos' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' })); const flyout = screen.getByRole('region', { name: 'Menu Mais áreas' });
-    expect(within(flyout).getAllByRole('region').map((element) => element.getAttribute('aria-label'))).toEqual(['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências']); expect(within(flyout).getByRole('button', { name: 'Plano e assinatura' })).toBeDisabled(); expect(within(flyout).getByRole('button', { name: 'Canais e integrações' })).toHaveAccessibleDescription('Acesso restrito'); expect(screen.getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
+    expect(within(flyout).getAllByRole('region').map((element) => element.getAttribute('aria-label'))).toEqual(['Atendimento', 'Produtividade', 'Comunicação', 'Gestão', 'Preferências', 'Conta e conexão']); expect(within(flyout).getByRole('button', { name: 'Plano e assinatura' })).toBeDisabled(); expect(within(flyout).getByRole('button', { name: 'Canais e integrações' })).toHaveAccessibleDescription('Acesso restrito'); expect(within(flyout).getByRole('button', { name: 'Sair da conta' })).toBeInTheDocument();
   });
   it('uses UNSUPPORTED from Core rather than a frontend assumption', () => {
     state.session.resources = resourceFixture.map((resource) => resource.code === 'calling.audio' ? { ...resource, availability: 'UNSUPPORTED' as const } : resource);

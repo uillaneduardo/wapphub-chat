@@ -33,7 +33,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       const maxHeight = Math.min(420, window.innerHeight - 16); const height = Math.min(flyout.current?.scrollHeight || 320, maxHeight);
       setPosition({ left: Math.max(8, Math.min(rect.right + 8, window.innerWidth - width - 8)), top: Math.max(8, Math.min(mobile ? rect.top - height - 8 : rect.top, window.innerHeight - height - 8)), width, maxHeight });
     }
-    place(); (flyout.current?.querySelector<HTMLElement>('a, .nav-disabled') ?? flyout.current)?.focus();
+    place(); (flyout.current?.querySelector<HTMLElement>('a, .nav-disabled, button:not([disabled])') ?? flyout.current)?.focus();
     window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
     return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
   }, [flyoutSection, mobile]);
@@ -65,9 +65,9 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       <NavHint enabled={collapsed} label={collapsed ? 'Expandir menu' : 'Recolher menu'}><button type="button" className="nav-toggle" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-controls="main-navigation" onClick={() => { setCollapsed(!collapsed); closeFlyout(); }}><AppIcon name={collapsed ? 'expand' : 'collapse'} /></button></NavHint>
     </div>
     <nav id="main-navigation" aria-label="Navegação principal">
-      {mobile ? <section className="nav-section" aria-label="Acesso rápido">{primaryLinks.map((item) => entry(item))}{(secondaryGroups.length > 0 || (session?.organizations?.length ?? 0) > 1) && sectionTrigger('Mais áreas')}</section> : groups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><span className="nav-section-heading">{group.context}</span>{compact && group.context !== 'Atendimento' ? sectionTrigger(group.context) : group.items.map((item) => entry(item))}</section>)}
+      {mobile ? <section className="nav-section" aria-label="Acesso rápido">{primaryLinks.map((item) => entry(item))}{sectionTrigger('Mais áreas')}</section> : groups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><span className="nav-section-heading">{group.context}</span>{compact && group.context !== 'Atendimento' ? sectionTrigger(group.context) : group.items.map((item) => entry(item))}</section>)}
     </nav>
-    <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
+    {!mobile && <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
       {(session?.organizations?.length ?? 0) > 1 && <NavHint label="Trocar organização" enabled={compact}><NavLink className="organization-switch" to="/organizations" aria-label="Trocar organização"><AppIcon name="organization" /><span className="nav-label">Trocar organização</span></NavLink></NavHint>}
       <div className="sidebar-realtime">
         <span className={`realtime-status realtime-${realtimeState}`} role="status" aria-live="polite" aria-atomic="true" tabIndex={0} title={`${realtimeLabels[realtimeState]} — conexão em tempo real com o servidor WappHub.${realtimeState === 'stale' ? ' Reconexão pausada; tente novamente.' : ''}`}><span className="realtime-dot" aria-hidden="true" /><span className="realtime-label">{realtimeLabels[realtimeState]}</span></span>
@@ -75,12 +75,24 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
       </div>
       <NavHint label="Sair da conta" enabled={compact}><button ref={logoutButton} type="button" className="logout-button" aria-label="Sair da conta" disabled={loggingOut} onClick={() => void signOut()}><AppIcon name="logout" /><span className="nav-label">{loggingOut ? 'Saindo…' : 'Sair da conta'}</span></button></NavHint>
       {logoutError && <p role="alert" className="error-text">{logoutError}</p>}
-    </footer>
+    </footer>}
     {flyoutSection && createPortal(<div ref={flyout} id={groupId} role="region" tabIndex={-1} aria-label={`Menu ${flyoutSection}`} className="nav-flyout" style={position} onKeyDown={(event) => {
-      const items = [...flyout.current!.querySelectorAll<HTMLElement>('a, .nav-disabled')]; const index = items.indexOf(document.activeElement as HTMLElement);
+      const items = [...flyout.current!.querySelectorAll<HTMLElement>('a, .nav-disabled, button:not([disabled])')]; const index = items.indexOf(document.activeElement as HTMLElement);
       if (event.key === 'Escape') { event.preventDefault(); closeFlyout(true); }
-      if (event.key === 'Tab' && (items.length === 0 || (!event.shiftKey && index === items.length - 1) || (event.shiftKey && index === 0))) { event.preventDefault(); closeFlyout(); if (event.shiftKey) trigger.current?.focus(); else logoutButton.current?.focus(); }
+      if (event.key === 'Tab' && (items.length === 0 || (!event.shiftKey && index === items.length - 1) || (event.shiftKey && index === 0))) { event.preventDefault(); closeFlyout(); if (event.shiftKey || mobile) trigger.current?.focus(); else logoutButton.current?.focus(); }
       if (items.length && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) { event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; items[next]?.focus(); }
-    }}>{mobile && (session?.organizations?.length ?? 0) > 1 && <NavLink className="organization-switch" to="/organizations" onClick={() => closeFlyout()}>Trocar organização</NavLink>}{flyoutGroups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><strong>{group.context}</strong>{group.items.map((item) => entry(item, false))}</section>)}</div>, document.body)}
+    }}>{flyoutGroups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><strong>{group.context}</strong>{group.items.map((item) => entry(item, false))}</section>)}
+      {mobile && flyoutSection === 'Mais áreas' && <section className="nav-flyout-account" aria-label="Conta e conexão">
+        <strong>Conta</strong>
+        <div className="nav-flyout-identity"><span className="avatar" aria-hidden="true">{session?.user.name.slice(0, 1).toUpperCase()}</span><span><b>{session?.user.name}</b><small>{session?.organization?.name}</small></span></div>
+        {(session?.organizations?.length ?? 0) > 1 && <NavLink className="organization-switch" to="/organizations" onClick={() => closeFlyout()}>Trocar organização</NavLink>}
+        <div className="sidebar-realtime">
+          <span className={`realtime-status realtime-${realtimeState}`} role="status" aria-live="polite" aria-atomic="true" title={realtimeLabels[realtimeState]}><span className="realtime-dot" aria-hidden="true" />{realtimeLabels[realtimeState]}</span>
+          {realtimeState === 'stale' && <button type="button" className="nav-flyout-action" onClick={onRealtimeRetry}><RotateCw size={16} aria-hidden="true" />Tentar reconexão novamente</button>}
+        </div>
+        <button type="button" className="nav-flyout-action" disabled={loggingOut} onClick={() => void signOut()}><AppIcon name="logout" />{loggingOut ? 'Saindo…' : 'Sair da conta'}</button>
+        {logoutError && <p role="alert" className="error-text">{logoutError}</p>}
+      </section>}
+    </div>, document.body)}
   </aside>;
 }
