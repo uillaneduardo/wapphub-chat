@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ConversationView } from './Conversations';
+import { clearComposerDrafts } from './composerDrafts';
 import { chatApi } from '../../lib/chatApi';
 import { mockScrollGeometry } from '../../test/messageScrollGeometry';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -26,7 +27,7 @@ function mockBase() {
 
 describe('ConversationView', () => {
   beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
-  afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  afterEach(() => { clearComposerDrafts(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
   it.each(['DEMO', 'WHATSAPP_WEB', 'META'] as const)('uses persisted authors and hides technical %s labels without inferring authors from viewer or body', async (provider) => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider, outboundEnabled: false });
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [
