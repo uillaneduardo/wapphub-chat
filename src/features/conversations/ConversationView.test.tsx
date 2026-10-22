@@ -139,7 +139,9 @@ describe('ConversationView', () => {
     mockBase(); let resolve!: (value: InternalTextMessage) => void;
     const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(() => new Promise((done) => { resolve = done; }));
     renderDetail(); await screen.findByRole('heading', { name: 'Joana' }); const input = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    fireEvent.click(screen.getByRole('button', { name: 'Preferências de envio' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Atalho de envio' }), { target: { value: 'shift-enter' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar preferências' }));
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true }); expect(send).not.toHaveBeenCalled();
     fireEvent.change(input, { target: { value: 'Texto pelo atalho' } });
     expect(fireEvent.keyDown(input, { key: 'Enter' })).toBe(true);
