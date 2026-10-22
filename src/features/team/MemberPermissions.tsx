@@ -77,7 +77,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
     return `${permission.name} ${resource?.description ?? ''} ${permission.code}`.toLocaleLowerCase('pt-BR').includes(query);
   }
   const dialog = confirm || navigating;
-  return <section className="team-page permissions-editor" aria-busy={saving}>
+  return <section className="team-page permissions-editor admin-compact-page" aria-busy={saving}>
     <Link to="/app/team">← Equipe e permissões</Link><h1>Permissões do membro</h1>
     {loading && <p role="status">Carregando permissões…</p>}
     {error && <p role="alert" className="error-text">{error} <button type="button" disabled={saving} onClick={(event) => changed.length ? ask('reload', event.currentTarget) : setReload((previous) => previous + 1)}>Recarregar</button></p>}
