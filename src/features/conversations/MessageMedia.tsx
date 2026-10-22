@@ -3,6 +3,7 @@ import { AudioLines, Download, Image as ImageIcon, Maximize2, Mic2, Video as Vid
 import { MediaTransfers, type MediaAsset, type MediaLease } from '../../lib/mediaTransfers';
 import { observeMedia } from '../../lib/mediaVisibility';
 import { MediaLightbox } from './MediaLightbox';
+import { AudioPlayer } from './AudioPlayer';
 import { chatApi } from '../../lib/chatApi';
 import { ApiError } from '../../lib/api';
 import type { InternalTextMessage } from '../../types/chat';
@@ -105,13 +106,11 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
             ? <div className="media-video-frame">
                 {!expanded && <video ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label="Vídeo da mensagem" onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />}
               </div>
-            : <div className="media-audio-player">
-                <span className="media-audio-art" aria-hidden="true">{message.type === 'VOICE' ? <Mic2 size={21} /> : <AudioLines size={21} />}</span>
-                <div className="media-audio-controls">
-                  <audio ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />
-                  <label className="media-speed">Velocidade <select defaultValue="1" onChange={event => { if (player.current) player.current.playbackRate = Number(event.target.value); }}><option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label>
-                </div>
-              </div>}
+            : <AudioPlayer src={asset.url} label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} authenticated
+              audioRef={setPlayer} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended}
+              onPlay={() => { playing.current = true; lease.current?.metadataReady(); }}
+              onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }}
+              onError={playbackError} />}
     </div>
     {asset && <div className="media-actions">
       {message.type === 'VIDEO' && <button type="button" className="media-action" onClick={open}><Maximize2 size={15} aria-hidden="true" />Ampliar vídeo</button>}
