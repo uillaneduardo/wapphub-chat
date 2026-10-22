@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ContactRound, Plus, Pencil } from 'lucide-react';
 import { ContactBrowser } from './ContactBrowser';
+import { PageHeader } from '../../components/ui/page-header';
 import { ContactForm } from './ContactForm';
 import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
@@ -11,7 +12,7 @@ import type { Contact } from '../../types/chat';
 
 export function ContactsPage() {
   const { session } = useSession(); const navigate = useNavigate(); const [creating, setCreating] = useState(false);
-  return <section className="contacts-page"><header className="contacts-heading"><div><p className="eyebrow">ORGANIZAÇÃO</p><h1><ContactRound size={24} aria-hidden="true" />Contatos</h1></div>{session?.permissions.includes('contacts.write') && <button className="primary-button" onClick={() => setCreating(true)}><Plus size={18} aria-hidden="true" />Novo contato</button>}</header>
+  return <section className="contacts-page admin-compact-page"><PageHeader eyebrow="ORGANIZAÇÃO" title="Contatos" description="Consulte e gerencie os contatos da organização ativa." icon={<ContactRound size={20} />} actions={session?.permissions.includes('contacts.write') && <button type="button" className="primary-button" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />Novo contato</button>} />
     {creating && <section className="contact-card"><h2>Cadastrar contato</h2><ContactForm onSaved={(value) => navigate(`/app/contacts/${value.id}`)} onCancel={() => setCreating(false)} /></section>}
     <ContactBrowser />
   </section>;
@@ -35,10 +36,10 @@ function ContactDetail({ contactId }: { contactId: string }) {
   }, [contactId]);
   useEffect(() => { const controller = new AbortController(); setLoading(true); const request = load(controller.signal); const generation = epoch.current; void request.catch(() => { if (!controller.signal.aborted && generation === epoch.current) setError('Não foi possível abrir o contato.'); }).finally(() => { if (!controller.signal.aborted && generation === epoch.current) setLoading(false); }); return () => { controller.abort(); epoch.current += 1; }; }, [load, revision]);
   useEffect(() => realtimeBus.subscribe((event, signal) => event.type === 'contacts.updated' ? load(signal) : undefined, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: load }), [load, session?.currentOrganizationId]);
-  return <section className="contacts-page"><Link to="/app/contacts">← Contatos</Link>
+  return <section className="contacts-page admin-compact-page"><Link to="/app/contacts">← Contatos</Link>
     {loading && <p role="status">Carregando contato…</p>}
     {error && <p role="alert">{error} <button type="button" className="text-button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button></p>}
-    {!loading && !error && contact && <section className="contact-card"><header className="contacts-heading"><h1>{contact.name}</h1>{session?.permissions.includes('contacts.write') && !editing && <button type="button" className="secondary-button" onClick={() => setEditing(true)}><Pencil size={18} aria-hidden="true" />Editar contato</button>}</header>
+    {!loading && !error && contact && <section className="contact-card"><PageHeader title={contact.name} description="Contato da organização ativa" actions={session?.permissions.includes('contacts.write') && !editing && <button type="button" className="secondary-button" onClick={() => setEditing(true)}><Pencil size={16} aria-hidden="true" />Editar contato</button>} />
       {editing ? <ContactForm contact={contact} onSaved={(updated) => { setContact(updated); setEditing(false); }} onCancel={() => setEditing(false)} /> : <><p className="contact-identifier">{contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier)}</p><p className="muted">Contato da organização ativa. O histórico e os vínculos existentes são preservados.</p>
         {session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && <Link className="primary-button contact-create-link" to={`/app/conversations/new?contactId=${encodeURIComponent(contact.id)}`}>Nova conversa interna</Link>}</>}
     </section>}
