@@ -5,6 +5,7 @@ import { chatApi, type ConversationScope } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation, Tag } from '../../types/chat';
 import { upsertInboxConversation } from './conversationModel';
+import { Search, Plus } from 'lucide-react';
 import { ContactAvatar } from '../../components/ui/avatar';
 
 type InboxTab = ConversationScope | 'archived';
@@ -27,6 +28,7 @@ export function InboxList() {
   const tab: InboxTab = isAgent ? (requestedScope === 'archived' ? 'archived' : 'mine') : requestedScope === 'mine' || requestedScope === 'unassigned' || requestedScope === 'archived' || requestedScope === 'all' && canSupervise ? requestedScope : canSupervise ? 'all' : 'unassigned';
   const setTab = (scope: InboxTab) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set('scope', scope); return next; }, { replace: true });
   const [tagId, setTagId] = useState('');
+  const [search, setSearch] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
   const [items, setItems] = useState<Conversation[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -37,6 +39,11 @@ export function InboxList() {
   const selected = useMatch('/app/conversations/:conversationId');
   const filter = useMemo(() => ({ scope: tab === 'archived' ? (canSupervise ? 'all' : 'mine') as ConversationScope : tab, archived: tab === 'archived', ...(tagId ? { tagId } : {}) }), [tab, canSupervise, tagId]);
   const query = useMemo(() => ({ ...filter, limit: 50 }), [filter]);
+  const visibleItems = useMemo(() => {
+    const text = search.trim().toLocaleLowerCase('pt-BR');
+    if (!text) return items;
+    return items.filter((item) => [item.contactName ?? '', item.contactId, ...(canReadMessages ? [item.lastMessagePreview ?? ''] : [])].some((value) => value.toLocaleLowerCase('pt-BR').includes(text)));
+  }, [search, items, canReadMessages]);
 
   useEffect(() => {
     let active = true; const controller = new AbortController(); epoch.current += 1;
@@ -102,8 +109,8 @@ export function InboxList() {
   }, [nextCursor, loadingMore, query]);
 
   return <aside className={`inbox-panel${selected ? ' inbox-panel-hidden-mobile' : ''}`} aria-label="Caixa de conversas">
-    <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><span className="inbox-count">{items.length}</span></div>
-    {!isAgent && session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new">Nova conversa</Link>}
+    <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><div className="inbox-heading-actions"><span className="inbox-count" aria-label={`${items.length} conversas carregadas`}>{items.length}</span>{!isAgent && session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new"><Plus size={16} aria-hidden="true" />Nova conversa</Link>}</div></div>
+    <label className="inbox-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Buscar nas conversas carregadas</span><input type="search" aria-label="Buscar nas conversas carregadas" placeholder="Buscar nas conversas…" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" /></label>
     <div className="inbox-tabs" role="tablist" aria-label="Filtro de conversas">
       {tabs.filter((item) => (item.id !== 'all' || canSupervise) && (!isAgent || item.id === 'mine' || item.id === 'archived')).map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'selected' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
     </div>
@@ -112,7 +119,8 @@ export function InboxList() {
       {loading && <div className="list-state" role="status"><span className="spinner" />Carregando conversas…</div>}
       {!loading && error && <div className="list-state error-state" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadKey((value) => value + 1)}>Tentar novamente</button></div>}
       {!loading && !error && items.length === 0 && <div className="list-state"><span className="empty-mark">○</span><strong>Nenhuma conversa</strong><span>Quando houver conversas neste filtro, elas aparecerão aqui.</span></div>}
-      {!loading && !error && items.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
+      {!loading && !error && items.length > 0 && visibleItems.length === 0 && <div className="list-state" role="status"><strong>Nenhum resultado</strong><span>Busque por outro nome ou carregue mais conversas. A busca considera apenas as conversas já carregadas.</span></div>}
+      {!loading && !error && visibleItems.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
         <ContactAvatar name={conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`} /><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}</strong><small>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
       </Link>)}
     </div>
