@@ -1,3 +1,5 @@
+> P1.1 voz: preservação/retry seguros validados localmente, 360 testes; sem publicação. [Detalhes](P1_1_VOICE.md). Homologação humana pendente.
+
 > P1.2 realtime validado localmente, em revisão e sem publicação. [Causas, testes, limites e rollback](P1_2_REALTIME.md). Homologação humana pendente.
 
 > P1 mídias recebidas publicado13/10,19:33UTC: Chatbaaee36/CoreProvider763981a. **PUBLICADO — AGUARDANDO HOMOLOGAÇÃO REAL DE MÍDIA.** PR28 merged,346/346 e lint/typecheck/build/CI50 verdes, containerhealthy/HTTP200/assets verificados. Progresso/rollback canônicos: wapphub-core/docs/WHATSAPP_WEB_RECEIVED_MEDIA_P1.md. Sem envio/logout/QR por automação.

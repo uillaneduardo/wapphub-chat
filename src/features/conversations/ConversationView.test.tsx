@@ -278,3 +278,76 @@ it('P1.2 preserves loaded authorized notes during reconnect reconciliation', asy
    await screen.findByText('Janela nova');
    if (changed) expect(screen.queryByText('Página carregada')).not.toBeInTheDocument(); else expect(screen.getByText('Página carregada').closest('article')).toBe(node); localStorage.clear(); vi.restoreAllMocks();
  });
+
+
+it.each(['upload', 'message'])('P1.1 retains the recording and reuses intent and uploaded media after %s failure', async stage => {
+  mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+  const savedMedia = { mediaId: 'recorded-media', type: 'VOICE', mimeType: 'audio/ogg', fileName: 'mensagem-de-voz.ogg', size: 10, state: 'READY' };
+  const upload = vi.spyOn(chatApi, 'uploadMedia');
+  if (stage === 'upload') upload.mockRejectedValueOnce(new ApiError(503, 'server', 'MEDIA_UPLOAD_FAILED', 'MEDIA_UPLOAD_FAILED'));
+  upload.mockResolvedValue(savedMedia);
+  const send = vi.spyOn(chatApi, 'sendMessage');
+  if (stage === 'message') send.mockRejectedValueOnce(new ApiError(403, 'forbidden', 'PERMISSION_DENIED', 'PERMISSION_DENIED'));
+  send.mockImplementation(async (_id, payload) => ({ ...message('saved-voice', payload.clientMessageId, ''), type: 'VOICE', media: savedMedia, direction: 'OUTBOUND' }));
+  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:voice-preview') });
+  Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+  const track = { stop: vi.fn() };
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [track] })) } });
+  class Recorder {
+    static isTypeSupported() { return true; } state = 'inactive'; ondataavailable?: (event: { data: Blob }) => void; onstop?: () => void;
+    start() { this.state = 'recording'; }
+    stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['synthetic EBML chunk'], { type: 'audio/webm' }) }); this.onstop?.(); }
+  }
+  vi.stubGlobal('MediaRecorder', Recorder);
+  renderDetail(); await screen.findByRole('button', { name: 'Gravar voz' });
+  fireEvent.click(screen.getByRole('button', { name: 'Gravar voz' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Concluir gravação' })); await screen.findByText('mensagem-de-voz.webm');
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
+  expect(screen.getByLabelText('Prévia do áudio')).toHaveAttribute('src', 'blob:voice-preview');
+  expect(screen.getByRole('alert')).toHaveTextContent(stage === 'upload' ? 'upload da mídia (MEDIA_UPLOAD_FAILED)' : 'registrar a mensagem (PERMISSION_DENIED)');
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' })); await screen.findByText('Enviada');
+  expect(upload).toHaveBeenCalledTimes(stage === 'upload' ? 2 : 1);
+  expect(send).toHaveBeenCalledTimes(stage === 'upload' ? 1 : 2);
+  expect(upload.mock.calls[0]![1]).toMatchObject({ name: 'mensagem-de-voz.webm', type: 'audio/webm' }); expect(upload.mock.calls[0]![2]).toBe('VOICE');
+  if (stage === 'message') expect(send.mock.calls[0]![1]).toEqual(send.mock.calls[1]![1]);
+  expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
+  delete (navigator as unknown as { mediaDevices?: unknown }).mediaDevices; localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+});
+
+it.each([false, true])('P1.1 UNKNOWN confirmation preserves a replacement recording=%s without resending', async replaced => {
+  mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+  const media = { mediaId: 'voice-unknown', type: 'VOICE', mimeType: 'audio/ogg', fileName: 'voice.ogg', size: 10, state: 'READY' };
+  const upload = vi.spyOn(chatApi, 'uploadMedia').mockResolvedValue(media);
+  const send = vi.spyOn(chatApi, 'sendMessage').mockRejectedValue(new ApiError(0, 'network', 'offline'));
+  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:voice') });
+  Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+  const view = renderDetail(); await screen.findByRole('button', { name: 'Anexar mídia' });
+  const input = view.container.querySelector('input[type=file]')!;
+  fireEvent.change(input, { target: { files: [new File(['synthetic'], 'recorded.webm', { type: 'audio/webm' })] } });
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Resultado incerto — aguardando confirmação');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar mensagem' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
+  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(screen.getByLabelText('Prévia do áudio')).toBeInTheDocument();
+  if (replaced) { fireEvent.click(screen.getByRole('button', { name: 'Descartar anexo' })); fireEvent.change(input, { target: { files: [new File(['second'], 'nova-gravacao.webm', { type: 'audio/webm' })] } }); }
+  const saved = { ...message('unknown-persisted', send.mock.calls[0]![1].clientMessageId, ''), status: 'DELIVERED' as const, direction: 'OUTBOUND' as const, type: 'AUDIO' as const, media };
+  vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [saved], nextCursor: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Verificar envio' })); await screen.findByText('Entregue');
+  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1); if (replaced) expect(screen.getByText('nova-gravacao.webm')).toBeInTheDocument(); else expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
+  localStorage.clear(); vi.restoreAllMocks();
+});
+
+it('P1.1 explicit discard removes the failed local intent and allows a fresh attachment', async () => {
+ mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
+ vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+ const upload = vi.spyOn(chatApi, 'uploadMedia').mockRejectedValue(new ApiError(503, 'server', 'MEDIA_UPLOAD_FAILED', 'MEDIA_UPLOAD_FAILED'));
+ const send = vi.spyOn(chatApi, 'sendMessage');
+ Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:preview') }); Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+ const view = renderDetail(); await screen.findByRole('button', { name: 'Anexar mídia' }); const input = view.container.querySelector('input[type=file]')!;
+ fireEvent.change(input, { target: { files: [new File(['voice'], 'discard.webm', { type: 'audio/webm' })] } });
+ fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
+ fireEvent.click(screen.getByRole('button', { name: 'Descartar anexo' })); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(0); expect(screen.queryByText('discard.webm')).toBeNull();
+ fireEvent.change(input, { target: { files: [new File(['new'], 'new.webm', { type: 'audio/webm' })] } }); fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
+ expect(upload).toHaveBeenCalledTimes(2); expect(upload.mock.calls[1]![1].name).toBe('new.webm'); expect(send).not.toHaveBeenCalled(); localStorage.clear(); vi.restoreAllMocks();
+});
