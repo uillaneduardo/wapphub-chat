@@ -1,6 +1,6 @@
 import {
   ChevronDown, ContactRound, FileText, LogOut, MessagesSquare,
-  PanelLeftClose, PanelLeftOpen, Plug, Settings, Tags, UsersRound, ChartNoAxesColumn, CreditCard, Zap, Workflow, Bot, Megaphone, CircleDashed, Phone, Building2,
+  PanelLeftClose, PanelLeftOpen, Plug, Settings, CircleUserRound, Tags, UsersRound, ChartNoAxesColumn, CreditCard, Zap, Workflow, Bot, Megaphone, CircleDashed, Phone, Building2,
 } from 'lucide-react';
 
 // Explicit imports keep the navigation independent of Lucide's full catalog.
@@ -12,6 +12,7 @@ const icons = {
   status: CircleDashed,
   calls: Phone,
   organization: Building2,
+  profile: CircleUserRound,
   conversations: MessagesSquare,
   contacts: ContactRound,
   files: FileText,

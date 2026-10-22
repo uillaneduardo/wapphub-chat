@@ -136,7 +136,8 @@ describe('conversation shell scope and navigation', () => {
     expect(within(screen.getByRole('main')).queryByRole('status')).not.toBeInTheDocument();
     expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
     expect(status.previousElementSibling).toBeNull();
-    expect(status.closest('.sidebar-realtime')?.previousElementSibling).toHaveClass('sidebar-user');
+    expect(status.closest('footer')?.querySelector('.sidebar-user')).toBeInTheDocument();
+    expect(status.closest('footer')).toContainElement(screen.getByRole('link', { name: 'Meu perfil' }));
     expect(status.closest('.sidebar-realtime')?.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'Sair da conta' }));
   });
   it.each([

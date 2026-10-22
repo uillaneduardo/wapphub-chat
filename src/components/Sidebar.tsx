@@ -60,6 +60,7 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
     return <NavHint enabled={compact} label={section}><button type="button" className={`nav-group-trigger${active ? ' active' : ''}`} aria-label={section} aria-expanded={flyoutSection === section} aria-controls={flyoutSection === section ? groupId : undefined} onClick={(event) => { trigger.current = event.currentTarget; setFlyoutSection((current) => current === section ? null : section); }}><AppIcon name={group?.items[0]?.icon ?? 'settings'} /><span className="nav-label">{section === 'Mais áreas' ? 'Mais' : section}</span></button></NavHint>;
   }
   const flyoutGroups = flyoutSection === 'Mais áreas' ? secondaryGroups : groups.filter((group) => group.context === flyoutSection);
+  const displayName = session?.membership?.effectiveDisplayName ?? session?.user.name ?? '';
   return <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`} aria-label="Menu principal">
     <div className="sidebar-heading"><a className="brand" href="/app/conversations" aria-label="WappHub Chat"><span className="brand-mark">W</span><span className="brand-label">WappHub <small>CHAT</small></span></a>
       <NavHint enabled={collapsed} label={collapsed ? 'Expandir menu' : 'Recolher menu'}><button type="button" className="nav-toggle" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-expanded={!collapsed} aria-controls="main-navigation" onClick={() => { setCollapsed(!collapsed); closeFlyout(); }}><AppIcon name={collapsed ? 'expand' : 'collapse'} /></button></NavHint>
@@ -67,7 +68,8 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
     <nav id="main-navigation" aria-label="Navegação principal">
       {mobile ? <section className="nav-section" aria-label="Acesso rápido">{primaryLinks.map((item) => entry(item))}{sectionTrigger('Mais áreas')}</section> : groups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><span className="nav-section-heading">{group.context}</span>{compact && group.context !== 'Atendimento' ? sectionTrigger(group.context) : group.items.map((item) => entry(item))}</section>)}
     </nav>
-    {!mobile && <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{session?.user.name.slice(0, 1).toUpperCase()}</span><span className="user-label">{session?.user.name}<small>{session?.organization?.name}</small></span></div>
+    {!mobile && <footer className="sidebar-footer"><div className="sidebar-user"><span className="avatar">{displayName.slice(0, 1).toUpperCase()}</span><span className="user-label">{displayName}<small>{session?.organization?.name}</small></span></div>
+      <NavHint label="Meu perfil" enabled={compact}><NavLink className="organization-switch" to="/app/profile" aria-label="Meu perfil"><AppIcon name="profile" /><span className="nav-label">Meu perfil</span></NavLink></NavHint>
       {(session?.organizations?.length ?? 0) > 1 && <NavHint label="Trocar organização" enabled={compact}><NavLink className="organization-switch" to="/organizations" aria-label="Trocar organização"><AppIcon name="organization" /><span className="nav-label">Trocar organização</span></NavLink></NavHint>}
       <div className="sidebar-realtime">
         <span className={`realtime-status realtime-${realtimeState}`} role="status" aria-live="polite" aria-atomic="true" tabIndex={0} title={`${realtimeLabels[realtimeState]} — conexão em tempo real com o servidor WappHub.${realtimeState === 'stale' ? ' Reconexão pausada; tente novamente.' : ''}`}><span className="realtime-dot" aria-hidden="true" /><span className="realtime-label">{realtimeLabels[realtimeState]}</span></span>
@@ -84,7 +86,8 @@ export function Sidebar({ realtimeState = 'closed', onRealtimeRetry }: { realtim
     }}>{flyoutGroups.map((group) => <section key={group.context} className="nav-section" aria-label={group.context}><strong>{group.context}</strong>{group.items.map((item) => entry(item, false))}</section>)}
       {mobile && flyoutSection === 'Mais áreas' && <section className="nav-flyout-account" aria-label="Conta e conexão">
         <strong>Conta</strong>
-        <div className="nav-flyout-identity"><span className="avatar" aria-hidden="true">{session?.user.name.slice(0, 1).toUpperCase()}</span><span><b>{session?.user.name}</b><small>{session?.organization?.name}</small></span></div>
+        <div className="nav-flyout-identity"><span className="avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</span><span><b>{displayName}</b><small>{session?.organization?.name}</small></span></div>
+        <NavLink className="organization-switch" to="/app/profile" onClick={() => closeFlyout()}><AppIcon name="profile" />Meu perfil</NavLink>
         {(session?.organizations?.length ?? 0) > 1 && <NavLink className="organization-switch" to="/organizations" onClick={() => closeFlyout()}>Trocar organização</NavLink>}
         <div className="sidebar-realtime">
           <span className={`realtime-status realtime-${realtimeState}`} role="status" aria-live="polite" aria-atomic="true" title={realtimeLabels[realtimeState]}><span className="realtime-dot" aria-hidden="true" />{realtimeLabels[realtimeState]}</span>
