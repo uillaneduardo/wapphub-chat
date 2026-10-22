@@ -89,6 +89,34 @@ describe('InboxList', () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(screen.queryByText('Texto restrito atualizado')).not.toBeInTheDocument();
   });
+  it('searches only loaded authorized conversations locally without extra API calls', async () => {
+    const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [
+      row({ id: 'conv-1', contactName: 'Elaine', lastMessagePreview: 'Pedido de orçamento' }),
+      row({ id: 'conv-2', contactName: 'Mauá Tecnologia', lastMessagePreview: 'Manutenção' }),
+    ], nextCursor: 'more-cursor' });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox(); await screen.findByRole('link', { name: /Elaine/ });
+    const input = screen.getByRole('searchbox', { name: 'Buscar nas conversas carregadas' });
+    fireEvent.change(input, { target: { value: 'MAUÁ' } });
+    expect(screen.queryByRole('link', { name: /Elaine/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Mauá Tecnologia/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Carregar mais' })).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: 'Não encontrado' } });
+    expect(screen.getByRole('status')).toHaveTextContent('A busca considera apenas as conversas já carregadas');
+    expect(list).toHaveBeenCalledTimes(1);
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByRole('link', { name: /Elaine/ })).toBeInTheDocument();
+  });
+  it('does not search message previews when messages.read is denied', async () => {
+    state.session.permissions = ['conversations.read', 'conversations.supervise'];
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [
+      row({ contactName: 'Contato disponível', lastMessagePreview: 'SEGREDO-DO-CLIENTE' }),
+    ], nextCursor: null });
+    renderInbox(); await screen.findByRole('link', { name: /Contato disponível/ });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar nas conversas carregadas' }), { target: { value: 'SEGREDO-DO-CLIENTE' } });
+    expect(screen.queryByRole('link', { name: /Contato disponível/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('SEGREDO-DO-CLIENTE')).not.toBeInTheDocument();
+  });
   it('keeps a null preview empty without replacing it with older message content', async () => {
     vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ visibility: 'NONE', lastMessagePreview: null })], nextCursor: null });
     vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
