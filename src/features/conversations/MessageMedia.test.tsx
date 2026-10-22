@@ -8,6 +8,26 @@ import type { InternalTextMessage } from '../../types/chat';
 const message: InternalTextMessage = { id: 'message-1', conversationId: 'conversation-1', senderUserId: null, senderContactId: 'contact-1', clientMessageId: null, direction: 'INBOUND', type: 'IMAGE', body: null, status: 'SENT', createdAt: '2026-10-11T00:00:00Z', updatedAt: '2026-10-11T00:00:00Z', media: { mediaId: 'media-1', type: 'IMAGE', mimeType: 'image/png', fileName: 'synthetic.png', size: 1, state: 'PENDING' } };
 describe('B3 media demand and lifecycle', () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  it.each([
+    ['IMAGE', 'Imagem'],
+    ['AUDIO', 'Áudio'],
+    ['VOICE', 'Mensagem de voz'],
+    ['VIDEO', 'Vídeo'],
+  ] as const)('presents %s with a consistent label, file name and accessible download action', async (type, label) => {
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:visual') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(chatApi, 'messageMedia').mockResolvedValue(new Blob(['visual']));
+    vi.spyOn(chatApi, 'messageMediaSource').mockResolvedValue('/api/v1/visual-media');
+    render(<MessageMedia message={{ ...message, type, media: { ...message.media!, type } }} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByTitle('synthetic.png')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir mídia' }));
+    expect(await screen.findByRole('link', { name: 'Baixar arquivo' })).toHaveAttribute('download', 'synthetic.png');
+    if (type === 'VIDEO') expect(screen.getByRole('button', { name: 'Ampliar vídeo' })).toBeInTheDocument();
+    if (type === 'IMAGE') expect(screen.getByRole('button', { name: 'Ampliar imagem' })).toBeInTheDocument();
+  });
   it('downloads only on explicit demand and revokes bytes on unmount', async () => {
     const create = vi.fn(() => 'blob:synthetic'), revoke = vi.fn(); Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: create }); Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revoke });
     const read = vi.spyOn(chatApi, 'messageMedia').mockResolvedValue(new Blob(['synthetic'], { type: 'image/png' }));
