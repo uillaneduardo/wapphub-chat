@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ConversationView } from './Conversations';
+import { clearComposerDrafts } from './composerDrafts';
 import { chatApi } from '../../lib/chatApi';
 import { mockScrollGeometry } from '../../test/messageScrollGeometry';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -26,7 +27,7 @@ function mockBase() {
 
 describe('ConversationView', () => {
   beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
-  afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  afterEach(() => { clearComposerDrafts(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
   it.each(['DEMO', 'WHATSAPP_WEB', 'META'] as const)('uses persisted authors and hides technical %s labels without inferring authors from viewer or body', async (provider) => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider, outboundEnabled: false });
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [
@@ -85,14 +86,11 @@ describe('ConversationView', () => {
     const firstPayload = send.mock.calls[0]![1]; const retryPayload = send.mock.calls[1]![1]; expect(firstPayload.clientMessageId).toBe(retryPayload.clientMessageId); expect(retryPayload).toMatchObject({ body: 'Olá', clientMessageId: firstPayload.clientMessageId });
     await screen.findByText('Enviada'); expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
   });
-  it('keeps future tools disabled with explanatory tooltips', async () => {
+  it('exposes actionable formatting and emoji controls without duplicate disabled media placeholders', async () => {
     mockBase(); renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
-    for (const name of ['Negrito', 'Itálico', 'Anexar arquivo', 'Imagem/vídeo', 'Áudio', 'Emojis']) {
-      expect(screen.getByRole('button', { name })).toBeDisabled();
-      const wrapper = screen.getByLabelText(`${name}: indisponível nesta versão`);
-      expect(wrapper).toHaveAttribute('tabindex', '0'); expect(wrapper).toHaveAttribute('aria-disabled', 'true');
-      expect(document.getElementById(wrapper.getAttribute('aria-describedby')!)).toHaveTextContent(`${name}: indisponível nesta versão.`);
-    }
+    for (const name of ['Negrito', 'Itálico', 'Tachado', 'Monoespaçado', 'Emojis']) expect(screen.getByRole('button', { name })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Anexar arquivo' })).not.toBeInTheDocument();
+    expect(screen.queryByText('indisponível nesta versão')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Escrever mensagem' })).toHaveAttribute('maxlength', '8000');
   });
   it('preserves IME and Shift+Enter and blocks duplicate pending sends', async () => {
