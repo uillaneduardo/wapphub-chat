@@ -4,12 +4,13 @@ import { UserSelect } from '../../components/UserSelect';
 import { chatApi } from '../../lib/chatApi';
 import type { Conversation, CursorPage, HistoryVisibility, Tag, TeamMember, TransferRequest } from '../../types/chat';
 
-interface Props { conversation: Conversation; tags: Tag[]; userId: string; permissions: string[]; onConversationUpdate: (conversation: Conversation) => void; onTagsUpdate: () => void }
+interface Props { conversation: Conversation; tags: Tag[]; userId: string; role?: string; permissions: string[]; onConversationUpdate: (conversation: Conversation) => void; onTagsUpdate: () => void }
 
-export function ConversationActions({ conversation, tags, userId, permissions, onConversationUpdate, onTagsUpdate }: Props) {
+export function ConversationActions({ conversation, tags, userId, role, permissions, onConversationUpdate, onTagsUpdate }: Props) {
+  const isAgent = role === 'AGENT';
   const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
   const isArchived = conversation.status === 'ARCHIVED';
-  const canLoadRoster = (!conversation.assignedUserId && can('conversations.assign') && can('conversations.supervise')) || (Boolean(conversation.assignedUserId) && can('conversations.transfer'));
+  const canLoadRoster = !isAgent && ((!conversation.assignedUserId && can('conversations.assign') && can('conversations.supervise')) || (Boolean(conversation.assignedUserId) && can('conversations.transfer')));
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [targetUserId, setTargetUserId] = useState('');
   const [members, setMembers] = useState<TeamMember[]>([]); const [rosterCursor, setRosterCursor] = useState<string | null>(null); const [rosterLoading, setRosterLoading] = useState(false); const [rosterError, setRosterError] = useState('');
   const [transferOpen, setTransferOpen] = useState(false); const [visibility, setVisibility] = useState<HistoryVisibility>('FULL'); const [lastN, setLastN] = useState('20'); const [handoverNote, setHandoverNote] = useState(''); const [tagToAdd, setTagToAdd] = useState('');
@@ -39,14 +40,14 @@ export function ConversationActions({ conversation, tags, userId, permissions, o
   return <section className="conversation-actions" aria-label="Ações da conversa">
     <div className="action-row">
       {can('conversations.archive') && <button type="button" className="secondary-button" disabled={busy} onClick={() => void run(() => chatApi.archive(conversation.id, conversation.status !== 'ARCHIVED'))}>{conversation.status === 'ARCHIVED' ? 'Reabrir conversa' : 'Arquivar conversa'}</button>}
-      {!isArchived && !conversation.assignedUserId && can('conversations.assign') && <button type="button" className="secondary-button" disabled={busy} onClick={() => assign(userId)}>Atribuir a mim</button>}
+      {!isAgent && !isArchived && !conversation.assignedUserId && can('conversations.assign') && <button type="button" className="secondary-button" disabled={busy} onClick={() => assign(userId)}>Atribuir a mim</button>}
     </div>
-    {!isArchived && !conversation.assignedUserId && can('conversations.supervise') && can('conversations.assign') && <form className="compact-form" onSubmit={submitAssignment}>
+    {!isAgent && !isArchived && !conversation.assignedUserId && can('conversations.supervise') && can('conversations.assign') && <form className="compact-form" onSubmit={submitAssignment}>
       <label htmlFor="assign-member">Atribuir a uma pessoa</label>
       <UserSelect id="assign-member" members={members} value={targetUserId} onChange={setTargetUserId} loading={rosterLoading} disabled={busy || Boolean(rosterError)} />
       {rosterControls}<button className="text-button" disabled={busy || rosterLoading || !targetAvailable}>Atribuir</button>
     </form>}
-    {!isArchived && conversation.assignedUserId && can('conversations.transfer') && <div className="transfer-block"><button type="button" className="text-button" onClick={() => setTransferOpen((open) => !open)}>{transferOpen ? 'Cancelar transferência' : 'Transferir conversa'}</button>{transferOpen && <form className="compact-form" onSubmit={submitTransfer}>
+    {!isAgent && !isArchived && conversation.assignedUserId && can('conversations.transfer') && <div className="transfer-block"><button type="button" className="text-button" onClick={() => setTransferOpen((open) => !open)}>{transferOpen ? 'Cancelar transferência' : 'Transferir conversa'}</button>{transferOpen && <form className="compact-form" onSubmit={submitTransfer}>
       <label htmlFor="transfer-member">Transferir para</label><UserSelect id="transfer-member" members={members} value={targetUserId} onChange={setTargetUserId} loading={rosterLoading} disabled={busy || Boolean(rosterError)} excludeUserId={conversation.assignedUserId ?? undefined} />
       {rosterControls}
       <label htmlFor="transfer-visibility">Histórico visível</label><select id="transfer-visibility" value={visibility} onChange={(event) => setVisibility(event.target.value as HistoryVisibility)}><option value="FULL">Completo</option><option value="LIMITED">Últimas mensagens</option><option value="NONE">Sem histórico</option></select>

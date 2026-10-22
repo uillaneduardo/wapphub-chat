@@ -6,13 +6,25 @@ import { chatApi } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation } from '../../types/chat';
 
-const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'] } }));
+const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'], membership: { role: 'OWNER' } } }));
 vi.mock('../session/SessionContext', () => ({ useSession: () => ({ session: state.session }) }));
 const row = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'conv-1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', lastMessageAt: '2026-10-01T00:00:00.000Z', visibility: 'FULL', ...overrides });
 function renderInbox(path = '/app/conversations?scope=mine') { return render(<MemoryRouter initialEntries={[path]}><InboxList /></MemoryRouter>); }
 
 describe('InboxList', () => {
-  afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; });
+  afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; state.session.membership.role = 'OWNER'; });
+  it('shows only assigned conversations to AGENT even when a URL requests the unassigned queue', async () => {
+    state.session.membership.role = 'AGENT';
+    state.session.permissions = ['conversations.read', 'messages.read', 'messages.send'];
+    const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox('/app/conversations?scope=unassigned');
+    await screen.findByText('Nenhuma conversa');
+    expect(list).toHaveBeenCalledWith({ scope: 'mine', archived: false, limit: 50 }, expect.any(AbortSignal));
+    expect(screen.queryByRole('tab', { name: 'Não atribuídas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Todas' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Minhas' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('link', { name: 'Nova conversa' })).not.toBeInTheDocument();
+  });
   it('opens all authorized conversations for supervisors and retains the selected scope in links', async () => {
     const list = vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row({ assignedUserId: null, provider: 'WHATSAPP_WEB' })], nextCursor: null });
     vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });

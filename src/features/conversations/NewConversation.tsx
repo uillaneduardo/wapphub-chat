@@ -18,7 +18,7 @@ function NewConversationContent() {
   const [channels, setChannels] = useState<WebChannel[]>([]); const [channelId, setChannelId] = useState(''); const [phone, setPhone] = useState(''); const [recipientMode, setRecipientMode] = useState<'contact' | 'phone'>('contact');
   const contactId = params.get('contactId');
   const [selected, setSelected] = useState<Contact | null>(null); const [creatingContact, setCreatingContact] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [created, setCreated] = useState<CreateConversationResult | null>(null);
-  const allowed = Boolean(session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && session.permissions.includes('contacts.read'));
+  const allowed = Boolean(session?.membership?.role !== 'AGENT' && session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && session.permissions.includes('contacts.read'));
   const contactRequest = useRef<AbortController | null>(null);
   const lock = useRef(false); const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; contactRequest.current?.abort(); }; }, []);
