@@ -6,6 +6,7 @@ import { currentOrganization } from '../types/auth';
 import { createRealtimeUrl, RealtimeClient, createAccountCheckpointStore } from '../lib/realtime';
 import { Sidebar } from './Sidebar';
 import { realtimeBus } from '../lib/realtimeBus';
+import { activateComposerScope, clearComposerDrafts } from '../features/conversations/composerDrafts';
 
 export function AppShell() { const { session, expireSession, refreshSession } = useSession(); const organization = session ? currentOrganization(session) : null;
   const inConversations = Boolean(useMatch('/app/conversations/*'));
@@ -13,6 +14,8 @@ export function AppShell() { const { session, expireSession, refreshSession } = 
   const clientRef = useRef<RealtimeClient | null>(null);
   const userId = session?.user.id;
   const organizationId = organization?.id; const canReadConversations = session?.permissions.includes('conversations.read') ?? false; const canReadContacts = session?.permissions.includes('contacts.read') ?? false;
+  const canSendMessages = session?.permissions.includes('messages.send') ?? false;
+  useEffect(() => { activateComposerScope(canSendMessages ? userId ?? null : null, canSendMessages ? organizationId ?? null : null); return () => clearComposerDrafts(); }, [userId, organizationId, canSendMessages]);
   const authorizationStamp = `${session?.membership?.permissionVersion ?? 0}:${[...(session?.permissions ?? [])].sort().join(',') ?? ''}`;
   useEffect(() => { diagnose({ kind: 'shell.mount' }); return () => diagnose({ kind: 'shell.unmount' }); }, []);
   useEffect(() => {
