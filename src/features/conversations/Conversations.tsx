@@ -1,6 +1,6 @@
 import "./media.css";
 import { MessageMedia } from "./MessageMedia";
-import { MediaComposer, type Attachment } from "./MediaComposer";
+import type { Attachment } from "./MediaComposer";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -14,11 +14,11 @@ import { realtimeBus } from '../../lib/realtimeBus';
 import { InboxList } from './InboxList';
 import type { Contact, Conversation, CursorPage, InternalNote, InternalTextMessage, Tag } from '../../types/chat';
 import { createClientMessageId, createOptimisticMessage, mergeMessages } from './conversationModel';
-import { ComposerTools } from './ComposerTools';
+import { MessageComposer } from './MessageComposer';
+import { composerDraftKey, useConversationDraft } from './composerDrafts';
 import { useMessageScroll, messageScrollKey } from './useMessageScroll';
 import { useComposerShortcut } from '../../hooks/useComposerShortcut';
 import { useContextPanel } from '../../hooks/useContextPanel';
-import { SendPreference } from '../../components/SendPreference';
 import { ContextSeparator } from '../../components/ContextSeparator';
 import { Icon } from '../../components/Icon';
 import { ConversationActions } from './ConversationActions';
@@ -44,9 +44,10 @@ function ConversationViewContent() {
   const permissions = session?.permissions ?? noPermissions;
   const permissionKey = [...permissions].sort().join(',');
   const can = useCallback((permission: string) => permissionKey.split(',').includes(permission), [permissionKey]);
+  const [draft, setDraft] = useConversationDraft(composerDraftKey(session?.user.id ?? '', session?.currentOrganizationId ?? '', conversationId));
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
   const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
   const contactNameRef = useRef(contact?.name);
   contactNameRef.current = contact?.name;
   const sendIntents = useRef(new Map<string, { body: string; attachment?: Attachment | null; media?: NonNullable<InternalTextMessage['media']> }>());
@@ -308,7 +309,19 @@ function ConversationViewContent() {
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
-      {can('messages.send') && conversation.outboundEnabled !== false && <form className="message-composer" onSubmit={submitComposer}><textarea aria-label="Escrever mensagem" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => composerShortcut.onKeyDown(event, sendDraft)} placeholder={conversation.status === 'ARCHIVED' ? 'Reabra a conversa para enviar mensagens' : 'Escreva uma mensagem…'} disabled={conversation.status === 'ARCHIVED'} maxLength={8000} /><div className="composer-footer">{conversation.mediaEnabled && <MediaComposer attachment={attachment} onChange={changeAttachment} disabled={sending || conversation.status === 'ARCHIVED'} />}<ComposerTools mediaEnabled={conversation.mediaEnabled} /><div className="composer-send-controls"><button className="primary-button" disabled={sending || (!draft.trim() && !attachment) || conversation.status === 'ARCHIVED'} aria-label="Enviar mensagem">{sending ? 'Enviando…' : 'Enviar'}</button><SendPreference value={composerShortcut.shortcut} onChange={composerShortcut.setShortcut} /></div></div></form>}
+      {can('messages.send') && conversation.outboundEnabled !== false && <MessageComposer
+        draft={draft}
+        onDraftChange={setDraft}
+        onSubmit={submitComposer}
+        onTextKeyDown={event => composerShortcut.onKeyDown(event, sendDraft)}
+        sending={sending}
+        disabled={conversation.status === 'ARCHIVED'}
+        attachment={attachment}
+        onAttachmentChange={changeAttachment}
+        mediaEnabled={Boolean(conversation.mediaEnabled)}
+        shortcut={composerShortcut.shortcut}
+        onShortcutChange={composerShortcut.setShortcut}
+      />}
       {conversation.outboundEnabled === false && <p className="provider-warning" role="status">Envio indisponível nesta conversa. O histórico autorizado permanece acessível.</p>}
     </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
       {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}
