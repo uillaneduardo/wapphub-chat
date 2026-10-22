@@ -85,14 +85,11 @@ describe('ConversationView', () => {
     const firstPayload = send.mock.calls[0]![1]; const retryPayload = send.mock.calls[1]![1]; expect(firstPayload.clientMessageId).toBe(retryPayload.clientMessageId); expect(retryPayload).toMatchObject({ body: 'Olá', clientMessageId: firstPayload.clientMessageId });
     await screen.findByText('Enviada'); expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
   });
-  it('keeps future tools disabled with explanatory tooltips', async () => {
+  it('exposes actionable formatting and emoji controls without duplicate disabled media placeholders', async () => {
     mockBase(); renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
-    for (const name of ['Negrito', 'Itálico', 'Anexar arquivo', 'Imagem/vídeo', 'Áudio', 'Emojis']) {
-      expect(screen.getByRole('button', { name })).toBeDisabled();
-      const wrapper = screen.getByLabelText(`${name}: indisponível nesta versão`);
-      expect(wrapper).toHaveAttribute('tabindex', '0'); expect(wrapper).toHaveAttribute('aria-disabled', 'true');
-      expect(document.getElementById(wrapper.getAttribute('aria-describedby')!)).toHaveTextContent(`${name}: indisponível nesta versão.`);
-    }
+    for (const name of ['Negrito', 'Itálico', 'Tachado', 'Monoespaçado', 'Emojis']) expect(screen.getByRole('button', { name })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Anexar arquivo' })).not.toBeInTheDocument();
+    expect(screen.queryByText('indisponível nesta versão')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Escrever mensagem' })).toHaveAttribute('maxlength', '8000');
   });
   it('preserves IME and Shift+Enter and blocks duplicate pending sends', async () => {
