@@ -9,7 +9,7 @@ describe('WhatsApp formatting preserves native text and selection', () => {
     ['code', '```texto```'],
   ] as const)('wraps selected text in %s markers', (kind, expected) => {
     const result = formatSelection('texto', { start: 0, end: 5 }, kind);
-    expect(result).toMatchObject({ text: expected, selection: { start: expected.length - 5, end: expected.length } });
+    expect(result).toMatchObject({ text: expected, selection: { start: expected.length === 11 ? 3 : 1, end: expected.length === 11 ? 8 : 6 } });
     const reversed = formatSelection(expected, result!.selection, kind);
     expect(reversed?.text).toBe('texto');
   });
