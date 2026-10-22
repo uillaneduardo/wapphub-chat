@@ -260,14 +260,13 @@ function ConversationViewContent() {
   }
   function sendDraft() {
     if (composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
-    composerBusy.current = true; setSending(true); const body = draft; setDraft('');
     const retryId = attachmentRetry.current;
     const retryMessage = retryId ? messagesRef.current.find(message => message.clientMessageId === retryId) : undefined;
     const oldIntent = retryId ? sendIntents.current.get(retryId) : undefined;
     if (retryId && oldIntent?.attachment?.file === attachment?.file && retryMessage?.deliveryOutcome === 'UNKNOWN') {
-      composerBusy.current = false; setSending(false);
       setDetailError('Resultado do registro incerto. Aguarde confirmação ou use Verificar envio. A gravação permanece disponível.'); return;
     }
+    composerBusy.current = true; setSending(true); const body = draft; setDraft('');
     void submitMessage(body, retryId && oldIntent?.attachment?.file === attachment?.file ? retryId : undefined, attachment).finally(() => { composerBusy.current = false; setSending(false); });
   }
   async function verifyUncertainSend(clientMessageId: string) {
