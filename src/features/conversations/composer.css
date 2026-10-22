@@ -163,3 +163,25 @@
   .composer-minimal .composer-input-row > button { min-width: 36px; width: 36px; }
   .composer-minimal .composer-input-row .composer-send { min-width: 38px; width: 38px; }
 }
+
+
+/* Phase D.1 — match the homologated mobile interaction on desktop as well.
+   The + button is always visible, while the unchanged MediaComposer stays mounted.
+   Hidden controls do not take a second line; active media/recording/error previews
+   remain above the input even when the secondary actions are folded. */
+@media (min-width: 721px) {
+  .composer-minimal .composer-expand-tools { display: inline-flex !important; }
+  .composer-minimal .composer-input-row .composer-send {
+    width: 42px; min-width: 42px; padding: 0;
+  }
+  .composer-minimal .composer-input-row .composer-send span { display: none; }
+  .composer-minimal .composer-secondary { order: 0; }
+  .composer-minimal .composer-secondary:not(.is-expanded) .provider-actions,
+  .composer-minimal .composer-secondary:not(.is-expanded) .composer-tools,
+  .composer-minimal .composer-secondary:not(.is-expanded) .composer-preview-button,
+  .composer-minimal .composer-secondary:not(.is-expanded) .composer-options-button { display: none; }
+  .composer-minimal .composer-secondary:not(.is-expanded):not(:has(.attachment-preview)):not(:has([role="status"])):not(:has([role="alert"])) { display: none; }
+  .composer-minimal .composer-secondary .attachment-preview { order: -2; }
+  .composer-minimal .composer-secondary .provider-actions button { min-height: 40px; }
+  .composer-minimal .composer-secondary .composer-options-button { margin-left: 0; }
+}
