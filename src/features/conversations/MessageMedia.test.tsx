@@ -53,7 +53,7 @@ describe('B3 media demand and lifecycle', () => {
     expect(read).not.toHaveBeenCalled(); expect(view.container.querySelector('audio,video')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Abrir mídia' }));
     const element = await screen.findByLabelText(type === 'VIDEO' ? 'Vídeo da mensagem' : type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem');
-    expect(element).toHaveAttribute('src', url); expect(element).toHaveAttribute('crossorigin', 'use-credentials'); expect(element).toHaveAttribute('controls'); expect(element).not.toHaveAttribute('autoplay'); expect(blob).not.toHaveBeenCalled();
+    expect(element).toHaveAttribute('src', url); expect(element).toHaveAttribute('crossorigin', 'use-credentials'); if (type === 'VIDEO') expect(element).toHaveAttribute('controls'); else { expect(element).not.toHaveAttribute('controls'); expect(screen.getByRole('slider', { name: 'Posição do áudio' })).toBeDisabled(); } expect(element).not.toHaveAttribute('autoplay'); expect(blob).not.toHaveBeenCalled();
     if (type !== 'VIDEO') { fireEvent.change(screen.getByLabelText('Velocidade'), { target: { value: '1.5' } }); expect((element as HTMLMediaElement).playbackRate).toBe(1.5); }
     fireEvent.error(element); expect(await screen.findByRole('status')).toHaveTextContent('formato ou codec'); expect(screen.getByRole('link', { name: 'Baixar arquivo' })).toHaveAttribute('href', url);
     view.unmount(); expect(pause).toHaveBeenCalled(); expect(stop).toHaveBeenCalled(); expect(element).not.toHaveAttribute('src');
