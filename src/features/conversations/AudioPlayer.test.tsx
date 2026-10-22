@@ -35,6 +35,7 @@ describe('audio player — accessible seek and native lifecycle', () => {
     expect(screen.getByText('1:15')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reproduzir áudio' }));
     expect(play).toHaveBeenCalledOnce();
+    pausedState = false;
     fireEvent.play(media);
     expect(playing).toHaveBeenCalledOnce();
     expect(screen.getByRole('button', { name: 'Pausar áudio' })).toBeInTheDocument();
