@@ -131,6 +131,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
     {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : ''}`}>
       <div className="attachment-preview-heading">
         <span>{attachment.type === 'VOICE' ? 'Mensagem de voz' : attachment.type === 'AUDIO' ? 'Áudio anexado' : attachment.file.name}</span>
+        {(attachment.type === 'AUDIO' || attachment.type === 'VOICE') && <small className="audio-draft-filename" title={attachment.file.name}>{attachment.file.name}</small>}
         <button type="button" className="attachment-discard-button" disabled={disabled} onClick={() => onChange(null)} aria-label="Descartar anexo" title="Descartar anexo"><Trash2 size={17} aria-hidden="true" /></button>
       </div>
       {preview && (attachment.type === 'IMAGE'
