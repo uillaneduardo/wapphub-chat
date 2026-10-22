@@ -13,6 +13,7 @@ type Confirmation = 'save' | 'reset' | 'discard' | 'reload' | null;
 function modeOf(code: string, grants: readonly string[], revocations: readonly string[]): Mode {
   return grants.includes(code) ? 'grant' : revocations.includes(code) ? 'revoke' : 'default';
 }
+const agentLockedPermissions = new Set(['conversations.create', 'conversations.assign', 'conversations.transfer', 'conversations.supervise']);
 const contextIcons: Record<string, AppIconName> = { Atendimento: 'conversations', Produtividade: 'automations', Comunicação: 'campaigns', Gestão: 'team', Preferências: 'settings' };
 export function MemberPermissionsPage() {
   const { membershipId = '' } = useParams(); const { session } = useSession();
@@ -66,7 +67,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
   function available(permission: Permission) { return session?.resources?.find((resource) => resource.code === permission.resourceCode)?.availability === 'AVAILABLE'; }
   function proposed(permission: Permission, reset = false) {
     const mode = reset ? 'default' : modeOf(permission.code, grants, revocations);
-    return Boolean(available(permission) && value?.member.status === 'ACTIVE' && value.member.userStatus === 'ACTIVE' && (mode === 'grant' || (mode === 'default' && value.inherited.includes(permission.code))));
+    return Boolean(!(value?.member.role === 'AGENT' && agentLockedPermissions.has(permission.code)) && available(permission) && value?.member.status === 'ACTIVE' && value.member.userStatus === 'ACTIVE' && (mode === 'grant' || (mode === 'default' && value.inherited.includes(permission.code))));
   }
   const sensitiveRevocations = catalog.filter((permission) => permission.sensitive && value?.effective.includes(permission.code) && !proposed(permission, confirm === 'reset'));
   const modules = [...new Set(catalog.map((permission) => permission.module.trim() || 'Outras permissões'))];
@@ -83,6 +84,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
     {saved && <p role="status" className="success-text">{saved}</p>}
     {value && <>
       <div className="member-summary"><strong>{value.member.name}</strong><span>{value.member.email}</span><p>Perfil: {roleLabels[value.member.role] ?? value.member.role} · {value.member.status === 'ACTIVE' && value.member.userStatus === 'ACTIVE' ? 'Ativo' : 'Inativo'}</p></div>
+      {value.member.role === 'AGENT' && <p className="muted">O atendente só acessa conversas atribuídas por um supervisor ou proprietário. Criar, atribuir, transferir e supervisionar conversas são restrições fixas deste perfil.</p>}
       {self && <p className="muted">Suas permissões são exibidas para consulta. Outro administrador autorizado deve fazer alterações.</p>}
       <p className="muted">Padrão usa o perfil. Conceder e revogar criam ajustes individuais. O acesso aplicado só muda após confirmação do Core.</p>
       <div className="permissions-toolbar"><label htmlFor={`${prefix}-search`}>Buscar permissões<input id={`${prefix}-search`} type="search" value={search} placeholder="Título, descrição ou código" onChange={(event) => setSearch(event.target.value)} /></label><button type="button" disabled={!search} onClick={() => setSearch('')}>Limpar busca</button><button type="button" onClick={() => setCollapsed([])}>Expandir todas</button><button type="button" onClick={() => setCollapsed(modules)}>Recolher todas</button></div>
@@ -103,7 +105,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
             {descriptions.length === 1 && <p className="muted permission-context-description">{descriptions[0]}</p>}
             {filtered.map((permission) => {
               const resource = session?.resources?.find((item) => item.code === permission.resourceCode); const inherited = value.inherited.includes(permission.code); const mode = modeOf(permission.code, grants, revocations);
-              const reason = !available(permission) ? (resource ? availabilityLabels[resource.availability] : 'Recurso indisponível') : !permission.editable ? 'Permissão não delegável' : !session?.permissions.includes(permission.code) ? 'Você não possui esta permissão para delegar' : '';
+              const reason = value.member.role === 'AGENT' && agentLockedPermissions.has(permission.code) ? 'Restrito ao perfil proprietário/supervisor. O agente precisa receber uma atribuição.' : !available(permission) ? (resource ? availabilityLabels[resource.availability] : 'Recurso indisponível') : !permission.editable ? 'Permissão não delegável' : !session?.permissions.includes(permission.code) ? 'Você não possui esta permissão para delegar' : '';
               const infoId = `${prefix}-info-${permission.code}`;
               return <div key={permission.code} className="permission-row"><div><label htmlFor={`${prefix}-${permission.code}`}>{permission.name}</label><code>{permission.code}</code>{resource?.description && <p className="muted permission-description">{resource.description}</p>}<small>{inherited ? 'Herdada do perfil' : 'Não incluída no perfil'} · {mode === 'grant' ? 'Concessão individual' : mode === 'revoke' ? 'Revogação individual' : 'Padrão do perfil'}</small><small>Acesso aplicado: {value.effective.includes(permission.code) ? 'Permitido' : 'Não permitido'}{changed.includes(permission.code) && ` · Proposta após salvar: ${proposed(permission) ? 'permitido' : 'não permitido'}`}</small><small id={infoId}>{reason || 'Ajuste individual validado pelo Core ao salvar'}</small></div><select id={`${prefix}-${permission.code}`} value={mode} aria-describedby={infoId} disabled={saving || self || Boolean(reason)} onChange={(event) => choose(permission.code, event.target.value)}><option value="default">Padrão do perfil</option><option value="grant">Conceder</option><option value="revoke">Revogar</option></select></div>;
             })}
