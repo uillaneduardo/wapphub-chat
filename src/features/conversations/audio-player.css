@@ -1,0 +1,50 @@
+/* A compact, seekable audio treatment shared by message and draft preview.
+   Controls never expose media URLs and use the existing organization accent. */
+.audio-player {
+  box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 8px; width: 100%; min-width: 0; padding: 10px;
+  border: 1px solid var(--border); border-radius: 11px;
+  background: var(--surface-muted); color: var(--text);
+}
+.audio-player > audio { display: none; }
+.audio-player .audio-play-button {
+  display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px;
+  min-width: 38px; min-height: 38px; border: 1px solid var(--border);
+  border-radius: 50%; padding: 0; background: var(--surface); color: var(--accent);
+  cursor: pointer;
+}
+.audio-player .audio-play-button:hover { background: color-mix(in srgb,var(--accent) 12%,var(--surface)); }
+.audio-player .audio-timeline { display: grid; flex: 1 1 80px; gap: 2px; min-width: 70px; }
+.audio-player .audio-seek {
+  appearance: none; -webkit-appearance: none; display: block;
+  box-sizing: border-box; width: 100%; height: 22px; min-height: 22px;
+  margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
+}
+.audio-player .audio-seek::-webkit-slider-runnable-track {
+  height: 5px; border: 0; border-radius: 999px;
+  background: linear-gradient(to right,var(--accent) 0,var(--accent) var(--audio-progress),var(--border) var(--audio-progress),var(--border) 100%);
+}
+.audio-player .audio-seek::-moz-range-track { height: 5px; border-radius: 999px; background: var(--border); }
+.audio-player .audio-seek::-moz-range-progress { height: 5px; border-radius: 999px; background: var(--accent); }
+.audio-player .audio-seek::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none; width: 12px; height: 12px; margin-top: -3.5px;
+  border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+}
+.audio-player .audio-seek::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); }
+.audio-player .audio-seek:disabled { opacity: .5; cursor: default; }
+.audio-player .audio-times { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 10px; line-height: 1.4; }
+.audio-player .audio-rate {
+  box-sizing: border-box; flex: 0 0 auto; width: 63px; min-width: 0; height: 32px; min-height: 32px;
+  margin: 0; padding: 0 5px; border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 600; font-size: 11px; cursor: pointer;
+}
+.audio-player :is(.audio-play-button,.audio-rate,.audio-seek):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.audio-player .audio-playback-error { flex: 1 0 100%; margin: 0; color: var(--danger); font-size: 11px; }
+.audio-player.is-compact { padding: 8px; gap: 6px; }
+.audio-player.is-compact .audio-play-button { flex-basis: 34px; width: 34px; height: 34px; min-width: 34px; min-height: 34px; }
+.audio-player.is-compact .audio-rate { width: 62px; }
+@media(max-width: 600px) {
+  .audio-player { padding: 7px; gap: 5px; }
+  .audio-player .audio-play-button { flex-basis: 38px; }
+  .audio-player .audio-rate { width: 58px; }
+}
