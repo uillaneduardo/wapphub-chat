@@ -6,6 +6,7 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './styles/compact-ui.css';
 import './styles/shell-compact.css';
+import './styles/conversation-compact.css';
 
 installDocumentDiagnostics();
 

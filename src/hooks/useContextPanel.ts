@@ -15,7 +15,7 @@ const clamp = (value: number, max: number) => Math.round(Math.max(MIN_CONTEXT_WI
 
 export function useContextPanel(userId: string | undefined, ready: boolean) {
   const [preferred, setPreferred] = useUiPreference(userId, 'contextWidth');
-  const wide = useMediaQuery('(min-width: 1051px)'); const bodyRef = useRef<HTMLDivElement>(null); const contextId = useId();
+  const wide = useMediaQuery('(min-width: 1440px)'); const bodyRef = useRef<HTMLDivElement>(null); const contextId = useId();
   const [available, setAvailable] = useState(0); const [liveWidth, setLiveWidth] = useState<number | null>(null);
   const drag = useRef<{ id: number; x: number; start: number; width: number; target: HTMLDivElement } | null>(null);
   const limits = contextLimits(available, wide); const width = clamp(liveWidth ?? preferred, limits.max);

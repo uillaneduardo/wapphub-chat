@@ -2,6 +2,7 @@ import "./media.css";
 import { MessageMedia } from "./MessageMedia";
 import type { Attachment } from "./MediaComposer";
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FormattedMessage } from '../../components/FormattedMessage';
@@ -48,7 +49,8 @@ function ConversationViewContent() {
   const [draft, setDraft] = useConversationDraft(composerDraftKey(session?.user.id ?? '', session?.currentOrganizationId ?? '', conversationId));
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
   const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false); const [hideInlineDetails, setHideInlineDetails] = useState(false);
+  const detailToggleRef = useRef<HTMLButtonElement>(null); const detailCloseRef = useRef<HTMLButtonElement>(null);
   const contactNameRef = useRef(contact?.name);
   contactNameRef.current = contact?.name;
   const sendIntents = useRef(new Map<string, { body: string; attachment?: Attachment | null; media?: NonNullable<InternalTextMessage['media']> }>());
@@ -62,6 +64,10 @@ function ConversationViewContent() {
   const assignmentDenied = isAgent && conversation?.assignedUserId !== sessionUserId;
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
+  const contextOpen = panel.inline ? !hideInlineDetails : showDetails;
+  function closeDetails() { setShowDetails(false); detailToggleRef.current?.focus(); }
+  function toggleDetails() { if (panel.inline) setHideInlineDetails(current => !current); else setShowDetails(current => !current); }
+  useEffect(() => { if (!panel.inline && showDetails) detailCloseRef.current?.focus(); }, [panel.inline, showDetails]);
   const contentEpoch = useRef(0);
   const readScope = useRef<string | undefined>(undefined);
   const noteCursors = useRef<(string | undefined)[]>([undefined]);
@@ -302,8 +308,8 @@ function ConversationViewContent() {
   const canSeeMessages = can('messages.read') && !assignmentDenied; const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
-    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{conversation.provider === 'WHATSAPP_WEB' ? location.state.conversationCreation === 'reused' ? 'Conversa do WhatsApp existente aberta.' : 'Conversa do WhatsApp criada. Nenhuma mensagem foi enviada.' : location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><ContactAvatar name={contactName} large /><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div><span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
-    <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
+    {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{conversation.provider === 'WHATSAPP_WEB' ? location.state.conversationCreation === 'reused' ? 'Conversa do WhatsApp existente aberta.' : 'Conversa do WhatsApp criada. Nenhuma mensagem foi enviada.' : location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to={{ pathname: '/app/conversations', search: location.search }} aria-label="Voltar para conversas"><ArrowLeft size={19} aria-hidden="true" /></Link><ContactAvatar name={contactName} large /><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div><span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button ref={detailToggleRef} type="button" className="mobile-details-button details-toggle-visible" onClick={toggleDetails} aria-expanded={contextOpen} aria-controls={panel.contextId} aria-label={contextOpen ? 'Ocultar detalhes da conversa' : 'Mostrar detalhes da conversa'}>{contextOpen ? <PanelRightClose size={17} aria-hidden="true" /> : <PanelRightOpen size={17} aria-hidden="true" />}<span>Detalhes</span></button></header>
+    <div ref={panel.bodyRef} className={`conversation-detail-body ${panel.inline ? 'context-inline' : 'context-stacked'}${!contextOpen ? ' context-hidden' : ''}`} style={{ '--context-width': `${panel.width}px` } as CSSProperties}><section className="message-column">
       {detailError && <p className="inline-error" role="alert">{detailError}</p>}
       {!canSeeMessages ? <div className="detail-state">Seu contexto não tem permissão para ler mensagens.</div> : <div className="message-history" ref={scroll.historyRef} onScroll={scroll.onScroll} role="region" tabIndex={0} aria-label="Histórico de mensagens"><div className="message-history-content" ref={scroll.contentRef}>
         {messageCursor && <button type="button" className="load-older-button" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</button>}
@@ -326,7 +332,16 @@ function ConversationViewContent() {
         onShortcutChange={composerShortcut.setShortcut}
       />}
       {conversation.outboundEnabled === false && <p className="provider-warning" role="status">Envio indisponível nesta conversa. O histórico autorizado permanece acessível.</p>}
-    </section>{panel.inline && <ContextSeparator panel={panel} />}<aside id={panel.contextId} className={`conversation-context${showDetails ? ' context-open' : ''}`} aria-label="Detalhes da conversa">
+    </section>{panel.inline && contextOpen && <ContextSeparator panel={panel} />}{!panel.inline && showDetails && <button className="context-backdrop" type="button" aria-label="Fechar detalhes da conversa" onClick={closeDetails} />}<aside id={panel.contextId} className={`conversation-context${contextOpen ? ' context-open' : ''}`} aria-label="Detalhes da conversa" role={!panel.inline && showDetails ? 'dialog' : undefined} aria-modal={!panel.inline && showDetails ? true : undefined} inert={!contextOpen} onKeyDown={(event) => {
+        if (panel.inline || !showDetails) return;
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeDetails(); }
+        if (event.key === 'Tab') {
+          const elements = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])')];
+          const first = elements[0], last = elements.at(-1);
+          if (first && last && event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (first && last && !event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
+      }}>{!panel.inline && showDetails && <div className="context-drawer-heading"><strong>Detalhes da conversa</strong><button ref={detailCloseRef} type="button" aria-label="Fechar painel de detalhes" onClick={closeDetails}><X size={18} aria-hidden="true" /></button></div>}
       {panel.inline && <button type="button" className="context-reset text-button" onClick={panel.restore}><Icon name="restore" />Restaurar largura padrão</button>}
       <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? conversation.contactId}</span></div>
       <div className="context-section"><h2>Responsável</h2><span>{conversation.assignedUserId ? conversation.assignedUserId === sessionUserId ? `${session?.user.name} (você)` : conversation.assignedUserId : 'Não atribuída'}</span></div>
