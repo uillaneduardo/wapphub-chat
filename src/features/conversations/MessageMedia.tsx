@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AudioLines, Download, Image as ImageIcon, Maximize2, Mic2, Video as VideoIcon } from 'lucide-react';
 import { MediaTransfers, type MediaAsset, type MediaLease } from '../../lib/mediaTransfers';
 import { observeMedia } from '../../lib/mediaVisibility';
 import { MediaLightbox } from './MediaLightbox';
@@ -83,13 +84,40 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
     finally { setTimeout(() => current.release(), 250); if (downloadLease.current === current) downloadLease.current = null; if (mounted.current) setDownloadBusy(false); }
   }
   if (!message.media || message.type === 'DOCUMENT') return <p className="muted">Arquivo indisponível nesta versão.</p>;
-  return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node}><p className="muted">{message.media.fileName}</p>
-    {!asset ? error ? null : typeof IntersectionObserver === 'undefined' ? <button type="button" className="secondary-button" disabled={busy} onClick={start}>{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button> : <div className="media-placeholder" aria-live="polite">{busy ? 'Carregando mídia…' : 'Aguardando mídia ficar visível'}</div>
-      : message.type === 'IMAGE' ? <button type="button" className="media-preview-button" onClick={open} aria-label="Ampliar imagem"><img src={asset.url} alt={message.body || 'Imagem recebida'} onError={() => { failed.current = true; setError('Não foi possível exibir esta imagem. Tente novamente.'); }} /></button>
-        : <>{message.type === 'VIDEO' ? expanded ? null : <video ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label="Vídeo da mensagem" onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />
-          : <><audio ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} /><label>Velocidade <select defaultValue="1" onChange={event => { if (player.current) player.current.playbackRate = Number(event.target.value); }}><option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label></>}{message.type === 'VIDEO' && <button type="button" className="secondary-button" onClick={open}>Ampliar vídeo</button>}</>}
-    {asset && <a href={asset.url} download={message.media.fileName} aria-disabled={downloadBusy} onClick={event => { event.preventDefault(); void download(); }}>{downloadBusy ? 'Baixando…' : 'Baixar arquivo'}</a>}
-    {error && <><p role="status">{error}</p><button type="button" className="secondary-button" onClick={retry}>Tentar novamente</button></>}
+  const kind = message.type === 'IMAGE' ? 'Imagem' : message.type === 'VIDEO' ? 'Vídeo' : message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio';
+  const kindIcon = message.type === 'IMAGE' ? <ImageIcon size={16} aria-hidden="true" /> : message.type === 'VIDEO' ? <VideoIcon size={16} aria-hidden="true" /> : message.type === 'VOICE' ? <Mic2 size={16} aria-hidden="true" /> : <AudioLines size={16} aria-hidden="true" />;
+  const showName = message.media.fileName.trim().toLowerCase() !== 'arquivo';
+  return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node}>
+    <div className="media-heading">
+      <span className="media-kind">{kindIcon}<span>{kind}</span></span>
+      {showName && <span className="media-filename" title={message.media.fileName}>{message.media.fileName}</span>}
+    </div>
+    <div className="media-content">
+      {!asset ? error ? null : typeof IntersectionObserver === 'undefined'
+        ? <button type="button" className="secondary-button media-load-button" disabled={busy} onClick={start}>{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button>
+        : <div className="media-placeholder" aria-live="polite">{busy ? 'Carregando mídia…' : 'Aguardando mídia ficar visível'}</div>
+        : message.type === 'IMAGE'
+          ? <button type="button" className="media-preview-button" onClick={open} aria-label="Ampliar imagem">
+              <img src={asset.url} alt={message.body || 'Imagem recebida'} onError={() => { failed.current = true; setError('Não foi possível exibir esta imagem. Tente novamente.'); }} />
+              <span className="media-expand-hint" aria-hidden="true"><Maximize2 size={15} />Ampliar</span>
+            </button>
+          : message.type === 'VIDEO'
+            ? <div className="media-video-frame">
+                {!expanded && <video ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label="Vídeo da mensagem" onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />}
+              </div>
+            : <div className="media-audio-player">
+                <span className="media-audio-art" aria-hidden="true">{message.type === 'VOICE' ? <Mic2 size={21} /> : <AudioLines size={21} />}</span>
+                <div className="media-audio-controls">
+                  <audio ref={setPlayer} controls crossOrigin="use-credentials" preload="metadata" src={asset.url} aria-label={message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended} onPlay={() => { playing.current = true; lease.current?.metadataReady(); }} onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }} onError={playbackError} />
+                  <label className="media-speed">Velocidade <select defaultValue="1" onChange={event => { if (player.current) player.current.playbackRate = Number(event.target.value); }}><option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label>
+                </div>
+              </div>}
+    </div>
+    {asset && <div className="media-actions">
+      {message.type === 'VIDEO' && <button type="button" className="media-action" onClick={open}><Maximize2 size={15} aria-hidden="true" />Ampliar vídeo</button>}
+      <a className="media-action" href={asset.url} download={message.media.fileName} aria-label="Baixar arquivo" aria-disabled={downloadBusy} onClick={event => { event.preventDefault(); void download(); }}><Download size={15} aria-hidden="true" />{downloadBusy ? 'Baixando…' : 'Baixar'}</a>
+    </div>}
+    {error && <div className="media-error"><p role="status">{error}</p><button type="button" className="secondary-button" onClick={retry}>Tentar novamente</button></div>}
     {expanded && asset && <MediaLightbox url={asset.url} video={message.type === 'VIDEO'} alt={message.body || 'Imagem recebida'} onClose={close} onRetry={() => { close(); retry(); }} onDownload={() => void download()} downloadBusy={downloadBusy} fallbackFocus={node.current?.closest<HTMLElement>('.message-history') ?? null} />}
   </div>;
 }
