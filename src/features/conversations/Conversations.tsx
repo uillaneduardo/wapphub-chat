@@ -6,6 +6,7 @@ import type { CSSProperties, FormEvent } from 'react';
 import { Link, Outlet, useMatch, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FormattedMessage } from '../../components/FormattedMessage';
 import { useSession } from '../session/SessionContext';
+import { ApiError } from '../../lib/api';
 import { chatApi } from '../../lib/chatApi';
 import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -39,7 +40,9 @@ export function ConversationView() {
 
 function ConversationViewContent() {
   const { conversationId = '' } = useParams(); const navigate = useNavigate(); const location = useLocation(); const { session } = useSession();
-  const permissions = session?.permissions ?? noPermissions; const can = useCallback((permission: string) => permissions.includes(permission), [permissions]);
+  const permissions = session?.permissions ?? noPermissions;
+  const permissionKey = [...permissions].sort().join(',');
+  const can = useCallback((permission: string) => permissionKey.split(',').includes(permission), [permissionKey]);
   const [conversation, setConversation] = useState<Conversation | null>(null); const [contact, setContact] = useState<Contact | null>(null); const [tags, setTags] = useState<Tag[]>([]); const [messages, setMessages] = useState<InternalTextMessage[]>([]); const [messageCursor, setMessageCursor] = useState<string | null>(null); const messageCursors = useRef<(string | undefined)[]>([undefined]);
   const bootstrap = useRef<Promise<void>>(Promise.resolve()); const [notes, setNotes] = useState<InternalNote[]>([]); const [notesCursor, setNotesCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [detailError, setDetailError] = useState(''); const [draft, setDraft] = useState(''); const [noteDraft, setNoteDraft] = useState(''); const [actionBusy, setActionBusy] = useState(false); const [loadingOlder, setLoadingOlder] = useState(false); const [loadingMoreNotes, setLoadingMoreNotes] = useState(false); const [showDetails, setShowDetails] = useState(false);
@@ -51,6 +54,9 @@ function ConversationViewContent() {
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
   const contentEpoch = useRef(0);
+  const readScope = useRef<string | undefined>(undefined);
+  const noteCursors = useRef<(string | undefined)[]>([undefined]);
+  const notesRef = useRef(notes); notesRef.current = notes;
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const reads = useRef(new Set<AbortController>());
@@ -58,9 +64,9 @@ function ConversationViewContent() {
   useEffect(() => { const requests = reads.current; mounted.current = true; return () => { mounted.current = false; requests.forEach((read) => read.abort()); }; }, []);
 
   useEffect(() => {
-    let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); setNotesCursor(null); setTags([]);
+    let active = true; const controller = new AbortController(); setLoading(true); setError(''); setDetailError(''); setConversation(null); setContact(null); setMessages([]); setMessageCursor(null); messageCursors.current = [undefined]; setNotes([]); noteCursors.current = [undefined]; setNotesCursor(null); setTags([]);
     bootstrap.current = chatApi.getConversation(conversationId, controller.signal).then(async (current) => {
-      if (!active) return; setConversation(current);
+      if (!active) return; readScope.current = current.readScope; setConversation(current);
       const tasks = await Promise.allSettled([
         can('contacts.read') ? chatApi.getContact(current.contactId, controller.signal) : Promise.resolve(null),
         can('messages.read') ? chatApi.listMessages(conversationId, undefined, controller.signal) : Promise.resolve(null),
@@ -95,19 +101,28 @@ function ConversationViewContent() {
       cursor = page.nextCursor;
     }
     if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
-    messageCursors.current = cursors;
-    setMessageCursor(pages.at(-1)?.nextCursor ?? null);
+    // Pagination may have appended another page during this read. Keep its cursor.
+    if (reset || messageCursors.current.length === count) {
+      messageCursors.current = cursors;
+      setMessageCursor(pages.at(-1)?.nextCursor ?? null);
+    }
     const incoming = pages.flatMap((page) => page.items);
     const authorizedIds = new Set(incoming.map((message) => message.id));
-    setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
+    setMessages((current) => mergeMessages(reset ? [] : current.filter((message) => Boolean(readScope.current) || message.id.startsWith('optimistic:') || !previousIds.has(message.id) || authorizedIds.has(message.id)), incoming));
   }, [conversationId, can]);
   const refreshNotes = useCallback(async (signal?: AbortSignal, reset = false) => {
     if (!can('notes.read')) { setNotes([]); return; }
-    const requestEpoch = contentEpoch.current;
-    const page = await chatApi.listNotes(conversationId, undefined, signal);
-    if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
-    setNotes((current) => [...page.items, ...(reset ? [] : current.filter((note) => !page.items.some((incoming) => incoming.id === note.id)))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
-    setNotesCursor(page.nextCursor);
+    const requestEpoch = contentEpoch.current, count = reset ? 1 : noteCursors.current.length;
+    const previousIds = new Set(notesRef.current.map(note => note.id));
+    const pages: CursorPage<InternalNote>[] = [], cursors: (string | undefined)[] = []; let cursor: string | undefined;
+    for (let i = 0; i < count; i++) {
+      cursors.push(cursor); const page = await chatApi.listNotes(conversationId, cursor, signal);
+      if (signal?.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return;
+      pages.push(page); if (!page.nextCursor) break; cursor = page.nextCursor;
+    }
+    if (reset || noteCursors.current.length === count) { noteCursors.current = cursors; setNotesCursor(pages.at(-1)?.nextCursor ?? null); }
+    const incoming = pages.flatMap(page => page.items), ids = new Set(incoming.map(note => note.id));
+    setNotes(current => [...incoming, ...(reset ? [] : current.filter(note => !ids.has(note.id) && (Boolean(readScope.current) || !previousIds.has(note.id))))].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
   }, [conversationId, can]);
   const refreshTags = useCallback(async (signal?: AbortSignal) => {
     if (can('tags.read')) { const page = await chatApi.listTags(undefined, signal); if (!signal?.aborted && mounted.current) setTags(page.items); }
@@ -116,11 +131,15 @@ function ConversationViewContent() {
   const prepareHistoryUpdate = scroll.preparePrepend;
   useEffect(() => {
     const refreshConversation = async (signal: AbortSignal, reset: boolean) => {
-      if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
+      if (reset && !signal.aborted) { contentEpoch.current += 1; reads.current.forEach((read) => read.abort()); setMessages([]); setNotes([]); noteCursors.current = [undefined]; messageCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null); }
       try {
         const updated = await chatApi.getConversation(conversationId, signal);
         if (signal.aborted) return;
-        setConversation(updated); setError('');
+        if (!reset && readScope.current !== updated.readScope) {
+          reset = true; contentEpoch.current += 1; reads.current.forEach(read => read.abort());
+          setMessages([]); setNotes([]); messageCursors.current = [undefined]; noteCursors.current = [undefined]; setMessageCursor(null); setNotesCursor(null);
+        }
+        readScope.current = updated.readScope; setConversation(updated); setError('');
         if (!reset && can('contacts.read') && updated.contactName !== null && updated.contactName !== contactNameRef.current) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
         if (reset) {
           if (can('contacts.read')) { const currentContact = await chatApi.getContact(updated.contactId, signal); if (!signal.aborted) setContact(currentContact); }
@@ -133,6 +152,23 @@ function ConversationViewContent() {
         } else throw reason;
       }
     };
+    const refreshMessage = async (id: string, signal: AbortSignal) => {
+      const epoch = contentEpoch.current;
+      try {
+        const saved = await chatApi.getMessage(conversationId, id, signal);
+        if (!signal.aborted && mounted.current && epoch === contentEpoch.current) setMessages(current => mergeMessages(current, [saved]));
+      } catch (reason) {
+        if (signal.aborted) return;
+        // A previous Core has no point-read route. Preserve its conservative reconciliation.
+        if (reason instanceof ApiError && reason.status === 404 && reason.code === 'NOT_FOUND') { await refreshVisibleMessages(signal); return; }
+        if (reason instanceof ApiError && (reason.status === 403 || reason.status === 404)) {
+          await refreshConversation(signal, false);
+          if (!signal.aborted) setMessages(current => current.filter(message => message.id !== id));
+          return;
+        }
+        throw reason;
+      }
+    };
     return realtimeBus.subscribe(async (event, signal) => {
       if (!chatEventTypes.has(event.type) || event.organizationId !== session?.currentOrganizationId) return;
       await bootstrap.current;
@@ -141,15 +177,22 @@ function ConversationViewContent() {
       if (event.type === 'contacts.updated') { await refreshConversation(signal, false); return; }
       const related = event.type.startsWith('conversation.') && !event.type.startsWith('conversation.tag.') ? event.entityId : event.payload.conversationId;
       if (related !== conversationId) return;
-      if (event.type === 'conversation.history.updated') { prepareHistoryUpdate(); await refreshVisibleMessages(signal); await refreshConversation(signal, false); return; }
-      if (event.type.startsWith('message.')) { await refreshVisibleMessages(signal); return; }
+      if (event.type === 'conversation.history.updated') { prepareHistoryUpdate(); await refreshConversation(signal, false); await refreshVisibleMessages(signal); return; }
+      if (event.type.startsWith('message.')) { await refreshMessage(event.entityId, signal); return; }
       if (event.type === 'note.created') { await refreshNotes(signal); return; }
       await refreshConversation(signal, event.type === 'conversation.transferred' || event.type === 'conversation.assigned');
     }, { organizationId: session?.currentOrganizationId ?? undefined, reconcile: async (signal) => {
       await bootstrap.current;
-      if (!signal.aborted) { await refreshConversation(signal, true); await refreshTags(signal); }
+      if (!signal.aborted) { contentEpoch.current += 1; await refreshConversation(signal, false); await refreshVisibleMessages(signal); await refreshNotes(signal); await refreshTags(signal);
+        // Bounded recovery of visible unconfirmed rows, once per focus/reconnect (no polling).
+        const root = scroll.historyRef.current, viewport = root?.getBoundingClientRect();
+        if (readScope.current && root && viewport && viewport.height > 0) {
+          const visible = new Set([...root.querySelectorAll<HTMLElement>('[data-message-key]')].filter(node => { const rect = node.getBoundingClientRect(); return rect.bottom > viewport.top && rect.top < viewport.bottom; }).map(node => node.dataset.messageKey));
+          for (const message of messagesRef.current.filter(message => message.status === 'PENDING' && !message.id.startsWith('optimistic:') && visible.has(messageScrollKey(message))).slice(0, 8)) { if (signal.aborted) break; await refreshMessage(message.id, signal); }
+        }
+      }
     } });
-  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate]);
+  }, [conversationId, session?.currentOrganizationId, navigate, refreshVisibleMessages, refreshNotes, refreshTags, can, prepareHistoryUpdate, scroll.historyRef]);
 
   async function loadOlderMessages() {
     if (!messageCursor || loadingOlder) return;
@@ -178,7 +221,7 @@ function ConversationViewContent() {
       const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
       if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) setAttachment(null); }
     }
-    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
+    catch (reason) { if (!mounted.current) return; setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId && !['SENT', 'DELIVERED', 'READ'].includes(message.status) ? conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); setDetailError(reason instanceof Error ? reason.message : 'Mensagem não enviada. Tente novamente.'); }
     finally { reads.current.delete(controller); pendingSends.current.delete(clientMessageId); }
   }
   function sendDraft() {
@@ -193,7 +236,7 @@ function ConversationViewContent() {
     if (!notesCursor || loadingMoreNotes) return;
     const requestEpoch = contentEpoch.current; const controller = new AbortController(); reads.current.add(controller);
     setLoadingMoreNotes(true);
-    try { const page = await chatApi.listNotes(conversationId, notesCursor, controller.signal); if (controller.signal.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return; setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); }
+    try { const page = await chatApi.listNotes(conversationId, notesCursor, controller.signal); if (controller.signal.aborted || !mounted.current || requestEpoch !== contentEpoch.current) return; setNotes((current) => [...page.items, ...current]); setNotesCursor(page.nextCursor); noteCursors.current = [...noteCursors.current, notesCursor]; }
     catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais notas.'); }
     finally { reads.current.delete(controller); if (mounted.current) setLoadingMoreNotes(false); }
   }

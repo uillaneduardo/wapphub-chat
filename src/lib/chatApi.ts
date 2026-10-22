@@ -34,6 +34,7 @@ export const chatApi = {
   createConversation: (contactId: string) => apiRequest<CreateConversationResult>('/conversations', { method: 'POST', body: JSON.stringify({ contactId, reuseExisting: true }) }),
   getContact: (id: string, signal?: AbortSignal) => apiRequest<Contact>(`/contacts/${idPath(id)}`, { signal }),
   listMessages: (conversationId: string, before?: string, signal?: AbortSignal) => apiRequest<CursorPage<InternalTextMessage>>(`/conversations/${idPath(conversationId)}/messages${queryString({ limit: 50, before })}`, { signal }),
+  getMessage: (conversationId: string, messageId: string, signal?: AbortSignal) => apiRequest<InternalTextMessage>(`/conversations/${idPath(conversationId)}/messages/${idPath(messageId)}`, { signal }),
   sendMessage: (conversationId: string, body: SendMessageRequest) => apiRequest<InternalTextMessage>(`/conversations/${idPath(conversationId)}/messages`, { method: 'POST', body: JSON.stringify(body) }),
   listTags: (cursor?: string, signal?: AbortSignal) => apiRequest<CursorPage<Tag>>(`/tags${queryString({ limit: 100, cursor })}`, { signal }),
   listTeamMembers: (cursor?: string) => apiRequest<CursorPage<TeamMember>>(`/team/members${queryString({ limit: 100, cursor })}`),

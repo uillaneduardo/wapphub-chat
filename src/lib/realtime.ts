@@ -1,3 +1,4 @@
+import { diagnose } from './diagnostics';
 import type { ChatEvent, SyncCheckpoint } from '../types/chat';
 
 export type RealtimeFrame = ChatEvent | SyncCheckpoint;
@@ -56,6 +57,11 @@ export class RealtimeClient {
   private socket?: WebSocket;
   private timer?: ReturnType<typeof setTimeout>;
   private attempts = 0;
+  private watchdog?: ReturnType<typeof setTimeout>;
+  private lastReceived = Date.now();
+  private stale = false;
+  private lastResume = -Infinity;
+  private resuming = false;
   private closed = false;
   private generation = 0;
   private controller?: AbortController;
@@ -72,19 +78,40 @@ export class RealtimeClient {
     this.setTimer = options.setTimer ?? setTimeout; this.clearTimer = options.clearTimer ?? clearTimeout;
   }
   get lastEventId(): string { return this.checkpoint; }
-  retry(): void {
+  retry(reason: 'manual' | 'online' | 'focus' | 'silence' = 'manual'): void {
+    diagnose({ kind: 'realtime.retry', reason, checkpoint: this.checkpoint });
     if (this.closed) return;
     this.attempts = 0;
     if (this.timer) this.clearTimer(this.timer);
     this.timer = undefined;
+    this.controller?.abort();
     this.socket?.close();
     this.connect();
+  }
+  resume(): void {
+    if (this.closed || this.resuming || Date.now() - this.lastResume < 10_000) return;
+    this.lastResume = Date.now();
+    if (this.stale || Date.now() - this.lastReceived >= 20_000) { this.retry('focus'); return; }
+    const controller = this.controller;
+    if (!controller || controller.signal.aborted) return;
+    this.resuming = true;
+    diagnose({ kind: 'realtime.resume', reason: 'focus', checkpoint: this.checkpoint });
+    this.queue = this.queue.then(async () => {
+      if (!controller.signal.aborted) await this.options.onReconcile?.(controller.signal);
+    }).catch((reason: unknown) => {
+      if (controller.signal.aborted) return;
+      if (reason && typeof reason === 'object' && 'status' in reason && reason.status === 401) { this.close(); this.options.onUnauthorized?.(); }
+      else this.socket?.close();
+    }).finally(() => { this.resuming = false; });
   }
   connect(): void {
     if (this.closed) return;
     if (this.timer) this.clearTimer(this.timer);
     this.timer = undefined;
     this.controller?.abort();
+    this.seen.clear(); // Uncheckpointed work must be applied again after reconnect.
+    this.stale = false; this.lastReceived = Date.now();
+    diagnose({ kind: 'realtime.connect', checkpoint: this.checkpoint });
     const generation = ++this.generation;
     const controller = this.controller = new AbortController();
     this.queue = Promise.resolve();
@@ -96,8 +123,14 @@ export class RealtimeClient {
     this.options.onState?.(this.attempts ? 'reconnecting' : 'connecting');
     const url = new URL(this.options.url); url.searchParams.set('lastEventId', this.checkpoint);
     const socket = this.socket = new this.Socket(url.toString());
+    const armWatchdog = () => {
+      if (this.watchdog) this.clearTimer(this.watchdog);
+      this.watchdog = this.setTimer(() => { if (current()) { if (queued > 0) { armWatchdog(); return; } diagnose({ kind: 'realtime.retry', reason: 'silence', checkpoint: this.checkpoint }); socket.close(); } }, 20_000);
+    };
+    armWatchdog();
     socket.onmessage = (message) => {
       if (!current() || failed || overflow) return;
+      this.lastReceived = Date.now(); armWatchdog();
       // Drain accepted frames before reconnecting: immediate abort could starve a large replay.
       if (queued >= 256) { overflow = true; return; }
       queued += 1;
@@ -118,11 +151,13 @@ export class RealtimeClient {
           if (BigInt(frame.lastEventId) >= BigInt(this.checkpoint)) {
             (this.options.checkpointStore ?? realtimeCheckpointStore).set(this.options.organizationId, frame.lastEventId);
             this.checkpoint = frame.lastEventId;
+            diagnose({ kind: 'realtime.checkpoint', checkpoint: this.checkpoint });
             for (const id of this.seen) if (BigInt(id) <= BigInt(this.checkpoint)) this.seen.delete(id);
           }
           if (advanced || reconciled) this.attempts = 0;
           if (reconciled) this.options.onState?.('open');
         } else if (isChatEvent(frame) && frame.organizationId === this.options.organizationId && BigInt(frame.eventId) > BigInt(this.checkpoint) && !this.seen.has(frame.eventId)) {
+          diagnose({ kind: 'realtime.event', eventId: frame.eventId, checkpoint: this.checkpoint });
           await this.options.onEvent(frame, controller.signal);
           if (current()) this.seen.add(frame.eventId);
         }
@@ -136,7 +171,9 @@ export class RealtimeClient {
     };
     socket.onclose = (event) => {
       if (!current()) return;
+      diagnose({ kind: 'realtime.retry', reason: event?.code === 4003 ? 'permissions' : event?.code === 1008 ? 'unauthorized' : 'closed', checkpoint: this.checkpoint, ...(typeof event?.code === 'number' ? { closeCode: event.code } : {}) });
       controller.abort();
+      if (this.watchdog) this.clearTimer(this.watchdog); this.watchdog = undefined;
       // A policy close needs a fresh authenticated context, not unlimited retry.
       if (event?.code === 4003) { this.close(); this.options.onPermissionsChanged?.(); return; }
       if (event?.code === 1008) { this.close(); this.options.onUnauthorized?.(); return; }
@@ -146,13 +183,14 @@ export class RealtimeClient {
   }
   private scheduleReconnect(): void {
     this.attempts += 1;
-    if (this.attempts > 8) { this.options.onState?.('stale'); return; }
+    if (this.attempts > 8) { this.stale = true; this.options.onState?.('stale'); return; }
     this.options.onState?.('reconnecting');
     const base = Math.min(30_000, 500 * 2 ** Math.min(this.attempts - 1, 6));
     this.timer = this.setTimer(() => this.connect(), Math.round(base * (0.8 + this.random() * 0.4)));
   }
   close(): void {
     if (this.closed) return;
+    if (this.watchdog) this.clearTimer(this.watchdog); this.watchdog = undefined;
     this.closed = true; this.generation += 1; this.controller?.abort();
     if (this.timer) this.clearTimer(this.timer);
     this.timer = undefined; this.socket?.close(); this.seen.clear(); this.options.onState?.('closed');

@@ -30,3 +30,17 @@ describe('P1 stale response reconciliation', () => {
     expect(mergeMessages([old], [latest])).toEqual([latest]);
   });
 });
+
+it('never regresses a confirmed status on equal timestamps or a later stale snapshot', () => {
+  const delivered = message({ status: 'DELIVERED' });
+  expect(mergeMessages([delivered], [message({ status: 'PENDING' })])[0]?.status).toBe('DELIVERED');
+  expect(mergeMessages([delivered], [message({ status: 'SENT', updatedAt: '2026-10-08T00:00:03Z' })])[0]?.status).toBe('DELIVERED');
+});
+it('does not replace a persisted message with a delayed optimistic alias', () => {
+  const saved = message({ status: 'READ' });
+  expect(mergeMessages([saved], [createOptimisticMessage('c1', 'u1', 'Oi', 'client-1')])).toEqual([saved]);
+});
+it('takes Core confirmation despite a newer client clock and clears UNKNOWN', () => {
+  const pending = message({ status: 'PENDING', deliveryOutcome: 'UNKNOWN', updatedAt: '2099-01-01T00:00:00Z' });
+  expect(mergeMessages([pending], [message({ status: 'DELIVERED', deliveryOutcome: null })])[0]).toMatchObject({ status: 'DELIVERED', deliveryOutcome: null });
+});
