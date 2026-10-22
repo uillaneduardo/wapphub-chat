@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Paperclip, Square, X } from 'lucide-react';
 export type Attachment = { file: File; type: 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' };
-export function MediaComposer({ attachment, onChange, disabled }: { attachment: Attachment | null; onChange: (value: Attachment | null) => void; disabled: boolean }) {
+export function MediaComposer({ attachment, onChange, disabled, onRecordingChange }: { attachment: Attachment | null; onChange: (value: Attachment | null) => void; disabled: boolean; onRecordingChange?: (recording: boolean) => void }) {
   const input = useRef<HTMLInputElement>(null), recorder = useRef<MediaRecorder | null>(null), stream = useRef<MediaStream | null>(null), active = useRef(true);
   const [recording, setRecording] = useState(false), [preview, setPreview] = useState(''), [error, setError] = useState('');
+  useEffect(() => { onRecordingChange?.(recording); }, [recording, onRecordingChange]);
   useEffect(() => { active.current = true; return () => { active.current = false; if (recorder.current?.state === 'recording') recorder.current.stop(); stream.current?.getTracks().forEach(track => track.stop()); }; }, []);
   useEffect(() => { if (!attachment) return; const url = URL.createObjectURL(attachment.file); setPreview(url); return () => { URL.revokeObjectURL(url); setPreview(''); }; }, [attachment]);
   function select(file?: File, voice = false) {

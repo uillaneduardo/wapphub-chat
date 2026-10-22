@@ -8,15 +8,16 @@ const items = [
   { kind: 'code', label: 'Monoespaçado', hint: 'Monoespaçado', Icon: Code2 },
 ] as const;
 
-export function ComposerTools({ onFormat, emojiOpen, onToggleEmoji, disabled }: {
+export function ComposerTools({ onFormat, emojiOpen, onToggleEmoji, disabled, showEmoji = true }: {
   onFormat: (kind: FormatKind) => void;
   emojiOpen: boolean;
   onToggleEmoji: (button: HTMLButtonElement) => void;
   disabled: boolean;
+  showEmoji?: boolean;
 }) {
   return <div className="composer-tools" role="group" aria-label="Formatação e emojis">
     {items.map(({ kind, label, hint, Icon }) => <button key={kind} type="button" title={`${label} — ${hint}`} aria-label={label} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => onFormat(kind)}><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></button>)}
-    <span className="composer-tools-separator" aria-hidden="true" />
-    <button type="button" className={emojiOpen ? 'is-active' : undefined} title="Emojis" aria-label="Emojis" aria-expanded={emojiOpen} disabled={disabled} onClick={event => onToggleEmoji(event.currentTarget)}><Smile size={19} strokeWidth={1.8} aria-hidden="true" /></button>
+    {showEmoji && <span className="composer-tools-separator" aria-hidden="true" />}
+    {showEmoji && <button type="button" className={emojiOpen ? 'is-active' : undefined} title="Emojis" aria-label="Emojis" aria-expanded={emojiOpen} disabled={disabled} onClick={event => onToggleEmoji(event.currentTarget)}><Smile size={19} strokeWidth={1.8} aria-hidden="true" /></button>}
   </div>;
 }
