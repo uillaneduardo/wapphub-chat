@@ -28,6 +28,30 @@ function mockBase() {
 describe('ConversationView', () => {
   beforeEach(() => { vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null }); });
   afterEach(() => { clearComposerDrafts(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['conversations.read', 'messages.read', 'messages.send', 'contacts.read', 'notes.read', 'notes.create', 'tags.read', 'tags.manage', 'conversations.archive', 'conversations.assign', 'conversations.transfer']; });
+  it('opens the details drawer without remounting the message history and returns focus on Escape', async () => {
+    mockBase();
+    const view = renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
+    const history = screen.getByRole('region', { name: 'Histórico de mensagens' });
+    const trigger = screen.getByRole('button', { name: 'Mostrar detalhes da conversa' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    const drawer = screen.getByRole('dialog', { name: 'Detalhes da conversa' });
+    expect(drawer).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('button', { name: 'Fechar painel de detalhes' })).toHaveFocus();
+    expect(screen.getByRole('region', { name: 'Histórico de mensagens' })).toBe(history);
+    fireEvent.keyDown(drawer, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Detalhes da conversa' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mostrar detalhes da conversa' })).toHaveFocus();
+    expect(view.container.querySelector('.context-backdrop')).toBeNull();
+  });
+  it('closes details by backdrop without changing the conversation or composer', async () => {
+    mockBase(); renderDetail(); await screen.findByRole('heading', { name: 'Joana' });
+    const composer = screen.getByRole('textbox', { name: 'Escrever mensagem' });
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar detalhes da conversa' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes da conversa' }));
+    expect(screen.getByRole('textbox', { name: 'Escrever mensagem' })).toBe(composer);
+    expect(screen.queryByRole('dialog', { name: 'Detalhes da conversa' })).not.toBeInTheDocument();
+  });
   it.each(['DEMO', 'WHATSAPP_WEB', 'META'] as const)('uses persisted authors and hides technical %s labels without inferring authors from viewer or body', async (provider) => {
     mockBase(); vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...conversation, provider, outboundEnabled: false });
     vi.spyOn(chatApi, 'listMessages').mockResolvedValue({ items: [
