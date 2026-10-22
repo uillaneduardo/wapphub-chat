@@ -1,3 +1,5 @@
+> Tela Meu perfil (22/10/2026): edição do nome da conta e apelido por organização ligada ao Core, com navegação desktop/mobile, prévia, testes propostos. **SEM MERGE/DEPLOY**; CI, API conjunta e validação visual manual pendentes. [Fluxo](PROFILE_SETTINGS_20261022.md).
+
 > P1.2 autoload/lightbox validado localmente, 372 testes; sem publicação. [Limites, testes e homologação](P1_2_MEDIA.md).
 
 > P1.1 voz: preservação/retry seguros validados localmente, 360 testes; sem publicação. [Detalhes](P1_1_VOICE.md). Homologação humana pendente.
