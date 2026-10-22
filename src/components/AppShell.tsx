@@ -10,6 +10,7 @@ import { activateComposerScope, clearComposerDrafts } from '../features/conversa
 
 export function AppShell() { const { session, expireSession, refreshSession } = useSession(); const organization = session ? currentOrganization(session) : null;
   const inConversations = Boolean(useMatch('/app/conversations/*'));
+  const inConversationDetail = Boolean(useMatch('/app/conversations/:conversationId'));
   const [realtimeState, setRealtimeState] = useState<'connecting' | 'open' | 'reconnecting' | 'stale' | 'closed'>('closed');
   const clientRef = useRef<RealtimeClient | null>(null);
   const userId = session?.user.id;
@@ -29,5 +30,5 @@ export function AppShell() { const { session, expireSession, refreshSession } = 
     window.addEventListener('online', online); window.addEventListener('focus', resume); document.addEventListener('visibilitychange', resume);
     return () => { window.removeEventListener('online', online); window.removeEventListener('focus', resume); document.removeEventListener('visibilitychange', resume); client.close(); clientRef.current = null; };
   }, [organizationId, userId, canReadConversations, canReadContacts, expireSession, refreshSession, authorizationStamp]);
-  return <div className={`app-shell${inConversations ? ' chat-app-shell' : ''}`}><Sidebar key={session?.user.id ?? 'signed-out'} realtimeState={realtimeState} onRealtimeRetry={() => clientRef.current?.retry()} /><main className="main-content"><Outlet key={`${userId}:${organizationId}:${authorizationStamp}`} /></main></div>;
+  return <div className={`app-shell${inConversations ? ' chat-app-shell' : ''}${inConversationDetail ? ' is-conversation-detail' : ''}`}><Sidebar key={session?.user.id ?? 'signed-out'} realtimeState={realtimeState} onRealtimeRetry={() => clientRef.current?.retry()} /><main className="main-content"><Outlet key={`${userId}:${organizationId}:${authorizationStamp}`} /></main></div>;
 }
