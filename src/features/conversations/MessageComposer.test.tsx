@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MessageComposer } from './MessageComposer';
 
-function Harness({ onSend = vi.fn() }: { onSend?: ReturnType<typeof vi.fn> }) {
+function Harness({ onSend = () => undefined }: { onSend?: (text: string) => void }) {
   const [draft, setDraft] = useState('');
   const [shortcut, setShortcut] = useState<'enter' | 'shift-enter'>('enter');
   return <MessageComposer draft={draft} onDraftChange={setDraft} onSubmit={event => { event.preventDefault(); onSend(draft); }} onTextKeyDown={event => {
