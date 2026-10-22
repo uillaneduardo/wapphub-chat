@@ -1,0 +1,83 @@
+/* Phase C — compact Inbox and context drawer.
+   Loaded after Phase B; narrowly scoped to conversation screens.
+   Existing message/media scroll and composer layout are intentionally untouched. */
+.chat-app-shell .conversation-workspace { min-width: 0; }
+.chat-app-shell .inbox-panel { min-width: 0; }
+.chat-app-shell .inbox-heading { min-height: 60px; gap: 10px; padding: 12px 12px 8px; }
+.chat-app-shell .inbox-heading .eyebrow { font-size: 9px; letter-spacing: .8px; margin: 0 0 3px; }
+.chat-app-shell .inbox-heading h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+.chat-app-shell .inbox-heading-actions { display: flex; align-items: center; justify-content: flex-end; min-width: 0; gap: 6px; }
+.chat-app-shell .inbox-heading-actions .inbox-count { font-size: 11px; min-width: 26px; padding: 5px 6px; }
+.chat-app-shell .inbox-heading-actions .inbox-new-conversation { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 34px; width: auto; margin: 0; padding: 5px 9px; border-radius: 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.chat-app-shell .inbox-search { display: flex; align-items: center; gap: 8px; height: 36px; min-height: 36px; margin: 0 12px 10px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-muted); }
+.chat-app-shell .inbox-search:focus-within { border-color: var(--accent); outline: 2px solid color-mix(in srgb,var(--accent) 15%,transparent); }
+.chat-app-shell .inbox-search svg { flex: 0 0 auto; }
+.chat-app-shell .inbox-search input { width: 100%; min-width: 0; height: 100%; padding: 0; outline: none; border: 0; background: transparent; color: var(--text); font-size: 12px; }
+.chat-app-shell .inbox-search input::placeholder { color: var(--text-muted); }
+.chat-app-shell .inbox-tabs { flex-wrap: nowrap; white-space: nowrap; overflow-x: auto; overscroll-behavior-x: contain; padding: 0 10px 8px; gap: 2px; scrollbar-width: thin; }
+.chat-app-shell .inbox-tabs button { flex: 0 0 auto; padding: 7px 8px; font-size: 11px; }
+.chat-app-shell .tag-filter { gap: 4px; padding: 8px 12px 9px; }
+.chat-app-shell .tag-filter select { min-height: 34px; max-width: 100%; }
+.chat-app-shell .conversation-list { scrollbar-width: thin; }
+.chat-app-shell .conversation-row { gap: 9px; min-height: 67px; padding: 9px 12px; border-bottom-color: var(--border); }
+.chat-app-shell .conversation-row .contact-avatar { width: 36px; height: 36px; font-size: 12px; }
+.chat-app-shell .conversation-row-copy { gap: 2px; }
+.chat-app-shell .conversation-row-copy strong { font-size: 12px; }
+.chat-app-shell .conversation-row-copy small,.chat-app-shell .conversation-row time { font-size: 10px; }
+.chat-app-shell .conversation-preview { font-size: 11px; }
+.chat-app-shell .conversation-row-tags:empty { display: none; }
+.chat-app-shell .conversation-row:hover { background: var(--surface-muted); }
+.chat-app-shell .conversation-row.active { background: color-mix(in srgb,var(--accent) 7%,var(--surface)); }
+.chat-app-shell .conversation-header { min-height: 58px; padding: 8px 12px; gap: 10px; }
+.chat-app-shell .conversation-header .contact-avatar { width: 36px; height: 36px; }
+.chat-app-shell .conversation-title h1 { font-size: 14px; margin-bottom: 2px; }
+.chat-app-shell .conversation-title small { font-size: 11px; }
+.chat-app-shell .conversation-header .mobile-details-button.details-toggle-visible { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 9px; font-size: 11px; color: var(--text-muted); border-radius: 8px; }
+.chat-app-shell .conversation-header .mobile-details-button:hover { color: var(--accent); background: var(--surface-muted); }
+.chat-app-shell .conversation-header .mobile-details-button svg { flex-shrink: 0; }
+.chat-app-shell .conversation-header .mobile-back { flex-shrink: 0; line-height: 0; }
+.chat-app-shell .conversation-detail-body.context-inline.context-hidden { grid-template-columns: minmax(0, 1fr); }
+.chat-app-shell .conversation-detail-body.context-inline.context-hidden > .conversation-context { display: none; }
+.chat-app-shell .conversation-detail-body.context-stacked { position: relative; isolation: isolate; }
+.chat-app-shell .conversation-detail-body.context-stacked:has(.context-open) { grid-template-rows: minmax(0, 1fr); }
+.chat-app-shell .conversation-detail-body.context-stacked > .context-backdrop { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: color-mix(in srgb,var(--text) 21%,transparent); cursor: default; }
+.chat-app-shell .conversation-detail-body.context-stacked > .conversation-context.context-open {
+  position: absolute; inset: 0 0 0 auto; z-index: 3;
+  display: block; grid-column: auto; grid-row: auto; width: min(360px, 100%);
+  height: 100%; max-height: none; overflow-x: hidden; overflow-y: auto;
+  background: var(--surface); border: 0; border-left: 1px solid var(--border);
+  box-shadow: -6px 0 24px color-mix(in srgb,var(--text) 12%,transparent);
+}
+.chat-app-shell .conversation-detail-body.context-stacked.context-hidden > .conversation-context { display: none; }
+.chat-app-shell .context-drawer-heading { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; z-index: 1; padding: 11px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.chat-app-shell .context-drawer-heading strong { font-size: 13px; }
+.chat-app-shell .context-drawer-heading button { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border: 0; border-radius: 8px; background: var(--surface-muted); color: var(--text); cursor: pointer; }
+.chat-app-shell .context-drawer-heading button:hover { color: var(--accent); }
+.chat-app-shell .context-drawer-heading button:focus-visible,
+.chat-app-shell .conversation-header .mobile-details-button:focus-visible,
+.chat-app-shell .context-backdrop:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media(min-width: 1440px) {
+  .chat-app-shell .conversation-workspace { grid-template-columns: minmax(280px, 304px) minmax(0, 1fr); }
+}
+@media (min-width: 721px) and (max-width: 1439px) {
+  .chat-app-shell .conversation-workspace { grid-template-columns: minmax(245px, 286px) minmax(0, 1fr); }
+  .chat-app-shell .conversation-detail-body.context-stacked > .conversation-context.context-open { width: min(340px, 100%); }
+}
+@media (min-width: 721px) and (max-width: 1050px) {
+  .chat-app-shell .conversation-workspace { grid-template-columns: minmax(220px, 256px) minmax(0, 1fr); }
+  .chat-app-shell .inbox-heading-actions .inbox-new-conversation { padding: 6px; font-size: 0; gap: 0; min-width: 34px; }
+  .chat-app-shell .inbox-heading-actions .inbox-new-conversation svg { width: 17px; height: 17px; }
+}
+@media(max-width:720px) {
+  .chat-app-shell .inbox-heading { min-height: 56px; padding: 10px 12px 8px; }
+  .chat-app-shell .inbox-heading h1 { font-size: 17px; }
+  .chat-app-shell .inbox-heading-actions .inbox-new-conversation { min-height: 38px; }
+  .chat-app-shell .conversation-row { min-height: 70px; padding: 10px 12px; }
+  .chat-app-shell .conversation-header { min-height: 54px; padding: 6px 9px; gap: 7px; }
+  .chat-app-shell .conversation-header .contact-avatar { display: inline-grid; width: 32px; height: 32px; font-size: 11px; }
+  .chat-app-shell .conversation-title h1 { font-size: 13px; }
+  .chat-app-shell .conversation-title small { font-size: 10px; }
+  .chat-app-shell .conversation-header .mobile-details-button { min-width: 38px; min-height: 38px; padding: 6px; }
+  .chat-app-shell .conversation-header .mobile-details-button span { display: none; }
+  .chat-app-shell .conversation-detail-body.context-stacked > .conversation-context.context-open { width: min(380px, 100%); border-left: 0; }
+}
