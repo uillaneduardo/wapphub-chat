@@ -110,8 +110,7 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
               audioRef={setPlayer} onLoadedMetadata={metadataLoaded} onSuspend={metadataSuspended}
               onPlay={() => { playing.current = true; lease.current?.metadataReady(); }}
               onPause={() => { playing.current = false; if (!visible.current && !inModal.current && typeof IntersectionObserver !== 'undefined') clearSource(); }}
-              onError={playbackError} />
-
+              onError={playbackError} />}
     </div>
     {asset && <div className="media-actions">
       {message.type === 'VIDEO' && <button type="button" className="media-action" onClick={open}><Maximize2 size={15} aria-hidden="true" />Ampliar vídeo</button>}
