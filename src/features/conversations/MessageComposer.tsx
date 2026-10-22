@@ -102,9 +102,9 @@ export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown,
     {previewOpen && draft.trim() && <div className="composer-text-preview" role="region" aria-label="Prévia da formatação"><span>Prévia da mensagem</span><p><FormattedMessage body={draft} /></p></div>}
     <div className="composer-footer composer-footer-modern">
       {mediaEnabled && <MediaComposer attachment={attachment} onChange={onAttachmentChange} disabled={disabled || sending} />}
-      <ComposerTools onFormat={applyFormat} emojiOpen={emojiOpen} disabled={!canEdit} onToggleEmoji={() => {
+      <ComposerTools onFormat={applyFormat} emojiOpen={emojiOpen} disabled={!canEdit} onToggleEmoji={button => {
         rememberSelection();
-        if (!emojiOpen) emojiTrigger.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+        emojiTrigger.current = button;
         setEmojiOpen(open => !open);
       }} />
       <button type="button" className={previewOpen ? 'composer-preview-button is-active' : 'composer-preview-button'} title="Prévia da formatação" aria-label="Prévia" aria-pressed={previewOpen} disabled={!draft.trim()} onClick={() => setPreviewOpen(open => !open)}><Eye size={18} aria-hidden="true" /><span>Prévia</span></button>
