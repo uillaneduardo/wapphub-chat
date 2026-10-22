@@ -75,7 +75,10 @@ export class RealtimeClient {
   constructor(private readonly options: RealtimeOptions) {
     this.checkpoint = options.lastEventId ?? (options.checkpointStore ?? realtimeCheckpointStore).get(options.organizationId) ?? '0';
     this.Socket = options.WebSocketImpl ?? WebSocket; this.random = options.random ?? Math.random;
-    this.setTimer = options.setTimer ?? setTimeout; this.clearTimer = options.clearTimer ?? clearTimeout;
+    // WebIDL timer functions require a Window/global receiver in browsers.
+    // Calling unbound native timers as this.setTimer(...) can throw "Illegal invocation".
+    this.setTimer = options.setTimer ?? globalThis.setTimeout.bind(globalThis);
+    this.clearTimer = options.clearTimer ?? globalThis.clearTimeout.bind(globalThis);
   }
   get lastEventId(): string { return this.checkpoint; }
   retry(reason: 'manual' | 'online' | 'focus' | 'silence' = 'manual'): void {
