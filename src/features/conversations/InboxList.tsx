@@ -18,11 +18,12 @@ export function InboxList() {
   const pagination = useRef<AbortController | null>(null);
   const organizationId = session?.currentOrganizationId;
   const userId = session?.user.id ?? '';
-  const canSupervise = session?.permissions.includes('conversations.supervise') ?? false;
+  const isAgent = session?.membership?.role === 'AGENT';
+  const canSupervise = !isAgent && (session?.permissions.includes('conversations.supervise') ?? false);
   const canReadMessages = session?.permissions.includes('messages.read') ?? false;
   const canReadTags = session?.permissions.includes('tags.read') ?? false;
   const [searchParams, setSearchParams] = useSearchParams(); const requestedScope = searchParams.get('scope');
-  const tab: InboxTab = requestedScope === 'mine' || requestedScope === 'unassigned' || requestedScope === 'archived' || requestedScope === 'all' && canSupervise ? requestedScope : canSupervise ? 'all' : 'unassigned';
+  const tab: InboxTab = isAgent ? (requestedScope === 'archived' ? 'archived' : 'mine') : requestedScope === 'mine' || requestedScope === 'unassigned' || requestedScope === 'archived' || requestedScope === 'all' && canSupervise ? requestedScope : canSupervise ? 'all' : 'unassigned';
   const setTab = (scope: InboxTab) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set('scope', scope); return next; }, { replace: true });
   const [tagId, setTagId] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
@@ -101,9 +102,9 @@ export function InboxList() {
 
   return <aside className={`inbox-panel${selected ? ' inbox-panel-hidden-mobile' : ''}`} aria-label="Caixa de conversas">
     <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><span className="inbox-count">{items.length}</span></div>
-    {session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new">Nova conversa</Link>}
+    {!isAgent && session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new">Nova conversa</Link>}
     <div className="inbox-tabs" role="tablist" aria-label="Filtro de conversas">
-      {tabs.filter((item) => item.id !== 'all' || canSupervise).map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'selected' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
+      {tabs.filter((item) => (item.id !== 'all' || canSupervise) && (!isAgent || item.id === 'mine' || item.id === 'archived')).map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'selected' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
     </div>
     {canReadTags && <label className="tag-filter">Filtrar por tag<select aria-label="Filtrar por tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Todas as tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label>}
     <div className="conversation-list" aria-live="polite">
