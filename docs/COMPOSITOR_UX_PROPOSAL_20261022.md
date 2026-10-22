@@ -18,15 +18,15 @@ No `main` atual:
 - `src/features/conversations/MessageMedia.tsx` descarta `source` no unmount, revoga Blob URL e reexibe `Abrir mídia` depois de remount/troca/F5. É o comportamento atual de segurança, não perda comprovada do arquivo no Provider.
 - `src/features/conversations/Conversations.tsx` reconcilia REST/realtime e pode limpar/projetar a lista no fluxo antigo. Não atribuir hard reload do documento ao frontend sem evidência no navegador.
 
-### Entregas já existentes e NÃO integradas à main (revisar antes do compositor)
+### Entregas de estabilidade integradas à main em 22/10/2026 (homologação real pendente)
 
 - Core PR #41: voz WebM/diagnóstico. https://github.com/uillaneduardo/wapphub-core/pull/41
 - Core PR #42: consulta pontual de mensagens e escopo de leitura estável. https://github.com/uillaneduardo/wapphub-core/pull/42
-- Chat PR #30: revalidação de sessão, histórico estável e realtime; revisão draft. https://github.com/uillaneduardo/wapphub-chat/pull/30
-- Chat PR #31: voz e retry idempotente; revisão draft. https://github.com/uillaneduardo/wapphub-chat/pull/31
-- Chat PR #32: autoload de mídias visíveis, cache por referência e lightbox; revisão draft. https://github.com/uillaneduardo/wapphub-chat/pull/32
+- Chat PR #30: revalidação de sessão, histórico estável e realtime; integrada à main. https://github.com/uillaneduardo/wapphub-chat/pull/30
+- Chat PR #31: voz e retry idempotente; integrada à main. https://github.com/uillaneduardo/wapphub-chat/pull/31
+- Chat PR #32: autoload de mídias visíveis, cache por referência e lightbox; integrada à main. https://github.com/uillaneduardo/wapphub-chat/pull/32
 
-As PRs são empilhadas: revisar compatibilidade, testes, dependências e CI em ordem. Não fazer cherry-pick parcial apenas da UI quando ela depende de mudanças do Core.
+As cinco PRs funcionais foram integradas preservando ancestry/ordem com merge commits: Core #41/#42 e Chat #30/#31/#32. A CI no GitHub passou; falta homologação prática no notebook e deploy no homelab. Não se deve confundir merge com publicação na VM.
 
 ## Resultado visual esperado
 
@@ -79,7 +79,7 @@ Nenhuma alteração de backend, migration, protocolo do provider ou Cloudflare �
 
 **G0 — Baseline da VM:** verificar `git status`, SHAs main/local, imagem em execução, Chat/Core/Provider healthy, media e realtime, porta 3001, volume e secrets. Capturar diagnóstico sem conteúdo privado. Não presumir runtime = GitHub.
 
-**G1 — Dependências de estabilidade:** revisar/mesclar, em ordem de dependência, Core #41 → #42 e Chat #30 → #31 → #32. Testes e smoke isolados; deploy separado e reversível, se aprovado. Homologar comportamento ao navegar, atualizar status e abrir mídias. Se persistir recarga física, instrumentar `document.start`/`navigationType` do #30 e comparar com React remount; não esconder bug com cache persistente.
+**G1 — Dependências de estabilidade (merge concluído, deploy pendente):** Core #41 → #42 e Chat #30 → #31 → #32 estão na main. Validar branches atuais, smoke isolado e deploy reversível apenas com aprovação; homologar no notebook navegar, atualizar status e abrir mídias. Se persistir recarga física, instrumentar `document.start`/`navigationType` do #30 e comparar com React remount; não esconder bug com cache persistente.
 
 **G2 — Compositor:** branch a partir da main já atualizada; toolbar, formatação, emojis, layout, rascunhos, testes e docs. PR separado. Não misturar grupos/histórico/novos endpoints.
 
@@ -103,4 +103,4 @@ Nenhuma alteração de backend, migration, protocolo do provider ou Cloudflare �
 
 ## Homologação e estado
 
-**NÃO IMPLEMENTADO / NÃO PUBLICADO.** Documento para guiar Codex no homelab, revisão da arquitetura e PR funcional posterior. Critério HOMOLOGADO depende de confirmação visual do usuário no notebook.
+**COMPOSITOR NÃO IMPLEMENTADO / DEPLOY NÃO REALIZADO.** Somente as correções dependentes foram integradas à main. Este documento guia Codex no homelab e um futuro PR funcional separado. Critério HOMOLOGADO depende de confirmação visual do usuário no notebook.
