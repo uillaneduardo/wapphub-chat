@@ -57,6 +57,8 @@ function ConversationViewContent() {
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false); const [attachment, setAttachment] = useState<Attachment | null>(null);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
+  const isAgent = session?.membership?.role === 'AGENT';
+  const assignmentDenied = isAgent && conversation?.assignedUserId !== sessionUserId;
   const composerShortcut = useComposerShortcut(session?.user.id);
   const panel = useContextPanel(session?.user.id, !loading && Boolean(conversation));
   const contentEpoch = useRef(0);
@@ -211,6 +213,7 @@ function ConversationViewContent() {
     finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
   async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null) {
+    if (assignmentDenied) return;
     const failedMessage = retryClientMessageId ? messagesRef.current.find(message => message.clientMessageId === retryClientMessageId) : undefined;
     const previousIntent = retryClientMessageId ? sendIntents.current.get(retryClientMessageId) : undefined;
     selectedAttachment = selectedAttachment ?? previousIntent?.attachment;
@@ -259,7 +262,7 @@ function ConversationViewContent() {
     setAttachment(next);
   }
   function sendDraft() {
-    if (composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
+    if (assignmentDenied || composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
     const retryId = attachmentRetry.current;
     const retryMessage = retryId ? messagesRef.current.find(message => message.clientMessageId === retryId) : undefined;
     const oldIntent = retryId ? sendIntents.current.get(retryId) : undefined;
@@ -295,7 +298,7 @@ function ConversationViewContent() {
 
   if (loading) return <div className="detail-state" role="status"><span className="spinner" />Abrindo conversa…</div>;
   if (error || !conversation) return <div className="detail-state error-state" role="alert"><p>{detailError || error || 'Conversa indisponível.'}</p><Link to="/app/conversations">Voltar para conversas</Link></div>;
-  const canSeeMessages = can('messages.read'); const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
+  const canSeeMessages = can('messages.read') && !assignmentDenied; const contactName = contact?.name ?? `Contato ${conversation.contactId.slice(0, 8)}`;
   const appliedTags = conversation.tagIds.map((id) => tags.find((tag) => tag.id === id) ?? { id, name: id.slice(0, 8) });
   return <div className="conversation-detail">
     {['created', 'reused'].includes(location.state?.conversationCreation) && <p className="conversation-creation-notice" role="status">{conversation.provider === 'WHATSAPP_WEB' ? location.state.conversationCreation === 'reused' ? 'Conversa do WhatsApp existente aberta.' : 'Conversa do WhatsApp criada. Nenhuma mensagem foi enviada.' : location.state.conversationCreation === 'reused' ? 'Conversa interna existente aberta.' : 'Conversa interna criada. Ela está no filtro Não atribuídas até receber uma atribuição.'}</p>}<header className="conversation-header"><Link className="mobile-back" to="/app/conversations" aria-label="Voltar para conversas">‹</Link><span className="contact-avatar large">{contactName.slice(0, 1).toUpperCase()}</span><div className="conversation-title"><h1>{contactName}</h1><small>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? `ID ${conversation.contactId}`}</small></div><span className={`status-badge status-${conversation.status.toLowerCase()}`}>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.status === 'PENDING' ? 'Pendente' : 'Aberta'}</span><button type="button" className={`mobile-details-button${!panel.inline ? ' details-toggle-visible' : ''}`} onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>Detalhes</button></header>
@@ -308,7 +311,7 @@ function ConversationViewContent() {
         </article>)}
       </div></div>}
       {scroll.unreadCount > 0 && <div className="new-messages-indicator"><span role="status" aria-live="polite">{scroll.unreadCount === 1 ? 'Nova mensagem' : `${scroll.unreadCount} novas mensagens`}</span><button type="button" className="text-button" onClick={() => { scroll.scrollToBottom(); scroll.historyRef.current?.focus({ preventScroll: true }); }}>Ir para o final</button></div>}
-      {can('messages.send') && conversation.outboundEnabled !== false && <MessageComposer
+      {can('messages.send') && !assignmentDenied && conversation.outboundEnabled !== false && <MessageComposer
         draft={draft}
         onDraftChange={setDraft}
         onSubmit={submitComposer}
@@ -327,7 +330,7 @@ function ConversationViewContent() {
       <div className="context-section"><h2>Contato</h2><strong>{contactName}</strong><span>{(contact ? contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier) : undefined) ?? conversation.contactId}</span></div>
       <div className="context-section"><h2>Responsável</h2><span>{conversation.assignedUserId ? conversation.assignedUserId === sessionUserId ? `${session?.user.name} (você)` : conversation.assignedUserId : 'Não atribuída'}</span></div>
       {can('tags.read') && <div className="context-section"><h2>Tags</h2>{appliedTags.length ? <ul className="applied-tags">{appliedTags.map((tag) => <li key={tag.id}><span>{tag.name}</span>{can('tags.manage') && <button type="button" aria-label={`Remover tag ${tag.name}`} disabled={actionBusy} onClick={() => void removeTag(tag.id)}>×</button>}</li>)}</ul> : <span className="muted">Sem tags</span>}</div>}
-      <ConversationActions conversation={conversation} tags={tags} userId={sessionUserId} permissions={permissions} onConversationUpdate={setConversation} onTagsUpdate={() => void chatApi.listTags().then((page) => setTags(page.items)).catch(() => undefined)} />
+      <ConversationActions conversation={conversation} tags={tags} userId={sessionUserId} role={session?.membership?.role} permissions={permissions} onConversationUpdate={setConversation} onTagsUpdate={() => void chatApi.listTags().then((page) => setTags(page.items)).catch(() => undefined)} />
       {can('notes.read') && <section className="context-section notes-section"><h2>Notas internas</h2><div className="notes-list">{notes.length ? notes.map((note) => <article className="note-item" key={note.id}><p>{note.body}</p><small>{note.authorUserId === sessionUserId ? 'Você' : note.authorUserId.slice(0, 8)} · {new Date(note.createdAt).toLocaleDateString('pt-BR')}</small></article>) : <span className="muted">Nenhuma nota interna.</span>}</div>{notesCursor && <button type="button" className="text-button" disabled={loadingMoreNotes} onClick={() => void loadMoreNotes()}>{loadingMoreNotes ? 'Carregando…' : 'Carregar notas anteriores'}</button>}{can('notes.create') && <form className="note-composer" onSubmit={submitNote}><textarea aria-label="Nova nota interna" value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} maxLength={8000} placeholder="Adicionar nota interna…" /><button className="secondary-button" disabled={actionBusy || !noteDraft.trim()}>Adicionar nota</button></form>}</section>}
     </aside></div>
   </div>;
