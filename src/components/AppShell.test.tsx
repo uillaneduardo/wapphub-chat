@@ -16,6 +16,37 @@ describe('conversation shell scope and navigation', () => {
     expect(screen.getByText('Atendimento sintético').closest('.app-shell')).toHaveClass('chat-app-shell');
     expect(screen.getByRole('link', { name: 'Conversas' })).toHaveClass('active');
   });
+  it('marks a deep conversation route to hide the global mobile bar without unmounting the chat', () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<MemoryRouter initialEntries={['/app/conversations/conv-1?scope=mine']}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations/*" element={<p>Chat preservado</p>} /></Route></Routes></MemoryRouter>);
+    const shell = screen.getByText('Chat preservado').closest('.app-shell');
+    expect(shell).toHaveClass('chat-app-shell', 'is-conversation-detail');
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mais áreas' })).toBeInTheDocument();
+  });
+  it('keeps the mobile inbox bar visible on its root route', () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<MemoryRouter initialEntries={['/app/conversations?scope=mine']}><Routes><Route path="/app" element={<AppShell />}><Route path="conversations" element={<p>Lista preservada</p>} /></Route></Routes></MemoryRouter>);
+    const shell = screen.getByText('Lista preservada').closest('.app-shell');
+    expect(shell).toHaveClass('chat-app-shell');
+    expect(shell).not.toHaveClass('is-conversation-detail');
+    expect(screen.getByRole('button', { name: 'Mais áreas' })).toBeInTheDocument();
+  });
+  it('provides mobile logout and realtime recovery only through More without losing the organization menu', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 720px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    state.session.organizations = [{ id: 'org', name: 'Equipe' }, { id: 'other', name: 'Outra' }];
+    const retry = vi.fn();
+    render(<MemoryRouter initialEntries={['/app/conversations']}><Sidebar realtimeState="stale" onRealtimeRetry={retry} /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: 'Sair da conta' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mais áreas' }));
+    const more = screen.getByRole('region', { name: 'Menu Mais áreas' });
+    expect(within(more).getByRole('link', { name: 'Trocar organização' })).toHaveAttribute('href', '/organizations');
+    expect(within(more).getByRole('status')).toHaveTextContent('Tempo real indisponível');
+    fireEvent.click(within(more).getByRole('button', { name: 'Tentar reconexão novamente' }));
+    expect(retry).toHaveBeenCalledOnce();
+    fireEvent.click(within(more).getByRole('button', { name: 'Sair da conta' }));
+    await waitFor(() => expect(state.logout).toHaveBeenCalledTimes(1));
+  });
   it('keeps other application pages outside the viewport-bound shell', () => {
     render(<MemoryRouter initialEntries={['/app/settings/providers']}><Routes><Route path="/app" element={<AppShell />}><Route path="settings/providers" element={<p>Provedores</p>} /></Route></Routes></MemoryRouter>);
     expect(screen.getByText('Provedores', { selector: 'p' }).closest('.app-shell')).not.toHaveClass('chat-app-shell');
