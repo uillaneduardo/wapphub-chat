@@ -11,7 +11,24 @@ const event = (eventId: string) => ({ version: 1, eventId, organizationId: 'org-
 const flushQueue = async () => { for (let i = 0; i < 32; i += 1) await Promise.resolve(); };
 
 describe('RealtimeClient', () => {
-  afterEach(() => { FakeSocket.instances = []; vi.useRealTimers(); });
+  afterEach(() => { FakeSocket.instances = []; vi.useRealTimers(); vi.unstubAllGlobals(); });
+  it('preserves the browser global receiver when native timers are invoked through the realtime client', () => {
+    const strictSetTimeout = vi.fn(function (this: unknown) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      return 123 as unknown as ReturnType<typeof setTimeout>;
+    });
+    const strictClearTimeout = vi.fn(function (this: unknown) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+    });
+    vi.stubGlobal('setTimeout', strictSetTimeout);
+    vi.stubGlobal('clearTimeout', strictClearTimeout);
+    const client = new RealtimeClient({ url: 'ws://local.test/api/v1/realtime', organizationId: 'org-1', onEvent: vi.fn(), WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
+    expect(() => client.connect()).not.toThrow();
+    expect(strictSetTimeout).toHaveBeenCalled();
+    expect(() => client.retry()).not.toThrow();
+    expect(strictClearTimeout).toHaveBeenCalled();
+    expect(() => client.close()).not.toThrow();
+  });
   it('invalidates pending reconciliation on a permission revision without logging out or retrying stale authority', async () => {
     vi.useFakeTimers(); const changed = vi.fn(), expired = vi.fn(); let signal!: AbortSignal;
     const client = new RealtimeClient({ url: createRealtimeUrl('https://api.wapphub.com.br'), organizationId: 'org-1', onEvent: vi.fn(), onReconcile: (current) => { signal = current; return new Promise(() => {}); }, onPermissionsChanged: changed, onUnauthorized: expired, WebSocketImpl: FakeSocket as unknown as typeof WebSocket });
