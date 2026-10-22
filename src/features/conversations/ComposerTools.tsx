@@ -11,12 +11,12 @@ const items = [
 export function ComposerTools({ onFormat, emojiOpen, onToggleEmoji, disabled }: {
   onFormat: (kind: FormatKind) => void;
   emojiOpen: boolean;
-  onToggleEmoji: () => void;
+  onToggleEmoji: (button: HTMLButtonElement) => void;
   disabled: boolean;
 }) {
   return <div className="composer-tools" role="group" aria-label="Formatação e emojis">
     {items.map(({ kind, label, hint, Icon }) => <button key={kind} type="button" title={`${label} — ${hint}`} aria-label={label} disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => onFormat(kind)}><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></button>)}
     <span className="composer-tools-separator" aria-hidden="true" />
-    <button type="button" className={emojiOpen ? 'is-active' : undefined} title="Emojis" aria-label="Emojis" aria-expanded={emojiOpen} disabled={disabled} onClick={onToggleEmoji}><Smile size={19} strokeWidth={1.8} aria-hidden="true" /></button>
+    <button type="button" className={emojiOpen ? 'is-active' : undefined} title="Emojis" aria-label="Emojis" aria-expanded={emojiOpen} disabled={disabled} onClick={event => onToggleEmoji(event.currentTarget)}><Smile size={19} strokeWidth={1.8} aria-hidden="true" /></button>
   </div>;
 }
