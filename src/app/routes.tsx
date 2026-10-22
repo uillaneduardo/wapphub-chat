@@ -1,4 +1,5 @@
 import { TeamPage, MemberPermissionsPage } from '../features/team/Team';
+import { ProfilePage } from '../features/profile/Profile';
 import { createRoutesFromElements, Navigate, Outlet, Route } from 'react-router-dom';
 import { SessionProvider } from '../features/session/SessionContext';
 import { AppShell } from '../components/AppShell';
@@ -16,6 +17,7 @@ export const appRouteDefinitions = createRoutesFromElements(<Route element={<Ses
   <Route path="/login" element={<LoginPage />} /><Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/invite/:token" element={<PlaceholderPage title="Aceitar convite" />} />
   <Route element={<RequireSession />}><Route path="/organizations" element={<OrganizationsPage />} /><Route element={<RequireOrganization />}><Route path="/app" element={<AppShell />}>
     <Route path="conversations" element={<RequirePermission permission="conversations.read" />}><Route element={<ConversationsLayout />}><Route index element={<InboxWelcome />} /><Route path="new" element={<NewConversationPage />} /><Route path=":conversationId" element={<ConversationView />} /></Route></Route>
+    <Route path="profile" element={<ProfilePage />} />
     <Route element={<RequirePermission permission="team.read" />}><Route path="team" element={<TeamPage />} /><Route element={<RequirePermission permission="team.permissions.manage" />}><Route path="team/:membershipId/permissions" element={<MemberPermissionsPage />} /></Route></Route>
     <Route element={<RequirePermission permission="providers.manage" />}><Route path="settings/providers" element={<ProvidersPage />} /></Route>
     <Route element={<RequirePermission permission="providers.simulate" />}><Route element={<RequirePermission permission="messages.read" />}><Route path="providers/demo/simulator" element={<DemoSimulatorPage />} /></Route></Route>
