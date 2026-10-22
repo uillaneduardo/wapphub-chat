@@ -27,6 +27,8 @@ describe('audio player — accessible seek and native lifecycle', () => {
     const metadata = vi.fn(), playing = vi.fn(), paused = vi.fn();
     render(<AudioPlayer src="blob:local" label="Prévia do áudio" onLoadedMetadata={metadata} onPlay={playing} onPause={paused} />);
     const media = screen.getByLabelText('Prévia do áudio') as HTMLAudioElement;
+    let pausedState = true;
+    Object.defineProperty(media, 'paused', { configurable: true, get: () => pausedState });
     Object.defineProperty(media, 'duration', { configurable: true, value: 75 });
     fireEvent.loadedMetadata(media);
     expect(metadata).toHaveBeenCalledOnce();
