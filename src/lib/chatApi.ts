@@ -1,4 +1,5 @@
 import { apiRequest, apiBlob, apiMediaSource } from './api';
+import { documentMime } from './documentTypes';
 import type { Contact, Conversation, CreateConversationResult, CursorPage, DemoContact, InternalNote, InternalTextMessage, Provider, SendMessageRequest, Tag, TeamMember, TransferRequest } from '../types/chat';
 
 export type ConversationScope = 'mine' | 'unassigned' | 'all';
@@ -17,7 +18,7 @@ export const chatApi = {
   uploadMedia: async (conversationId: string, file: File, type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'VOICE' | 'DOCUMENT', signal?: AbortSignal) => {
     const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
     const sha256 = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
-    const query = new URLSearchParams({ mediaId: crypto.randomUUID(), type, mimeType: file.type.split(';')[0], fileName: file.name, size: String(file.size), sha256 });
+    const query = new URLSearchParams({ mediaId: crypto.randomUUID(), type, mimeType: type === 'DOCUMENT' ? documentMime(file) ?? file.type.split(';')[0] : file.type.split(';')[0], fileName: file.name, size: String(file.size), sha256 });
     return apiRequest<NonNullable<InternalTextMessage['media']>>(`/conversations/${idPath(conversationId)}/media?${query}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file, signal });
   },
   messageMedia: (conversationId: string, messageId: string, signal?: AbortSignal) => apiBlob(`/conversations/${idPath(conversationId)}/messages/${idPath(messageId)}/media`, signal),

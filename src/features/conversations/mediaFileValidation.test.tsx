@@ -17,6 +17,14 @@ describe('G.1 file validation for picker and mobile camera return', () => {
     const result = validateMediaFile(file(name, mime), expected === 'VOICE');
     expect(result.attachment?.type).toBe(expected);
   });
+  it('G.2 accepts whitelisted Office and text documents, including generic browser MIME', () => {
+    expect(validateMediaFile(file('arquivo.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')).attachment?.type).toBe('DOCUMENT');
+    expect(validateMediaFile(file('arquivo.xlsx', 'application/octet-stream')).attachment?.type).toBe('DOCUMENT');
+    expect(validateMediaFile(file('dados.csv', 'application/vnd.ms-excel')).attachment?.type).toBe('DOCUMENT');
+    expect(validateMediaFile(file('leitura.txt', '')).attachment?.type).toBe('DOCUMENT');
+    expect(validateMediaFile(file('programa.exe', 'application/octet-stream')).attachment).toBeUndefined();
+    expect(validateMediaFile(file('falso.docx', 'image/jpeg')).attachment?.type).not.toBe('DOCUMENT');
+  });
   it('explains unsupported camera formats, empty return and actual file size instead of inventing storage errors', () => {
     expect(validateMediaFile(file('camera.heic', 'image/heic')).error).toMatch(/HEIC\/HEIF/);
     expect(validateMediaFile(new File([], 'camera.jpg', { type: 'image/jpeg' })).error).toMatch(/não retornou o arquivo/);
