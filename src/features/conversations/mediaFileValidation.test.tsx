@@ -25,6 +25,8 @@ describe('G.1 file validation for picker and mobile camera return', () => {
     expect(validateMediaFile(file('boleto.pdf', 'application/pdf')).error).toMatch(/Formato não aceito/);
   });
   it('preserves existing selection when a newly chosen file is unsupported or the picker is canceled', () => {
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:existing') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
     const existing = { file: file('original.jpg', 'image/jpeg'), type: 'IMAGE' as const };
     const update = vi.fn();
     const view = render(<MediaComposer attachment={existing} onChange={update} disabled={false} />);
