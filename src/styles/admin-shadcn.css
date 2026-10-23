@@ -1,6 +1,10 @@
 /* F.1 — single shared adapter for shadcn primitives on administrative routes.
    Kept AFTER legacy page styles; affects no Inbox, conversation, media or login.
    Components remain token-based and Tailwind's Preflight stays disabled. */
+.admin-compact-page {
+  --admin-control-height: 36px;
+  --admin-touch-height: 44px;
+}
 .admin-compact-page :is([data-slot="shadcn-button"],[data-slot="shadcn-input"]) {
   box-sizing: border-box;
   max-width: 100%;
@@ -11,7 +15,7 @@
   font-size: 12px;
   line-height: 1.25;
   text-decoration: none;
-  min-height: 36px;
+  min-height: var(--admin-control-height);
 }
 .admin-compact-page [data-slot="shadcn-button"]:disabled {
   opacity: .55;
@@ -21,8 +25,8 @@
   display: block;
   width: 100%;
   min-width: 0;
-  min-height: 36px;
-  height: 36px;
+  min-height: var(--admin-control-height);
+  height: var(--admin-control-height);
   padding: 7px 10px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -54,7 +58,7 @@
 .admin-compact-page.permissions-editor .permissions-toolbar label { min-width: min(100%,220px); font-size: 11px; color: var(--text-muted); }
 .admin-compact-page.permissions-editor .team-actions { gap: 7px; }
 .admin-compact-page.permissions-editor .permission-row select {
-  min-width: 0; min-height: 36px; padding: 7px 9px;
+  min-width: 0; min-height: var(--admin-control-height); padding: 7px 9px;
   border: 1px solid var(--border); border-radius: 8px;
   background: var(--surface); color: var(--text); font-size: 12px;
 }
@@ -63,11 +67,11 @@
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
-  .admin-compact-page [data-slot="shadcn-button"] { min-height: 44px; }
+  .admin-compact-page [data-slot="shadcn-button"] { min-height: var(--admin-touch-height); }
   .admin-compact-page :is(.contact-form,.contact-search,.permissions-toolbar) [data-slot="shadcn-input"] {
-    min-height: 44px; height: 44px;
+    min-height: var(--admin-touch-height); height: var(--admin-touch-height);
   }
-  .admin-compact-page.permissions-editor .permission-row select { min-height: 44px; }
+  .admin-compact-page.permissions-editor .permission-row select { min-height: var(--admin-touch-height); }
   .admin-compact-page.permissions-editor .permissions-toolbar {
     display: grid;
     grid-template-columns: repeat(2,minmax(0,1fr));
@@ -86,4 +90,14 @@
 }
 @media (max-width: 350px) {
   .admin-compact-page.permissions-editor .permissions-toolbar { grid-template-columns: minmax(0,1fr); }
+}
+
+/* F.2 — prevent long tenant data and action labels from forcing horizontal scroll.
+   Restricted to administrative cards, not the Inbox or media bubbles. */
+.admin-compact-page :is(.contact-card,.contact-row,.team-list li,.member-summary,.provider-card) { min-width: 0; }
+.admin-compact-page :is(.ui-page-header-content,.contact-identifier,.member-summary,.profile-card-heading) { overflow-wrap: anywhere; }
+.admin-compact-page .team-list [data-slot="shadcn-badge"] { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .admin-compact-page .contact-form-actions > [data-slot="shadcn-button"] { flex: 1 1 145px; white-space: normal; }
+  .admin-compact-page .ui-page-header-actions { max-width: 100%; }
 }
