@@ -38,7 +38,7 @@ export function InboxList() {
   const pagination = useRef<AbortController | null>(null);
   const organizationId = session?.currentOrganizationId;
   const soundUserId = session?.user.id ?? '';
-  const [soundEnabled, setSoundEnabled] = useNotificationSound(soundUserId, organizationId);
+  const [soundEnabled, setSoundEnabled] = useNotificationSound(soundUserId, organizationId ?? undefined);
   async function toggleSound() {
     if (!organizationId || !soundUserId) return;
     if (!soundEnabled) await unlockNotificationAudio();
