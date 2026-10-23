@@ -9,7 +9,7 @@ export function validateMediaFile(file: File, voice = false): { attachment?: Att
   const video = mime === 'video/mp4' || (!mime && /\.mp4$/.test(name));
   const audio = ['audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/webm'].includes(mime) ||
     (!mime && /\.(ogg|mp3|m4a|webm)$/.test(name));
-  const documents: Record<string, string> = { pdf: 'application/pdf' };
+  const documents: Record<string, string> = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', csv: 'text/csv', txt: 'text/plain' };
   const extension = name.split('.').pop() ?? '';
   const document = documents[extension] === mime;
   const type: Attachment['type'] | undefined = voice && mime === 'audio/webm' ? 'VOICE' : image ? 'IMAGE' : video ? 'VIDEO' : audio ? 'AUDIO' : document ? 'DOCUMENT' : undefined;
