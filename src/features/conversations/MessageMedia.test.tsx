@@ -21,8 +21,9 @@ describe('B3 media demand and lifecycle', () => {
     vi.spyOn(chatApi, 'messageMedia').mockResolvedValue(new Blob(['visual']));
     vi.spyOn(chatApi, 'messageMediaSource').mockResolvedValue('/api/v1/visual-media');
     render(<MessageMedia message={{ ...message, type, media: { ...message.media!, type } }} />);
-    expect(screen.getByText(label)).toBeInTheDocument();
-    expect(screen.getByTitle('synthetic.png')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: label === 'Áudio' ? 'Áudio da mensagem' : label === 'Imagem' ? 'Imagem da mensagem' : label === 'Vídeo' ? 'Vídeo da mensagem' : 'Mensagem de voz' })).toBeInTheDocument();
+    expect(screen.queryByText('synthetic.png')).not.toBeInTheDocument();
+    expect(screen.queryByText(label)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Abrir mídia' }));
     expect(await screen.findByRole('link', { name: 'Baixar arquivo' })).toHaveAttribute('download', 'synthetic.png');
     if (type === 'VIDEO') expect(screen.getByRole('button', { name: 'Ampliar vídeo' })).toBeInTheDocument();
@@ -54,7 +55,7 @@ describe('B3 media demand and lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir mídia' }));
     const element = await screen.findByLabelText(type === 'VIDEO' ? 'Vídeo da mensagem' : type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem');
     expect(element).toHaveAttribute('src', url); expect(element).toHaveAttribute('crossorigin', 'use-credentials'); if (type === 'VIDEO') expect(element).toHaveAttribute('controls'); else { expect(element).not.toHaveAttribute('controls'); expect(screen.getByRole('slider', { name: 'Posição do áudio' })).toBeDisabled(); } expect(element).not.toHaveAttribute('autoplay'); expect(blob).not.toHaveBeenCalled();
-    if (type !== 'VIDEO') { fireEvent.change(screen.getByLabelText('Velocidade'), { target: { value: '1.5' } }); expect((element as HTMLMediaElement).playbackRate).toBe(1.5); }
+    if (type !== 'VIDEO') { fireEvent.click(screen.getByRole('button', { name: /Velocidade: 1 vezes/ })); expect((element as HTMLMediaElement).playbackRate).toBe(1.5); }
     fireEvent.error(element); expect(await screen.findByRole('status')).toHaveTextContent('formato ou codec'); expect(screen.getByRole('link', { name: 'Baixar arquivo' })).toHaveAttribute('href', url);
     view.unmount(); expect(pause).toHaveBeenCalled(); expect(stop).toHaveBeenCalled(); expect(element).not.toHaveAttribute('src');
   });
