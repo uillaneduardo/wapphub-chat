@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Paperclip, Square, Trash2, X } from 'lucide-react';
+import { Maximize2, Mic, Paperclip, Square, Trash2, X } from 'lucide-react';
+import { validateMediaFile } from './mediaFileValidation';
 import { AudioPlayer, formatAudioTime } from './AudioPlayer';
 
 export type Attachment = { file: File; type: 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' };
@@ -20,6 +21,9 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [preview, setPreview] = useState('');
+  const [videoExpanded, setVideoExpanded] = useState(false);
+  const videoClose = useRef<HTMLButtonElement>(null);
+  const videoTrigger = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
 
   useEffect(() => { onRecordingChange?.(recording); }, [recording, onRecordingChange]);
@@ -38,6 +42,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
     return () => clearInterval(timer);
   }, [recording]);
   useEffect(() => {
+    setVideoExpanded(false);
     if (!attachment) return;
     const url = URL.createObjectURL(attachment.file);
     setPreview(url);
@@ -45,14 +50,14 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
   }, [attachment]);
 
   function select(file?: File, voice = false) {
-    if (!file) return;
-    const type = voice ? 'VOICE' : file.type.startsWith('image/') ? 'IMAGE' : file.type.startsWith('video/') ? 'VIDEO' : file.type.startsWith('audio/') ? 'AUDIO' : null;
-    const maximum = (type === 'IMAGE' ? 8 : type === 'VIDEO' ? 25 : 16) * 1024 * 1024;
-    if (!type || !file.size || file.size > maximum) {
-      setError('Formato ou tamanho indisponível. Imagem até 8 MB, áudio até 16 MB e vídeo até 25 MB.');
-      return;
-    }
-    setError(''); onChange({ file, type });
+    if (!file) return; // Camera/file picker canceled; existing draft is retained.
+    const result = validateMediaFile(file, voice);
+    if (!result.attachment) { setError(result.error ?? 'Não foi possível anexar este arquivo.'); return; }
+    setError(''); onChange(result.attachment);
+  }
+  function closeVideoPreview() {
+    setVideoExpanded(false);
+    videoTrigger.current?.focus();
   }
 
   function finish(discard = false) {
@@ -130,17 +135,34 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
     </div>}
     {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : ''}`}>
       <div className="attachment-preview-heading">
-        <span>{attachment.type === 'VOICE' ? 'Mensagem de voz' : attachment.type === 'AUDIO' ? 'Áudio anexado' : attachment.file.name}</span>
-        {(attachment.type === 'AUDIO' || attachment.type === 'VOICE') && <small className="audio-draft-filename" title={attachment.file.name}>{attachment.file.name}</small>}
+        <span className="sr-only">{attachment.type === 'IMAGE' ? 'Prévia de imagem' : attachment.type === 'VIDEO' ? 'Prévia de vídeo' : 'Prévia de áudio'}</span>
         <button type="button" className="attachment-discard-button" disabled={disabled} onClick={() => onChange(null)} aria-label="Descartar anexo" title="Descartar anexo"><Trash2 size={17} aria-hidden="true" /></button>
       </div>
       {preview && (attachment.type === 'IMAGE'
         ? <img src={preview} alt="Prévia do anexo" />
         : attachment.type === 'VIDEO'
-          ? <video src={preview} controls aria-label="Prévia do vídeo" />
+          ? <div className="attachment-video-frame"><video src={preview} controls preload="metadata" aria-label="Prévia do vídeo" />
+              <button ref={videoTrigger} className="attachment-video-expand" type="button" onClick={() => setVideoExpanded(true)} aria-label="Ampliar prévia do vídeo" title="Ampliar prévia do vídeo"><Maximize2 size={16} aria-hidden="true" /></button>
+            </div>
           : <AudioPlayer key={preview} src={preview} label="Prévia do áudio" compact />)}
       {(attachment.type === 'AUDIO' || attachment.type === 'VOICE') && <small className="attachment-preview-hint">Ouça antes de enviar. Use o botão Enviar do compositor quando estiver pronto.</small>}
     </div>}
+    {videoExpanded && attachment?.type === 'VIDEO' && preview && <div className="attachment-video-modal-backdrop"
+      onMouseDown={event => { if (event.target === event.currentTarget) closeVideoPreview(); }}
+      role="presentation">
+      <div className="attachment-video-modal" role="dialog" aria-modal="true" aria-label="Prévia ampliada do vídeo"
+        onKeyDown={event => {
+          if (event.key === 'Escape') { event.preventDefault(); closeVideoPreview(); }
+          if (event.key === 'Tab' && event.target === videoClose.current && event.shiftKey) { event.preventDefault(); videoClose.current?.focus(); }
+        }}>
+        <div className="attachment-video-modal-toolbar">
+          <strong>Prévia do vídeo</strong>
+          <button ref={node => { videoClose.current = node; if (node && document.activeElement !== node) node.focus(); }}
+            type="button" aria-label="Fechar prévia ampliada" onClick={closeVideoPreview}><X size={18} aria-hidden="true" /></button>
+        </div>
+        <video src={preview} controls preload="metadata" aria-label="Vídeo ampliado antes do envio" />
+      </div>
+    </div>
     {error && <p role="alert">{error}</p>}
   </div>;
 }
