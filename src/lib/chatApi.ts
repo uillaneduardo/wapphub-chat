@@ -14,7 +14,7 @@ export type WebChannel = { id: string; name: string; outboundEnabled: boolean; m
 export const chatApi = {
   listChannels: (signal?: AbortSignal) => apiRequest<{ items: WebChannel[] }>('/channels', { signal }),
   createExternalConversation: (data: { channelId: string; contactId?: string; phone?: string }, signal?: AbortSignal) => apiRequest<CreateConversationResult>('/conversations/external', { method: 'POST', body: JSON.stringify(data), signal }),
-  uploadMedia: async (conversationId: string, file: File, type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'VOICE', signal?: AbortSignal) => {
+  uploadMedia: async (conversationId: string, file: File, type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'VOICE' | 'DOCUMENT', signal?: AbortSignal) => {
     const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
     const sha256 = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
     const query = new URLSearchParams({ mediaId: crypto.randomUUID(), type, mimeType: file.type.split(';')[0], fileName: file.name, size: String(file.size), sha256 });
