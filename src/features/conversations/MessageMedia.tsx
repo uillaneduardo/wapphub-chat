@@ -72,8 +72,8 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
   function retry() { clearSource(); failed.current = false; setError(''); start(); }
   function save(url: string, name: string) { const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; document.body.append(anchor); anchor.click(); anchor.remove(); }
   async function download() {
-    if (!asset || !message.media || downloadLease.current) return;
-    if (asset.blob) { save(asset.url, message.media.fileName); return; }
+    if (!message.media || downloadLease.current) return;
+    if (asset?.blob) { save(asset.url, message.media.fileName); return; }
     setDownloadBusy(true);
     const current = manager.acquire(`download:${message.media.mediaId}`, message.media.size, async signal => {
       const bytes = await chatApi.messageMedia(message.conversationId, message.id, signal); signal.throwIfAborted();
