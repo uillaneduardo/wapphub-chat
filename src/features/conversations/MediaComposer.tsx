@@ -148,7 +148,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
 
   return <div className="media-composer">
     <div className="provider-actions">
-      <input ref={input} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+      <input ref={input} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4,.pdf"
         onChange={event => { selectFiles(event.target.files); event.target.value = ''; }} />
       <button type="button" className="text-button" aria-label="Anexar mídia" disabled={disabled || recording} onClick={() => input.current?.click()}>
         <Paperclip size={18} aria-hidden="true" />Anexar
