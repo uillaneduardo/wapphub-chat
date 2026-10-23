@@ -1,6 +1,7 @@
 import "./media.css";
 import { MessageMedia } from "./MessageMedia";
 import type { Attachment } from "./MediaComposer";
+import { imageBatchCaption, type QueuedImage } from "./imageQueue";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import type { CSSProperties, FormEvent } from 'react';
@@ -59,6 +60,7 @@ function ConversationViewContent() {
   useEffect(() => () => mediaTransfers.dispose(), [mediaTransfers]);
   const pendingSends = useRef(new Set<string>()); const composerBusy = useRef(false);
   const [sending, setSending] = useState(false); const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [queuedImages, setQueuedImages] = useState<QueuedImage[]>([]);
   const scroll = useMessageScroll(messages, !loading); const sessionUserId = session?.user.id ?? '';
   const isAgent = session?.membership?.role === 'AGENT';
   const assignmentDenied = isAgent && conversation?.assignedUserId !== sessionUserId;
@@ -257,7 +259,7 @@ function ConversationViewContent() {
     catch (reason) { if (!controller.signal.aborted && requestEpoch === contentEpoch.current) setDetailError(reason instanceof Error ? reason.message : 'Não foi possível carregar o histórico.'); }
     finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
-  async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null) {
+  async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null): Promise<boolean> {
     if (assignmentDenied) return;
     const failedMessage = retryClientMessageId ? messagesRef.current.find(message => message.clientMessageId === retryClientMessageId) : undefined;
     const previousIntent = retryClientMessageId ? sendIntents.current.get(retryClientMessageId) : undefined;
@@ -279,7 +281,16 @@ function ConversationViewContent() {
       if (!mounted.current || controller.signal.aborted) return;
       intentSubmitted = true;
       const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
-      if (mounted.current) { setMessages(current => mergeMessages(current, [saved])); if (selectedAttachment) { setAttachment(null); attachmentRetry.current = null; } sendIntents.current.delete(clientMessageId); }
+      if (mounted.current) {
+        setMessages(current => mergeMessages(current, [saved]));
+        if (selectedAttachment) {
+          setAttachment(current => current?.file === selectedAttachment.file ? null : current);
+          setQueuedImages(current => current.filter(image => image.file !== selectedAttachment.file));
+          attachmentRetry.current = null;
+        }
+        sendIntents.current.delete(clientMessageId);
+      }
+      return true;
     }
     catch (reason) { if (!mounted.current) return;
       const rejectedBeforeCommit = reason instanceof ApiError && [400, 401, 403, 404, 409, 413, 415, 422, 429].includes(reason.status);
@@ -288,6 +299,7 @@ function ConversationViewContent() {
       setDetailError(uncertain ? `Não foi possível confirmar o registro da mensagem (${code}). Aguarde a confirmação; a mensagem não será reenviada automaticamente.` : selectedAttachment ? `Falha ${intentSubmitted ? 'ao registrar a mensagem' : 'no upload da mídia'} (${code}). O anexo foi preservado. Tente novamente.` : `Não foi possível enviar a mensagem (${code}). Tente novamente.`);
       if (!uncertain && body) setDraft(current => current || body); }
     finally { reads.current.delete(controller); pendingSends.current.delete(clientMessageId); }
+    return false;
   }
   useEffect(() => {
     const clientId = attachmentRetry.current;
@@ -295,6 +307,7 @@ function ConversationViewContent() {
     const intent = sendIntents.current.get(clientId);
     if (messages.some(message => message.clientMessageId === clientId && !message.id.startsWith('optimistic:') && ['SENT', 'DELIVERED', 'READ'].includes(message.status))) {
       setAttachment(current => current?.file === intent?.attachment?.file ? null : current);
+      setQueuedImages(current => current.filter(image => image.file !== intent?.attachment?.file));
       attachmentRetry.current = null; sendIntents.current.delete(clientId);
     }
   }, [messages]);
@@ -307,14 +320,29 @@ function ConversationViewContent() {
     setAttachment(next);
   }
   function sendDraft() {
-    if (assignmentDenied || composerBusy.current || (!draft.trim() && !attachment) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
+    if (assignmentDenied || composerBusy.current || (!draft.trim() && !attachment && queuedImages.length === 0) || draft.length > 8000 || conversation?.status === 'ARCHIVED' || !can('messages.send') || conversation?.outboundEnabled === false) return;
     const retryId = attachmentRetry.current;
     const retryMessage = retryId ? messagesRef.current.find(message => message.clientMessageId === retryId) : undefined;
     const oldIntent = retryId ? sendIntents.current.get(retryId) : undefined;
-    if (retryId && oldIntent?.attachment?.file === attachment?.file && retryMessage?.deliveryOutcome === 'UNKNOWN') {
+    const firstAttachment: Attachment | null = queuedImages[0] ?? attachment;
+    if (retryId && oldIntent?.attachment?.file === firstAttachment?.file && retryMessage?.deliveryOutcome === 'UNKNOWN') {
       setDetailError('Resultado do registro incerto. Aguarde confirmação ou use Verificar envio. A gravação permanece disponível.'); return;
     }
     composerBusy.current = true; setSending(true); const body = draft; setDraft('');
+    if (queuedImages.length) {
+      const selected = [...queuedImages];
+      // Each queued image becomes its own idempotent message. Never continue
+      // through errors or uncertain responses; leave unsent images for review.
+      void (async () => {
+        for (const [index, image] of selected.entries()) {
+          if (!mounted.current) break;
+          const retry = index === 0 && retryId && oldIntent?.attachment?.file === image.file ? retryId : undefined;
+          const ok = await submitMessage(imageBatchCaption(index, body), retry, image);
+          if (!ok) break;
+        }
+      })().finally(() => { composerBusy.current = false; if (mounted.current) setSending(false); });
+      return;
+    }
     void submitMessage(body, retryId && oldIntent?.attachment?.file === attachment?.file ? retryId : undefined, attachment).finally(() => { composerBusy.current = false; setSending(false); });
   }
   async function verifyUncertainSend(clientMessageId: string) {
@@ -324,7 +352,7 @@ function ConversationViewContent() {
       if (controller.signal.aborted || !mounted.current) return;
       setMessages(current => mergeMessages(current, page.items));
       const confirmed = page.items.find(message => message.clientMessageId === clientMessageId);
-      if (confirmed) { const intent = sendIntents.current.get(clientMessageId); setAttachment(current => intent?.attachment && current?.file === intent.attachment.file ? null : current); if (attachmentRetry.current === clientMessageId) attachmentRetry.current = null; sendIntents.current.delete(clientMessageId); setDetailError(''); }
+      if (confirmed) { const intent = sendIntents.current.get(clientMessageId); setAttachment(current => intent?.attachment && current?.file === intent.attachment.file ? null : current); setQueuedImages(current => current.filter(image => image.file !== intent?.attachment?.file)); if (attachmentRetry.current === clientMessageId) attachmentRetry.current = null; sendIntents.current.delete(clientMessageId); setDetailError(''); }
       else setDetailError('O Core ainda não confirmou o registro. A gravação foi preservada e não será reenviada automaticamente.');
     } catch { if (!controller.signal.aborted) setDetailError('Não foi possível verificar o envio. Tente verificar novamente.'); }
     finally { reads.current.delete(controller); }
@@ -365,6 +393,8 @@ function ConversationViewContent() {
         disabled={conversation.status === 'ARCHIVED'}
         attachment={attachment}
         onAttachmentChange={changeAttachment}
+         queuedImages={queuedImages}
+         onImagesChange={setQueuedImages}
         mediaEnabled={Boolean(conversation.mediaEnabled)}
         shortcut={composerShortcut.shortcut}
         onShortcutChange={composerShortcut.setShortcut}
