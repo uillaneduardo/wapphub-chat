@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { notificationIsFresh, readSoundPreference, saveSoundPreference, shouldPlayForMessage, soundPreferenceKey } from './notificationSound';
+import { notificationIsFresh, readSoundPreference, saveSoundPreference, shouldPlayForMessage, soundPreferenceKey, playNotificationSound } from './notificationSound';
 
 describe('message notification sound policy', () => {
-  afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
   it('requires opt-in per user and organization and retains disabled as default', () => {
     expect(readSoundPreference('a', 'org-1')).toBe(false);
     saveSoundPreference('a', 'org-1', true);
@@ -21,6 +21,32 @@ describe('message notification sound policy', () => {
     expect(shouldPlayForMessage({ ...base, direction: 'INBOUND', historical: true }, 'agent-a')).toBe(false);
     expect(shouldPlayForMessage({ ...base, id: 'optimistic:test' }, 'agent-a')).toBe(false);
     expect(shouldPlayForMessage({ ...base, direction: 'INBOUND', senderUserId: null }, 'agent-a')).toBe(true);
+  });
+  it('synthesizes two short tones once and deduplicates the same message ID', async () => {
+    const starts: number[] = [];
+    class StubAudioContext {
+      state = 'running';
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        return {
+          type: 'sine', frequency: { value: 0 }, onended: null,
+          connect: vi.fn(), disconnect: vi.fn(),
+          start: vi.fn((at: number) => starts.push(at)), stop: vi.fn(),
+        };
+      }
+      createGain() {
+        return {
+          gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+          connect: vi.fn(), disconnect: vi.fn(),
+        };
+      }
+    }
+    vi.stubGlobal('AudioContext', StubAudioContext);
+    expect(await playNotificationSound('notification-unit-test-2026-10-23')).toBe(true);
+    expect(starts).toEqual([0, 0.12]);
+    expect(await playNotificationSound('notification-unit-test-2026-10-23')).toBe(false);
+    expect(starts).toHaveLength(2);
   });
   it('does not replay sounds for historical or old reconnect events', () => {
     const mounted = Date.parse('2026-10-23T13:00:00Z');
