@@ -2,6 +2,7 @@
  * No media URL, external library, autoplay on page load or notification permission.
  */
 const prefix = 'wapphub:message-sound:v1:';
+export const notificationPreferenceEvent = 'wapphub:notification-preference';
 const played = new Map<string, number>();
 const MAX_PLAYED = 128;
 let context: AudioContext | null = null;
@@ -17,7 +18,10 @@ export function readSoundPreference(userId: string, organizationId: string): boo
 export function saveSoundPreference(userId: string, organizationId: string, on: boolean): void {
   if (!userId || !organizationId) return;
   try { localStorage.setItem(soundPreferenceKey(userId, organizationId), on ? 'on' : 'off'); }
-  catch { /* Preferences remain in the current tab if storage is unavailable. */ }
+  catch { /* No storage available: keep the current browser's default preference. */ }
+  // StorageEvent does not fire in the tab that changed localStorage.
+  // Notify Inbox and Settings without introducing a global React state manager.
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(notificationPreferenceEvent));
 }
 export function notificationIsFresh(occurredAt: string, mountedAt: number, now = Date.now()) {
   const timestamp = Date.parse(occurredAt);

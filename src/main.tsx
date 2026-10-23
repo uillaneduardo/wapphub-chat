@@ -14,6 +14,7 @@ import './styles/settings-compact.css';
 import './styles/admin-shadcn.css';
 import './styles/new-conversation-compact.css';
 import './features/conversations/unread-notifications.css';
+import './styles/f3-feedback.css';
 
 installDocumentDiagnostics();
 

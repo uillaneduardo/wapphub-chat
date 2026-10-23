@@ -13,6 +13,49 @@ function renderInbox(path = '/app/conversations?scope=mine') { return render(<Me
 
 describe('InboxList', () => {
   afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; state.session.membership.role = 'OWNER'; });
+  it('shows accessible skeleton rows while waiting for the Inbox page', async () => {
+    let resolve!: (page: { items: Conversation[]; nextCursor: string | null }) => void;
+    vi.spyOn(chatApi, 'listConversations').mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    const view = renderInbox();
+    expect(screen.getByRole('status', { name: 'Carregando conversas' })).toBeInTheDocument();
+    expect(view.container.querySelectorAll('[data-slot="shadcn-skeleton"]')).toHaveLength(16);
+    resolve({ items: [row({ contactName: 'Cliente' })], nextCursor: null });
+    await screen.findByRole('link', { name: /Cliente/ });
+    expect(view.container.querySelector('[data-slot="shadcn-skeleton"]')).toBeNull();
+  });
+  it('gives a recoverable error state without disabling search or tabs', async () => {
+    const list = vi.spyOn(chatApi, 'listConversations')
+      .mockRejectedValueOnce(new Error('Falha de conexão'))
+      .mockResolvedValueOnce({ items: [row({ contactName: 'Cliente retomado' })], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Não foi possível carregar as conversas');
+    const retry = screen.getByRole('button', { name: 'Tentar novamente' });
+    expect(retry).toHaveAttribute('data-slot', 'shadcn-button');
+    expect(screen.getByRole('tab', { name: 'Minhas' })).toBeInTheDocument();
+    fireEvent.click(retry);
+    await screen.findByRole('link', { name: /Cliente retomado/ });
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+  it('preserves already loaded conversations when the next page fails, with safe retry', async () => {
+    const list = vi.spyOn(chatApi, 'listConversations')
+      .mockResolvedValueOnce({ items: [row({ contactName: 'Cliente anterior' })], nextCursor: 'page-two' })
+      .mockRejectedValueOnce(new Error('Sem conexão na paginação'))
+      .mockResolvedValueOnce({ items: [row({ id: 'conv-2', contactName: 'Cliente seguinte' })], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox();
+    await screen.findByRole('link', { name: /Cliente anterior/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('link', { name: /Cliente anterior/ })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Sem conexão na paginação');
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar carregar mais' }));
+    await screen.findByRole('link', { name: /Cliente seguinte/ });
+    expect(screen.getByRole('link', { name: /Cliente anterior/ })).toBeInTheDocument();
+    expect(list).toHaveBeenNthCalledWith(3, { scope: 'mine', archived: false, limit: 50, cursor: 'page-two' }, expect.any(AbortSignal));
+  });
   it('renders a compact unread marker from the authorized server flag and clears it on a read event', async () => {
     const data = row({ contactName: 'Cliente não lido', hasUnread: true });
     vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [data], nextCursor: null });

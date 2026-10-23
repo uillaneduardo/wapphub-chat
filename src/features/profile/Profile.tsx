@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSession } from '../session/SessionContext';
 import { profileApi } from '../../lib/profileApi';
-import { UserRound } from 'lucide-react';
+import { UserRound, Bell, BellOff, Volume2 } from 'lucide-react';
+import { useNotificationSound } from '../../hooks/useNotificationSound';
+import { playNotificationSound, unlockNotificationAudio } from '../conversations/notificationSound';
 import { PageHeader } from '../../components/ui/page-header';
 import { Button } from '../../components/ui/shadcn/button';
 import { Input } from '../../components/ui/shadcn/input';
+import { Badge } from '../../components/ui/shadcn/badge';
 import './profile.css';
 
 function profileError(reason: unknown): string {
@@ -20,6 +23,20 @@ function invalidName(value: string, max: number): boolean {
 
 export function ProfilePage() {
   const { session, refreshSession } = useSession();
+  const [soundEnabled, setSoundEnabled] = useNotificationSound(session?.user.id, session?.currentOrganizationId ?? session?.organization?.id);
+  const [soundMessage, setSoundMessage] = useState('');
+  useEffect(() => setSoundMessage(''), [session?.user.id, session?.currentOrganizationId, session?.organization?.id]);
+  async function toggleSound() {
+    if (!session?.user.id || !session.organization?.id) return;
+    if (!soundEnabled) await unlockNotificationAudio();
+    setSoundEnabled(!soundEnabled);
+    setSoundMessage('');
+  }
+  async function testSound() {
+    const allowed = await unlockNotificationAudio();
+    const played = allowed && await playNotificationSound(`preview:${session?.user.id}:${Date.now()}`);
+    setSoundMessage(played ? 'Som de teste reproduzido.' : 'O navegador bloqueou o som. Verifique a permissão de áudio desta página.');
+  }
   const [name, setName] = useState(session?.user.name ?? '');
   const [alias, setAlias] = useState(session?.membership?.displayName ?? '');
   const [inherit, setInherit] = useState(session?.membership?.displayName == null);
@@ -100,6 +117,31 @@ export function ProfilePage() {
           {organizationMessage && <p role="status" className="profile-success">{organizationMessage}</p>}
           <Button type="submit" size="compact" disabled={organizationBusy || (!inherit && invalidName(normalizedAlias, 80)) || (inherit ? session.membership.displayName == null : normalizedAlias === session.membership.displayName)}>{organizationBusy ? 'Salvando…' : 'Salvar nome de atendimento'}</Button>
         </form>
+      </section>
+      <section className="profile-card profile-notifications" aria-labelledby="profile-notifications-title">
+        <div className="profile-card-heading">
+          <h2 id="profile-notifications-title"><Bell size={17} aria-hidden="true" /> Notificações</h2>
+          <p>Escolha como deseja ser avisado de novas mensagens na organização <strong>{session.organization.name}</strong>.</p>
+        </div>
+        <div className="profile-notification-setting">
+          <div className="profile-notification-description">
+            <strong>Som de novas mensagens</strong>
+            <span>Reproduz um aviso curto para mensagens recebidas, inclusive ao navegar em outras telas do WappHub.</span>
+            <small>Configuração local deste navegador e desta organização. Não ativa notificações do sistema.</small>
+          </div>
+          <div className="profile-notification-actions">
+            <Badge variant={soundEnabled ? 'success' : 'secondary'}>{soundEnabled ? 'Ativado' : 'Desativado'}</Badge>
+            <Button type="button" size="compact" variant={soundEnabled ? 'outline' : 'default'}
+              aria-pressed={soundEnabled} onClick={() => void toggleSound()}>
+              {soundEnabled ? <BellOff size={15} aria-hidden="true" /> : <Bell size={15} aria-hidden="true" />}
+              {soundEnabled ? 'Desativar som' : 'Ativar som'}
+            </Button>
+            {soundEnabled && <Button type="button" size="compact" variant="outline" onClick={() => void testSound()}>
+              <Volume2 size={15} aria-hidden="true" />Testar som
+            </Button>}
+          </div>
+        </div>
+        {soundMessage && <p className="profile-hint profile-sound-feedback" role="status">{soundMessage}</p>}
       </section>
     </div>
   </section>;
