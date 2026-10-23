@@ -86,7 +86,7 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
   }
   if (!message.media || message.type === 'DOCUMENT') return <p className="muted">Arquivo indisponível nesta versão.</p>;
   return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node} role="group"
-    aria-label={message.type === 'IMAGE' ? 'Imagem da mensagem' : message.type === 'VIDEO' ? 'Vídeo da mensagem' : message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'}>
+    aria-label={`Conteúdo de mídia — ${message.type === 'IMAGE' ? 'imagem' : message.type === 'VIDEO' ? 'vídeo' : message.type === 'VOICE' ? 'voz' : 'áudio'}`}>
     <div className="media-content">
       {!asset ? error ? null : typeof IntersectionObserver === 'undefined'
         ? <button type="button" className="secondary-button media-load-button" disabled={busy} onClick={start}>{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button>
