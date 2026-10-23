@@ -21,7 +21,9 @@ export function saveSoundPreference(userId: string, organizationId: string, on: 
 }
 export function notificationIsFresh(occurredAt: string, mountedAt: number, now = Date.now()) {
   const timestamp = Date.parse(occurredAt);
-  return Number.isFinite(timestamp) && timestamp >= mountedAt - 2000 && timestamp <= now + 30000;
+  // Both mount time AND wall-clock freshness matter: after a long-lived tab reconnects,
+  // replayed events may be newer than mount but already minutes or hours old.
+  return Number.isFinite(timestamp) && timestamp >= mountedAt - 2000 && timestamp >= now - 15000 && timestamp <= now + 30000;
 }
 export function shouldPlayForMessage(message: {
   id: string; direction: string; senderUserId: string | null; historical?: boolean;
