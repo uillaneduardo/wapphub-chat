@@ -260,14 +260,14 @@ function ConversationViewContent() {
     finally { reads.current.delete(controller); if (mounted.current) setLoadingOlder(false); }
   }
   async function submitMessage(body: string, retryClientMessageId?: string, selectedAttachment?: Attachment | null): Promise<boolean> {
-    if (assignmentDenied) return;
+    if (assignmentDenied) return false;
     const failedMessage = retryClientMessageId ? messagesRef.current.find(message => message.clientMessageId === retryClientMessageId) : undefined;
     const previousIntent = retryClientMessageId ? sendIntents.current.get(retryClientMessageId) : undefined;
     selectedAttachment = selectedAttachment ?? previousIntent?.attachment;
     body = previousIntent?.body ?? body;
-    if ((!body.trim() && !selectedAttachment && !failedMessage?.media) || body.length > 8000 || !can('messages.send') || conversation?.outboundEnabled === false || conversation?.status === 'ARCHIVED') return;
+    if ((!body.trim() && !selectedAttachment && !failedMessage?.media) || body.length > 8000 || !can('messages.send') || conversation?.outboundEnabled === false || conversation?.status === 'ARCHIVED') return false;
     const clientMessageId = retryClientMessageId ?? createClientMessageId();
-    if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && (failedMessage?.status !== 'FAILED' || failedMessage.deliveryOutcome === 'UNKNOWN'))) return;
+    if (pendingSends.current.has(clientMessageId) || (retryClientMessageId && (failedMessage?.status !== 'FAILED' || failedMessage.deliveryOutcome === 'UNKNOWN'))) return false;
     pendingSends.current.add(clientMessageId);
     const intent = previousIntent ?? { body, attachment: selectedAttachment }; sendIntents.current.set(clientMessageId, intent);
     if (selectedAttachment) attachmentRetry.current = clientMessageId;
@@ -278,7 +278,7 @@ function ConversationViewContent() {
     try {
       const media = intent.media ?? (selectedAttachment ? await chatApi.uploadMedia(conversationId, selectedAttachment.file, selectedAttachment.type, controller.signal) : failedMessage?.media ?? undefined);
       if (media) intent.media = media;
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!mounted.current || controller.signal.aborted) return false;
       intentSubmitted = true;
       const saved = await chatApi.sendMessage(conversationId, { body: text, clientMessageId, ...(media ? { mediaId: media.mediaId } : {}) });
       if (mounted.current) {
