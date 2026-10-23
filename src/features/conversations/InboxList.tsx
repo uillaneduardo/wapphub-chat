@@ -6,7 +6,7 @@ import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation, Tag } from '../../types/chat';
 import { upsertInboxConversation } from './conversationModel';
 import { Search, Plus, Bell, BellOff } from 'lucide-react';
-import { notificationIsFresh, playNotificationSound, readSoundPreference, saveSoundPreference, shouldPlayForMessage, unlockNotificationAudio } from './notificationSound';
+import { readSoundPreference, saveSoundPreference, unlockNotificationAudio } from './notificationSound';
 import { ContactAvatar } from '../../components/ui/avatar';
 
 type InboxTab = ConversationScope | 'archived';
@@ -21,7 +21,6 @@ export function InboxList() {
   const pagination = useRef<AbortController | null>(null);
   const organizationId = session?.currentOrganizationId;
   const soundUserId = session?.user.id ?? '';
-  const notificationStart = useRef(Date.now());
   const [soundEnabled, setSoundEnabled] = useState(() => readSoundPreference(soundUserId, organizationId ?? ''));
   useEffect(() => { setSoundEnabled(readSoundPreference(soundUserId, organizationId ?? '')); }, [soundUserId, organizationId]);
   async function toggleSound() {
@@ -101,19 +100,13 @@ export function InboxList() {
       try {
         const conversation = await chatApi.getConversation(id, signal);
         if (!signal.aborted) setItems((current) => upsertInboxConversation(current, conversation, filter, userId));
-        // Only live, authorized inbound messages trigger sound; never a reconnect replay.
-        if (event.type === 'message.created' && soundEnabled && canReadMessages && conversation.hasUnread && notificationIsFresh(event.occurredAt, notificationStart.current) &&
-          !(selected?.params.conversationId === id && document.visibilityState === 'visible' && document.hasFocus())) {
-          const message = await chatApi.getMessage(id, event.entityId, signal).catch(() => null);
-          if (!signal.aborted && message && shouldPlayForMessage(message, userId)) void playNotificationSound(`${organizationId}:${userId}:${message.id}`);
-        }
       } catch (reason) {
         if (signal.aborted) return;
         if (reason && typeof reason === 'object' && 'status' in reason && (reason.status === 403 || reason.status === 404)) setItems((current) => current.filter((conversation) => conversation.id !== id));
         else throw reason;
       }
     }, { organizationId: organizationId ?? undefined, reconcile: refresh });
-  }, [filter, query, canReadTags, canReadMessages, userId, organizationId, soundEnabled, selected?.params.conversationId]);
+  }, [filter, query, canReadTags, userId, organizationId]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
