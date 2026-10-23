@@ -5,6 +5,7 @@ import { SendPreference } from '../../components/SendPreference';
 import { FormattedMessage } from '../../components/FormattedMessage';
 import type { SendShortcut } from '../../hooks/useUiPreference';
 import { MediaComposer, type Attachment } from './MediaComposer';
+import type { QueuedImage } from './imageQueue';
 import { ComposerTools } from './ComposerTools';
 import { formatSelection, insertAtSelection, MAX_COMPOSER_LENGTH } from './useComposerFormatting';
 import type { EditResult, FormatKind, TextSelection } from './useComposerFormatting';
@@ -12,7 +13,7 @@ import './composer.css';
 
 const EmojiPicker = lazy(() => import('./EmojiPicker'));
 
-export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown, sending, disabled, attachment, onAttachmentChange, mediaEnabled, shortcut, onShortcutChange }: {
+export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown, sending, disabled, attachment, onAttachmentChange, queuedImages = [], onImagesChange, mediaEnabled, shortcut, onShortcutChange }: {
   draft: string;
   onDraftChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -21,6 +22,8 @@ export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown,
   disabled: boolean;
   attachment: Attachment | null;
   onAttachmentChange: (value: Attachment | null) => void;
+  queuedImages?: QueuedImage[];
+  onImagesChange?: (next: QueuedImage[]) => void;
   mediaEnabled: boolean;
   shortcut: SendShortcut;
   onShortcutChange: (value: SendShortcut) => void;
@@ -39,7 +42,7 @@ export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown,
   const [previewOpen, setPreviewOpen] = useState(false);
   const canEdit = !disabled;
   const expanded = toolsOpen || recordingVoice;
-  const canSend = canEdit && !sending && (Boolean(draft.trim()) || Boolean(attachment)) && draft.length <= MAX_COMPOSER_LENGTH;
+  const canSend = canEdit && !sending && (Boolean(draft.trim()) || Boolean(attachment) || queuedImages.length > 0) && draft.length <= MAX_COMPOSER_LENGTH;
 
   function rememberSelection() {
     if (!input.current) return;
@@ -105,7 +108,7 @@ export function MessageComposer({ draft, onDraftChange, onSubmit, onTextKeyDown,
     <div className="composer-surface">
       {/* Keep MediaComposer mounted while folding controls: a running MediaRecorder must not be destroyed. */}
       <div id={toolsId} className={`composer-secondary${expanded ? ' is-expanded' : ''}`} aria-label="Ferramentas de mensagem">
-        {mediaEnabled && <MediaComposer attachment={attachment} onChange={onAttachmentChange} disabled={disabled || sending} onRecordingChange={setRecordingVoice} />}
+        {mediaEnabled && <MediaComposer attachment={attachment} onChange={onAttachmentChange} images={queuedImages} onImagesChange={onImagesChange} disabled={disabled || sending} onRecordingChange={setRecordingVoice} />}
         <ComposerTools onFormat={applyFormat} emojiOpen={emojiOpen} disabled={!canEdit} showEmoji={false} onToggleEmoji={() => undefined} />
         <button type="button" className={previewOpen ? 'composer-preview-button is-active' : 'composer-preview-button'} title="Prévia da formatação" aria-label="Prévia" aria-pressed={previewOpen} disabled={!draft.trim()} onClick={() => setPreviewOpen(open => !open)}><Eye size={17} aria-hidden="true" /><span>Prévia</span></button>
         <button ref={optionsTrigger} type="button" className="composer-options-button" title="Preferências de envio" aria-label="Preferências de envio" aria-expanded={optionsOpen} aria-controls={optionsId} onClick={() => setOptionsOpen(open => !open)}><MoreHorizontal size={18} aria-hidden="true" /><span>Opções</span></button>
