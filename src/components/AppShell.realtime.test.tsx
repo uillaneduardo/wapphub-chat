@@ -20,14 +20,34 @@ class Socket {
 const session: Session = { user: { id: 'user-1', name: 'Ana', email: 'ana@example.test' }, organization: { id: 'org-1', name: 'Org 1' }, organizations: [{ id: 'org-1', name: 'Org 1' }, { id: 'org-2', name: 'Org 2' }], currentOrganizationId: 'org-1', membership: { id: 'membership-1', role: 'AGENT', consumesSeat: true }, permissions: ['conversations.read', 'messages.read'] };
 const row: Conversation = { id: 'c-1', contactId: 'contact-1', contactName: 'Contato', lastMessagePreview: 'Prévia da org 1', tagIds: [], provider: 'DEMO', status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, visibility: 'FULL', createdAt: '2026-10-08T00:00:00Z', updatedAt: '2026-10-08T00:00:00Z', lastMessageAt: '2026-10-08T00:00:00Z' };
 function Page() { const { selectOrganization } = useSession(); return <><button onClick={() => void selectOrganization('org-2')}>Trocar contexto sintético</button><InboxList /></>; }
-function mount() {
+function mount(path = '/app/conversations') {
   vi.stubGlobal('WebSocket', Socket); vi.spyOn(sessionApi, 'current').mockResolvedValue(session); vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [row], nextCursor: null });
-  return render(<SessionProvider><MemoryRouter initialEntries={['/app/conversations']}><Routes><Route path="/login" element={<p>Login sintético</p>} /><Route element={<RequireSession />}><Route path="/app" element={<AppShell />}><Route path="conversations" element={<Page />} /></Route></Route></Routes></MemoryRouter></SessionProvider>);
+  return render(<SessionProvider><MemoryRouter initialEntries={[path]}><Routes><Route path="/login" element={<p>Login sintético</p>} /><Route element={<RequireSession />}><Route path="/app" element={<AppShell />}><Route path="conversations" element={<Page />} /><Route path="profile" element={<p>Perfil sintético</p>} /></Route></Route></Routes></MemoryRouter></SessionProvider>);
 }
 function event() { Socket.instances[0]!.onmessage?.({ data: JSON.stringify({ version: 1, eventId: '1', organizationId: 'org-1', type: 'conversation.updated', entityId: 'c-1', occurredAt: '2026-10-08T00:00:00Z', payload: { resourceId: 'c-1' } }) }); Socket.instances[0]!.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '1', hasMore: false }) }); }
 
 describe('P1 session + shell teardown', () => {
-  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); sessionStorage.clear(); Socket.instances = []; });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear(); Socket.instances = []; });
+  it('listens for recent authorized inbound messages globally, including the Profile route', async () => {
+    localStorage.setItem('wapphub:message-sound:v1:user-1:org-1', 'on');
+    vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...row, hasUnread: true });
+    const getMessage = vi.spyOn(chatApi, 'getMessage').mockResolvedValue({
+      id: 'message-1', conversationId: 'c-1', direction: 'INBOUND', type: 'TEXT', status: 'SENT',
+      senderUserId: null, senderContactId: 'contact-1', senderName: 'Contato',
+      clientMessageId: null, body: 'Nova mensagem', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+    mount('/app/profile');
+    await screen.findByText('Perfil sintético');
+    await waitFor(() => expect(Socket.instances).toHaveLength(1));
+    await act(async () => {
+      Socket.instances[0]!.onmessage?.({ data: JSON.stringify({
+        version: 1, eventId: '7', organizationId: 'org-1', type: 'message.created', entityId: 'message-1',
+        occurredAt: new Date().toISOString(), payload: { resourceId: 'message-1', conversationId: 'c-1' },
+      }) });
+      Socket.instances[0]!.onmessage?.({ data: JSON.stringify({ version: 1, type: 'sync.checkpoint', lastEventId: '7', hasMore: false }) });
+    });
+    await waitFor(() => expect(getMessage).toHaveBeenCalledWith('c-1', 'message-1', expect.any(AbortSignal)));
+  });
   it('aborts reconciliation at logout initiation and preserves the actual server logout', async () => {
     let finish!: (value: Conversation) => void; let signal!: AbortSignal; let endLogout!: () => void;
     vi.spyOn(chatApi, 'getConversation').mockImplementation((_id, current) => { signal = current!; return new Promise((resolve) => { finish = resolve; }); });

@@ -33,7 +33,7 @@ export function ConversationsLayout() {
 export function InboxWelcome() { return <div className="conversation-welcome"><div className="page-icon">◌</div><h2>Suas conversas</h2><p>Selecione uma conversa na lista para abrir o atendimento.</p></div>; }
 
 const messageStatusLabel: Record<InternalTextMessage['status'], string> = { PENDING: 'Enviando', SENT: 'Enviada', DELIVERED: 'Entregue', READ: 'Lida', FAILED: 'Erro' };
-const chatEventTypes = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'tag.created', 'tag.updated', 'tag.deleted', 'conversation.tag.added', 'conversation.tag.removed']);
+const chatEventTypes = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'conversation.read.updated', 'message.created', 'message.updated', 'note.created', 'tag.created', 'tag.updated', 'tag.deleted', 'conversation.tag.added', 'conversation.tag.removed']);
 const noPermissions: string[] = [];
 
 export function ConversationView() {
@@ -74,6 +74,44 @@ function ConversationViewContent() {
   const notesRef = useRef(notes); notesRef.current = notes;
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const lastReadId = useRef<string | null>(null);
+  const pendingReadId = useRef<string | null>(null);
+  const acknowledgeVisible = useCallback(async () => {
+    if (loading || !can('messages.read') || document.visibilityState !== 'visible' || !document.hasFocus()) return;
+    const root = scroll.historyRef.current;
+    if (!root || root.getBoundingClientRect().height <= 0 || root.scrollHeight - root.clientHeight - root.scrollTop > 80) return;
+    // Only advance through an actual, already rendered incoming/colleague message.
+    const seen = [...messagesRef.current].reverse().find(message =>
+      !message.historical && !message.id.startsWith('optimistic:') &&
+      (message.direction === 'INBOUND' || message.direction === 'INTERNAL' && message.senderUserId !== sessionUserId));
+    if (!seen || lastReadId.current === seen.id || pendingReadId.current === seen.id) return;
+    const controller = new AbortController();
+    pendingReadId.current = seen.id;
+    try {
+      await chatApi.markConversationRead(conversationId, seen.id, controller.signal);
+      if (!controller.signal.aborted) lastReadId.current = seen.id;
+    } catch {
+      // A transient offline/error state must never be shown as already read.
+    } finally {
+      if (pendingReadId.current === seen.id) pendingReadId.current = null;
+    }
+  }, [conversationId, sessionUserId, loading, can, scroll.historyRef]);
+  useEffect(() => {
+    // useMessageScroll restores the bottom position in a layout effect first.
+    void acknowledgeVisible();
+  }, [messages, acknowledgeVisible]);
+  useEffect(() => {
+    const root = scroll.historyRef.current;
+    const onVisible = () => { void acknowledgeVisible(); };
+    root?.addEventListener('scroll', onVisible, { passive: true });
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      root?.removeEventListener('scroll', onVisible);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [acknowledgeVisible, scroll.historyRef]);
   const reads = useRef(new Set<AbortController>());
   const mounted = useRef(true);
   useEffect(() => { const requests = reads.current; mounted.current = true; return () => { mounted.current = false; requests.forEach((read) => read.abort()); }; }, []);

@@ -6,13 +6,41 @@ import { chatApi } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation } from '../../types/chat';
 
-const state = vi.hoisted(() => ({ session: { user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'], membership: { role: 'OWNER' } } }));
+const state = vi.hoisted(() => ({ session: { currentOrganizationId: 'org-1', user: { id: 'user-1', name: 'Ana', email: 'ana@example.com' }, permissions: ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read'], membership: { role: 'OWNER' } } }));
 vi.mock('../session/SessionContext', () => ({ useSession: () => ({ session: state.session }) }));
 const row = (overrides: Partial<Conversation> = {}): Conversation => ({ id: 'conv-1', contactId: 'contact-1', contactName: null, lastMessagePreview: null, provider: null, tagIds: [], status: 'OPEN', assignedUserId: 'user-1', archivedAt: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', lastMessageAt: '2026-10-01T00:00:00.000Z', visibility: 'FULL', ...overrides });
 function renderInbox(path = '/app/conversations?scope=mine') { return render(<MemoryRouter initialEntries={[path]}><InboxList /></MemoryRouter>); }
 
 describe('InboxList', () => {
   afterEach(() => { vi.restoreAllMocks(); state.session.permissions = ['conversations.read', 'conversations.supervise', 'tags.read', 'messages.read']; state.session.membership.role = 'OWNER'; });
+  it('renders a compact unread marker from the authorized server flag and clears it on a read event', async () => {
+    const data = row({ contactName: 'Cliente não lido', hasUnread: true });
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [data], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(chatApi, 'getConversation').mockResolvedValue({ ...data, hasUnread: false });
+    renderInbox();
+    const link = await screen.findByRole('link', { name: /Cliente não lido/ });
+    expect(link).toHaveClass('has-unread');
+    expect(link.querySelector('.conversation-unread-dot')).toHaveAttribute('aria-label', 'Mensagens não lidas');
+    await realtimeBus.emit({ version: 1, eventId: 'read-1', organizationId: 'org-1',
+      type: 'conversation.read.updated', entityId: 'conv-1',
+      occurredAt: new Date().toISOString(), payload: { resourceId: 'conv-1', conversationId: 'conv-1' } });
+    await waitFor(() => expect(screen.getByRole('link', { name: /Cliente não lido/ })).not.toHaveClass('has-unread'));
+  });
+  it('keeps notification sound opt-in and separate per organization/user', async () => {
+    localStorage.clear();
+    vi.spyOn(chatApi, 'listConversations').mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(chatApi, 'listTags').mockResolvedValue({ items: [], nextCursor: null });
+    renderInbox();
+    const soundOff = await screen.findByRole('button', { name: 'Ativar som de novas mensagens' });
+    expect(soundOff).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(soundOff);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Desativar som de novas mensagens' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(localStorage.getItem('wapphub:message-sound:v1:user-1:org-1')).toBe('on');
+    fireEvent.click(screen.getByRole('button', { name: 'Desativar som de novas mensagens' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ativar som de novas mensagens' })).toHaveAttribute('aria-pressed', 'false'));
+    expect(localStorage.getItem('wapphub:message-sound:v1:user-1:org-1')).toBe('off');
+  });
   it('shows only assigned conversations to AGENT even when a URL requests the unassigned queue', async () => {
     state.session.membership.role = 'AGENT';
     state.session.permissions = ['conversations.read', 'messages.read', 'messages.send'];

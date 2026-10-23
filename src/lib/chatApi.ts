@@ -28,6 +28,7 @@ export const chatApi = {
   sendDemoMessage: (contactId: string, externalMessageId: string, body: string) => apiRequest<InternalTextMessage>('/providers/demo/messages', { method: 'POST', body: JSON.stringify({ contactId, externalMessageId, body }) }),
   listConversations: (query: ConversationQuery, signal?: AbortSignal) => apiRequest<CursorPage<Conversation>>(`/conversations${queryString({ scope: query.scope, archived: query.archived, tagId: query.tagId, contactId: query.contactId, cursor: query.cursor, limit: query.limit ?? 50 })}`, { signal }),
   getConversation: (id: string, signal?: AbortSignal) => apiRequest<Conversation>(`/conversations/${idPath(id)}`, { signal }),
+  markConversationRead: (id: string, messageId: string, signal?: AbortSignal) => apiRequest<{ conversationId: string; hasUnread: boolean }>(`/conversations/${idPath(id)}/read`, { method: 'POST', body: JSON.stringify({ messageId }), signal }),
   listContacts: (query: { q?: string; cursor?: string; limit?: number } = {}, signal?: AbortSignal) => apiRequest<CursorPage<Contact>>(`/contacts${queryString({ q: query.q, cursor: query.cursor, limit: query.limit ?? 50 })}`, { signal }),
   createContact: (data: { name: string; primaryIdentifier: string }) => apiRequest<Contact>('/contacts', { method: 'POST', body: JSON.stringify(data) }),
   updateContact: (id: string, data: { name?: string; primaryIdentifier?: string }) => apiRequest<Contact>(`/contacts/${idPath(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),

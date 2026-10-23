@@ -5,12 +5,13 @@ import { chatApi, type ConversationScope } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation, Tag } from '../../types/chat';
 import { upsertInboxConversation } from './conversationModel';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Bell, BellOff } from 'lucide-react';
+import { readSoundPreference, saveSoundPreference, unlockNotificationAudio } from './notificationSound';
 import { ContactAvatar } from '../../components/ui/avatar';
 
 type InboxTab = ConversationScope | 'archived';
 const tabs: { id: InboxTab; label: string }[] = [{ id: 'mine', label: 'Minhas' }, { id: 'unassigned', label: 'Não atribuídas' }, { id: 'all', label: 'Todas' }, { id: 'archived', label: 'Arquivadas' }];
-const conversationEvents = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'message.created', 'message.updated', 'note.created', 'conversation.tag.added', 'conversation.tag.removed']);
+const conversationEvents = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'conversation.read.updated', 'message.created', 'message.updated', 'note.created', 'conversation.tag.added', 'conversation.tag.removed']);
 
 export function InboxList() {
   const { session } = useSession();
@@ -19,6 +20,15 @@ export function InboxList() {
   const epoch = useRef(0);
   const pagination = useRef<AbortController | null>(null);
   const organizationId = session?.currentOrganizationId;
+  const soundUserId = session?.user.id ?? '';
+  const [soundEnabled, setSoundEnabled] = useState(() => readSoundPreference(soundUserId, organizationId ?? ''));
+  useEffect(() => { setSoundEnabled(readSoundPreference(soundUserId, organizationId ?? '')); }, [soundUserId, organizationId]);
+  async function toggleSound() {
+    if (!organizationId || !soundUserId) return;
+    if (!soundEnabled) await unlockNotificationAudio();
+    const next = !soundEnabled;
+    setSoundEnabled(next); saveSoundPreference(soundUserId, organizationId, next);
+  }
   const userId = session?.user.id ?? '';
   const isAgent = session?.membership?.role === 'AGENT';
   const canSupervise = !isAgent && (session?.permissions.includes('conversations.supervise') ?? false);
@@ -109,7 +119,7 @@ export function InboxList() {
   }, [nextCursor, loadingMore, query]);
 
   return <aside className={`inbox-panel${selected ? ' inbox-panel-hidden-mobile' : ''}`} aria-label="Caixa de conversas">
-    <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><div className="inbox-heading-actions"><span className="inbox-count" aria-label={`${items.length} conversas carregadas`}>{items.length}</span>{!isAgent && session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new"><Plus size={16} aria-hidden="true" />Nova conversa</Link>}</div></div>
+    <div className="inbox-heading"><div><p className="eyebrow">ATENDIMENTO</p><h1>Conversas</h1></div><div className="inbox-heading-actions"><span className="inbox-count" aria-label={`${items.length} conversas carregadas`}>{items.length}</span><button type="button" className={`inbox-sound-toggle${soundEnabled ? ' is-on' : ''}`} aria-label={soundEnabled ? 'Desativar som de novas mensagens' : 'Ativar som de novas mensagens'} aria-pressed={soundEnabled} title={soundEnabled ? 'Som de novas mensagens ativado' : 'Ativar som de novas mensagens'} onClick={() => void toggleSound()}>{soundEnabled ? <Bell size={16} aria-hidden="true" /> : <BellOff size={16} aria-hidden="true" />}</button>{!isAgent && session?.permissions.includes('conversations.create') && session.permissions.includes('contacts.read') && <Link className="secondary-button inbox-new-conversation" to="/app/conversations/new"><Plus size={16} aria-hidden="true" />Nova conversa</Link>}</div></div>
     <label className="inbox-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Buscar nas conversas carregadas</span><input type="search" aria-label="Buscar nas conversas carregadas" placeholder="Buscar nas conversas…" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" /></label>
     <div className="inbox-tabs" role="tablist" aria-label="Filtro de conversas">
       {tabs.filter((item) => (item.id !== 'all' || canSupervise) && (!isAgent || item.id === 'mine' || item.id === 'archived')).map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'selected' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
@@ -120,8 +130,8 @@ export function InboxList() {
       {!loading && error && <div className="list-state error-state" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadKey((value) => value + 1)}>Tentar novamente</button></div>}
       {!loading && !error && items.length === 0 && <div className="list-state"><span className="empty-mark">○</span><strong>Nenhuma conversa</strong><span>Quando houver conversas neste filtro, elas aparecerão aqui.</span></div>}
       {!loading && !error && items.length > 0 && visibleItems.length === 0 && <div className="list-state" role="status"><strong>Nenhum resultado</strong><span>Busque por outro nome ou carregue mais conversas. A busca considera apenas as conversas já carregadas.</span></div>}
-      {!loading && !error && visibleItems.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
-        <ContactAvatar name={conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`} /><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}</strong><small>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
+      {!loading && !error && visibleItems.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}${canReadMessages && conversation.hasUnread ? ' has-unread' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
+        <ContactAvatar name={conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`} /><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}{canReadMessages && conversation.hasUnread && <span className="conversation-unread-dot" title="Mensagens não lidas" aria-label="Mensagens não lidas" />}</strong><small>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
       </Link>)}
     </div>
     {!loading && !error && nextCursor && <button type="button" className="load-more-button" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Carregando…' : 'Carregar mais'}</button>}
