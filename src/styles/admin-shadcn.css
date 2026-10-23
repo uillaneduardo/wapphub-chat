@@ -1,0 +1,89 @@
+/* F.1 — single shared adapter for shadcn primitives on administrative routes.
+   Kept AFTER legacy page styles; affects no Inbox, conversation, media or login.
+   Components remain token-based and Tailwind's Preflight stays disabled. */
+.admin-compact-page :is([data-slot="shadcn-button"],[data-slot="shadcn-input"]) {
+  box-sizing: border-box;
+  max-width: 100%;
+  border-radius: 8px;
+}
+.admin-compact-page [data-slot="shadcn-button"] {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.25;
+  text-decoration: none;
+  min-height: 36px;
+}
+.admin-compact-page [data-slot="shadcn-button"]:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.admin-compact-page :is(.contact-form,.contact-search,.permissions-toolbar) [data-slot="shadcn-input"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+.admin-compact-page :is(.contact-form,.contact-search,.permissions-toolbar) [data-slot="shadcn-input"]:read-only {
+  background: var(--surface-muted);
+}
+.admin-compact-page [data-slot="shadcn-badge"] {
+  box-sizing: border-box;
+  max-width: 100%;
+  font-size: 11px;
+}
+.admin-compact-page [data-slot="shadcn-badge"][data-variant="success"] {
+  color: var(--success);
+  border-color: color-mix(in srgb,var(--success) 22%,var(--border));
+  background: color-mix(in srgb,var(--success) 7%,var(--surface));
+}
+.admin-compact-page .team-list a[data-slot="shadcn-button"] {
+  text-decoration: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+}
+.admin-compact-page .team-list a[data-slot="shadcn-button"]:hover { background: var(--surface-muted); color: var(--accent); }
+.admin-compact-page.permissions-editor > .ui-page-header { margin: 12px 0 16px; }
+.admin-compact-page.permissions-editor .permissions-toolbar { margin: 14px 0; }
+.admin-compact-page.permissions-editor .permissions-toolbar label { min-width: min(100%,220px); font-size: 11px; color: var(--text-muted); }
+.admin-compact-page.permissions-editor .team-actions { gap: 7px; }
+.admin-compact-page.permissions-editor .permission-row select {
+  min-width: 0; min-height: 36px; padding: 7px 9px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); font-size: 12px;
+}
+.admin-compact-page :is(button,a,input,textarea,select,summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  .admin-compact-page [data-slot="shadcn-button"] { min-height: 44px; }
+  .admin-compact-page :is(.contact-form,.contact-search,.permissions-toolbar) [data-slot="shadcn-input"] {
+    min-height: 44px; height: 44px;
+  }
+  .admin-compact-page.permissions-editor .permission-row select { min-height: 44px; }
+  .admin-compact-page.permissions-editor .permissions-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .admin-compact-page.permissions-editor .permissions-toolbar label {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .admin-compact-page.permissions-editor .permissions-toolbar [data-slot="shadcn-button"] {
+    white-space: normal;
+  }
+  .admin-compact-page.permissions-editor .permission-actions .team-actions [data-slot="shadcn-button"] {
+    flex: 1 1 145px;
+    white-space: normal;
+  }
+}
+@media (max-width: 350px) {
+  .admin-compact-page.permissions-editor .permissions-toolbar { grid-template-columns: minmax(0,1fr); }
+}
