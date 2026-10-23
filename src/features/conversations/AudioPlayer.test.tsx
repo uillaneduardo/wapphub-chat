@@ -45,8 +45,14 @@ describe('audio player — accessible seek and native lifecycle', () => {
     fireEvent.change(slider, { target: { value: '42' } });
     expect(media.currentTime).toBe(42);
     expect(screen.getByText('0:42')).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Velocidade' }), { target: { value: '1.5' } });
+    const speed = screen.getByRole('button', { name: /Velocidade: 1 vezes/ });
+    fireEvent.click(speed);
     expect(media.playbackRate).toBe(1.5);
+    expect(screen.getByRole('button', { name: /Velocidade: 1,5 vezes/ })).toHaveTextContent('1,5×');
+    fireEvent.click(screen.getByRole('button', { name: /Velocidade: 1,5 vezes/ }));
+    expect(media.playbackRate).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: /Velocidade: 2 vezes/ }));
+    expect(media.playbackRate).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Pausar áudio' }));
     expect(pause).toHaveBeenCalledOnce();
     pausedState = true;
