@@ -11,6 +11,11 @@ export const DOCUMENT_MIMES: Readonly<Record<string, string>> = Object.freeze({
 export function documentMime(file: Pick<File, 'name' | 'type'>): string | undefined {
   const ext = file.name.split('.').at(-1)?.toLowerCase() ?? '';
   const expected = DOCUMENT_MIMES[ext];
-  if (!expected || file.type && file.type.split(';')[0].toLowerCase() !== expected) return undefined;
+  if (!expected) return undefined;
+  const declared = file.type.split(';')[0].toLowerCase();
+  const generic = !declared || declared === 'application/octet-stream';
+  const officeZip = (ext === 'docx' || ext === 'xlsx') && declared === 'application/zip';
+  const csvExcel = ext === 'csv' && declared === 'application/vnd.ms-excel';
+  if (declared !== expected && !generic && !officeZip && !csvExcel) return undefined;
   return expected;
 }
