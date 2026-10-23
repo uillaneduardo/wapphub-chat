@@ -1,15 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { Maximize2, Mic, Paperclip, Square, Trash2, X } from 'lucide-react';
 import { validateMediaFile } from './mediaFileValidation';
+import { MAX_IMAGE_BATCH, queueImages, type QueuedImage } from './imageQueue';
 import { AudioPlayer, formatAudioTime } from './AudioPlayer';
 
 export type Attachment = { file: File; type: 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' };
 
-export function MediaComposer({ attachment, onChange, disabled, onRecordingChange }: {
+function ImageQueueThumb({ image, index, disabled, onRemove }: { image: QueuedImage; index: number; disabled: boolean; onRemove: (id: string) => void }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    const url = URL.createObjectURL(image.file);
+    setSrc(url);
+    return () => { URL.revokeObjectURL(url); setSrc(''); };
+  }, [image.file]);
+  return <div className="image-queue-item">
+    {src && <img src={src} alt={`Prévia da imagem ${index + 1}`} />}
+    <button type="button" disabled={disabled} onClick={() => onRemove(image.id)} title={`Remover imagem ${index + 1}`} aria-label={`Remover imagem ${index + 1}`}><X size={16} aria-hidden="true" /></button>
+    <span aria-hidden="true" className="image-queue-position">{index + 1}</span>
+  </div>;
+}
+
+export function MediaComposer({ attachment, onChange, disabled, onRecordingChange, images = [], onImagesChange }: {
   attachment: Attachment | null;
   onChange: (value: Attachment | null) => void;
   disabled: boolean;
   onRecordingChange?: (recording: boolean) => void;
+  images?: QueuedImage[];
+  onImagesChange?: (next: QueuedImage[]) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -53,6 +70,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
 
   function select(file?: File, voice = false) {
     if (!file) return; // Camera/file picker canceled; existing draft is retained.
+    if (images.length) { setError('Envie ou remova as imagens antes de anexar áudio ou vídeo.'); return; }
     const result = validateMediaFile(file, voice);
     if (!result.attachment) { setError(result.error ?? 'Não foi possível anexar este arquivo.'); return; }
     setError(''); onChange(result.attachment);
@@ -60,6 +78,19 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
   function closeVideoPreview() {
     setVideoExpanded(false);
     videoTrigger.current?.focus();
+  }
+
+  function selectFiles(files: FileList | null) {
+    if (!files?.length) return; // Do not clear an existing queue on canceled camera.
+    const selected = Array.from(files);
+    const areImages = selected.every(file => validateMediaFile(file).attachment?.type === 'IMAGE');
+    if (onImagesChange && (areImages || images.length > 0 || selected.length > 1)) {
+      if (attachment) { setError('Descarte o anexo anterior para preparar um conjunto de imagens.'); return; }
+      const next = queueImages(images, selected);
+      if (next.error) { setError(next.error); return; }
+      setError(''); onImagesChange(next.items); return;
+    }
+    select(selected[0]);
   }
 
   function finish(discard = false) {
@@ -70,6 +101,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
 
   async function record() {
     if (disabled || recording || requesting.current) return;
+    if (images.length) { setError('Envie ou remova as imagens antes de gravar uma mensagem de voz.'); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
       setError('Gravação indisponível neste navegador. Você pode anexar um áudio.');
       return;
@@ -116,8 +148,8 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
 
   return <div className="media-composer">
     <div className="provider-actions">
-      <input ref={input} type="file" hidden accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4"
-        onChange={event => { select(event.target.files?.[0]); event.target.value = ''; }} />
+      <input ref={input} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4"
+        onChange={event => { selectFiles(event.target.files); event.target.value = ''; }} />
       <button type="button" className="text-button" aria-label="Anexar mídia" disabled={disabled || recording} onClick={() => input.current?.click()}>
         <Paperclip size={18} aria-hidden="true" />Anexar
       </button>
@@ -134,6 +166,13 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
         <button type="button" className="audio-recording-discard" onClick={() => finish(true)} disabled={disabled} aria-label="Cancelar gravação"><X size={17} aria-hidden="true" />Cancelar</button>
         <button type="button" className="audio-recording-stop" onClick={() => finish(false)} disabled={disabled} aria-label="Concluir gravação"><Square size={14} fill="currentColor" aria-hidden="true" />Concluir</button>
       </div>
+    </div>}
+    {images.length > 0 && onImagesChange && <div className="image-draft-queue" role="group" aria-label="Imagens selecionadas">
+      <div className="image-queue-header"><strong>{images.length} {images.length === 1 ? 'imagem' : 'imagens'} para enviar</strong>
+        <button type="button" disabled={disabled} onClick={() => onImagesChange([])} aria-label="Remover todas as imagens" title="Remover todas as imagens">Limpar</button>
+      </div>
+      <div className="image-queue-list">{images.map((image, index) => <ImageQueueThumb key={image.id} image={image} index={index} disabled={disabled} onRemove={id => onImagesChange(images.filter(item => item.id !== id))} />)}</div>
+      <small>{images.length < MAX_IMAGE_BATCH ? `Até ${MAX_IMAGE_BATCH} imagens por envio. Você pode anexar mais antes de enviar.` : 'Limite de imagens atingido.'} Cada imagem será enviada como mensagem separada.</small>
     </div>}
     {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : attachment.type === 'VIDEO' ? ' video-draft-preview' : ''}`}>
       <div className="attachment-preview-heading">
