@@ -1,4 +1,5 @@
 import type { Attachment } from './MediaComposer';
+import { documentMime } from '../../lib/documentTypes';
 
 /** Matches currently authorized Core media types; never imply a document or HEIC upload is supported. */
 export function validateMediaFile(file: File, voice = false): { attachment?: Attachment; error?: string } {
@@ -9,9 +10,7 @@ export function validateMediaFile(file: File, voice = false): { attachment?: Att
   const video = mime === 'video/mp4' || (!mime && /\.mp4$/.test(name));
   const audio = ['audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/webm'].includes(mime) ||
     (!mime && /\.(ogg|mp3|m4a|webm)$/.test(name));
-  const documents: Record<string, string> = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', csv: 'text/csv', txt: 'text/plain' };
-  const extension = name.split('.').pop() ?? '';
-  const document = documents[extension] === mime;
+  const document = Boolean(documentMime(file));
   const type: Attachment['type'] | undefined = voice && mime === 'audio/webm' ? 'VOICE' : image ? 'IMAGE' : video ? 'VIDEO' : audio ? 'AUDIO' : document ? 'DOCUMENT' : undefined;
   if (!type) {
     return { error: 'Formato não aceito. Use foto JPG, PNG ou WebP, vídeo MP4 ou áudio OGG, MP3, M4A ou WebM. Fotos HEIC/HEIF da câmera devem ser convertidas para JPG antes de anexar.' };
