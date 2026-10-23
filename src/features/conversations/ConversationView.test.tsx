@@ -326,7 +326,8 @@ it.each(['upload', 'message'])('P1.1 retains the recording and reuses intent and
   vi.stubGlobal('MediaRecorder', Recorder);
   renderDetail(); await screen.findByRole('button', { name: 'Gravar voz' });
   fireEvent.click(screen.getByRole('button', { name: 'Gravar voz' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Concluir gravação' })); await screen.findByText('mensagem-de-voz.webm');
+  fireEvent.click(await screen.findByRole('button', { name: 'Concluir gravação' })); await screen.findByLabelText('Prévia do áudio');
+   expect(screen.queryByText('mensagem-de-voz.webm')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' })); await screen.findByText('Erro');
   expect(screen.getByLabelText('Prévia do áudio')).toHaveAttribute('src', 'blob:voice-preview');
   expect(screen.getByRole('alert')).toHaveTextContent(stage === 'upload' ? 'upload da mídia (MEDIA_UPLOAD_FAILED)' : 'registrar a mensagem (PERMISSION_DENIED)');
@@ -358,7 +359,7 @@ it.each([false, true])('P1.1 UNKNOWN confirmation preserves a replacement record
   const saved = { ...message('unknown-persisted', send.mock.calls[0]![1].clientMessageId, ''), status: 'DELIVERED' as const, direction: 'OUTBOUND' as const, type: 'AUDIO' as const, media };
   vi.mocked(chatApi.listMessages).mockResolvedValue({ items: [saved], nextCursor: null });
   fireEvent.click(screen.getByRole('button', { name: 'Verificar envio' })); await screen.findByText('Entregue');
-  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1); if (replaced) expect(screen.getByText('nova-gravacao.webm')).toBeInTheDocument(); else expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
+  expect(send).toHaveBeenCalledTimes(1); expect(upload).toHaveBeenCalledTimes(1); expect(view.container.querySelectorAll('.message-bubble')).toHaveLength(1); if (replaced) { expect(screen.getByLabelText('Prévia do áudio')).toBeInTheDocument(); expect(screen.queryByText('nova-gravacao.webm')).not.toBeInTheDocument(); } else expect(screen.queryByLabelText('Prévia do áudio')).toBeNull();
   localStorage.clear(); vi.restoreAllMocks();
 });
 

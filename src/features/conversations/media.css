@@ -90,3 +90,89 @@
 }
 
 .audio-draft-filename { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:10px; font-weight:400; }
+
+
+/* G.1 — media content is visually self-descriptive: no repeated file/type header. */
+.message-media { box-sizing: border-box; }
+.message-media .media-expand-hint {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; padding: 0;
+}
+.message-media .media-icon-action {
+  display: inline-grid; place-items: center;
+  flex: 0 0 36px; width: 36px; height: 36px;
+  min-height: 36px; padding: 0; border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-muted); background: var(--surface);
+}
+.message-media .media-icon-action:hover { color: var(--accent); }
+.message-media .media-icon-action[aria-disabled="true"] { pointer-events: none; }
+.media-audio, .media-voice {
+  display: grid; grid-template-columns: minmax(0,1fr) auto;
+  align-items: center; gap: 5px;
+}
+.media-audio .media-content, .media-voice .media-content { grid-column: 1; grid-row: 1; }
+.media-audio .media-actions, .media-voice .media-actions {
+  grid-column: 2; grid-row: 1; align-self: center;
+  margin: 0; padding: 0;
+}
+.media-audio .media-error, .media-voice .media-error { grid-column: 1 / -1; }
+.media-audio:has(.media-placeholder), .media-voice:has(.media-placeholder) { display: block; }
+.media-audio .audio-player, .media-voice .audio-player { padding: 7px; }
+.media-audio, .media-voice { width: min(390px,100%); }
+
+/* G.1 — drafts show only the preview and discard action; video is actually usable. */
+.attachment-preview { width: min(380px,100%); max-width: 100%; }
+.attachment-preview-heading { justify-content: flex-end; min-height: 32px; }
+.attachment-preview .attachment-discard-button { margin-left: auto; }
+.attachment-preview .attachment-video-frame {
+  position: relative; min-width: 0; width: 100%;
+  border-radius: 9px; background: var(--surface-muted);
+}
+.composer-minimal .composer-secondary .attachment-preview.video-draft-preview video,
+.attachment-preview.video-draft-preview video {
+  display: block; box-sizing: border-box; width: 100%; min-height: 135px;
+  max-height: min(32dvh,270px); object-fit: contain; border-radius: 9px;
+}
+.attachment-preview .attachment-video-expand {
+  position: absolute; top: 7px; right: 7px;
+  display: grid; place-items: center; width: 36px; height: 36px;
+  min-height: 36px; padding: 0;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); cursor: zoom-in;
+}
+.attachment-video-expand:hover { color: var(--accent); }
+.attachment-video-expand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.attachment-video-modal-backdrop {
+  position: fixed; z-index: 1005; inset: 0;
+  display: grid; place-items: center; padding: 14px;
+  background: var(--media-backdrop);
+}
+.attachment-video-modal {
+  box-sizing: border-box; display: grid; gap: 0;
+  width: min(940px,100%); max-height: min(96dvh,820px); min-width: 0;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); overflow: hidden;
+}
+.attachment-video-modal-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 10px 12px; color: var(--text); font-size: 13px;
+}
+.attachment-video-modal-toolbar > button {
+  display: grid; place-items: center; min-width: 44px; min-height: 44px;
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); background: var(--surface-muted); cursor: pointer;
+}
+.attachment-video-modal video {
+  display: block; width: 100%; max-height: min(77dvh,720px);
+  min-width: 0; background: var(--surface-muted); object-fit: contain;
+}
+.attachment-video-modal :is(button,video):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+@media (max-width: 600px) {
+  .message-media .media-icon-action { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+  .attachment-video-modal-backdrop { padding: 4px; }
+  .attachment-video-modal { border-radius: 9px; }
+  .composer-minimal .composer-secondary .attachment-preview.video-draft-preview video { max-height: min(30dvh,230px); }
+  .attachment-preview .attachment-video-expand { min-width: 44px; min-height: 44px; }
+}

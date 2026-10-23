@@ -88,10 +88,15 @@ export function AudioPlayer({ src, label, authenticated = false, audioRef, onLoa
         style={{ '--audio-progress': `${progress}%` } as React.CSSProperties} />
       <div className="audio-times"><span>{formatAudioTime(elapsed)}</span><span>{formatAudioTime(duration)}</span></div>
     </div>
-    <select className="audio-rate" aria-label="Velocidade" title="Velocidade de reprodução" value={String(speed)}
-      onChange={event => { const value = Number(event.target.value); setSpeed(value); if (native.current) native.current.playbackRate = value; }}>
-      <option value="0.75">0,75×</option><option value="1">1×</option><option value="1.5">1,5×</option><option value="2">2×</option>
-    </select>
+    <button type="button" className="audio-rate" aria-label={`Velocidade: ${String(speed).replace('.', ',')} vezes. Alterar velocidade`}
+      title="Alterar velocidade (1×, 1,5×, 2×)"
+      onClick={() => {
+        const next = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
+        setSpeed(next);
+        if (native.current) native.current.playbackRate = next;
+      }}>
+      {String(speed).replace('.', ',')}×
+    </button>
     {error && <p className="audio-playback-error" role="status">{error}</p>}
   </div>;
 }
