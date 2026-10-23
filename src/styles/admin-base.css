@@ -18,8 +18,6 @@
 :where(.admin-compact-page) .permission-row small { display: block; }
 :where(.admin-compact-page) .permission-row small { color: var(--text-muted); margin-top: 4px; }
 :where(.admin-compact-page) .permission-row select { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 6px; color: var(--text); background: var(--surface); padding: 6px; }
-:where(.admin-compact-page) .permission-row select:focus-visible,
-:where(.admin-compact-page).team-page button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :where(.admin-compact-page) .team-actions,
 :where(.admin-compact-page) .permission-confirmation { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
 :where(.admin-compact-page) .permission-confirmation { border: 1px solid var(--border); padding: 16px; border-radius: 8px; }
