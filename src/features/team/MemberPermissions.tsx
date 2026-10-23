@@ -2,6 +2,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useBeforeUnload, useBlocker, useParams } from 'react-router-dom';
 import { AppIcon, type AppIconName } from '../../components/AppIcon';
 import { availabilityLabels } from '../../components/navigation';
+import { PageHeader } from '../../components/ui/page-header';
+import { Button } from '../../components/ui/shadcn/button';
+import { Input } from '../../components/ui/shadcn/input';
 import { useSession } from '../session/SessionContext';
 import { teamApi } from '../../lib/teamApi';
 import type { MemberPermissions, Permission } from '../../types/resources';
@@ -78,7 +81,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
   }
   const dialog = confirm || navigating;
   return <section className="team-page permissions-editor admin-compact-page" aria-busy={saving}>
-    <Link to="/app/team">← Equipe e permissões</Link><h1>Permissões do membro</h1>
+    <Link to="/app/team">← Equipe e permissões</Link><PageHeader title="Permissões do membro" description="Ajuste os acessos individuais sem alterar as restrições fixas de cada perfil." />
     {loading && <p role="status">Carregando permissões…</p>}
     {error && <p role="alert" className="error-text">{error} <button type="button" disabled={saving} onClick={(event) => changed.length ? ask('reload', event.currentTarget) : setReload((previous) => previous + 1)}>Recarregar</button></p>}
     {saved && <p role="status" className="success-text">{saved}</p>}
@@ -87,7 +90,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
       {value.member.role === 'AGENT' && <p className="muted">O atendente só acessa conversas atribuídas por um supervisor ou proprietário. Criar, atribuir, transferir e supervisionar conversas são restrições fixas deste perfil.</p>}
       {self && <p className="muted">Suas permissões são exibidas para consulta. Outro administrador autorizado deve fazer alterações.</p>}
       <p className="muted">Padrão usa o perfil. Conceder e revogar criam ajustes individuais. O acesso aplicado só muda após confirmação do Core.</p>
-      <div className="permissions-toolbar"><label htmlFor={`${prefix}-search`}>Buscar permissões<input id={`${prefix}-search`} type="search" value={search} placeholder="Título, descrição ou código" onChange={(event) => setSearch(event.target.value)} /></label><button type="button" disabled={!search} onClick={() => setSearch('')}>Limpar busca</button><button type="button" onClick={() => setCollapsed([])}>Expandir todas</button><button type="button" onClick={() => setCollapsed(modules)}>Recolher todas</button></div>
+      <div className="permissions-toolbar"><label htmlFor={`${prefix}-search`}>Buscar permissões<Input density="compact" id={`${prefix}-search`} type="search" value={search} placeholder="Título, descrição ou código" onChange={(event) => setSearch(event.target.value)} /></label><Button size="compact" variant="outline" type="button" disabled={!search} onClick={() => setSearch('')}>Limpar busca</Button><Button size="compact" variant="outline" type="button" onClick={() => setCollapsed([])}>Expandir todas</Button><Button size="compact" variant="outline" type="button" onClick={() => setCollapsed(modules)}>Recolher todas</Button></div>
       {query && <p className="muted" role="status">{catalog.filter(matches).length} permissões encontradas. A busca mantém os resultados expandidos.</p>}
       {!catalog.some(matches) && <p role="status">Nenhuma permissão encontrada. Tente outro termo ou limpe a busca.</p>}
       <div ref={groupControls} className="permissions-groups">{modules.map((module, index) => {
@@ -113,7 +116,7 @@ function MemberPermissionsEditor({ membershipId }: { membershipId: string }) {
         </section>;
       })}</div>
       <section className="unavailable-resources"><h2>Recursos indisponíveis</h2><ul>{session?.resources?.filter((resource) => resource.availability !== 'AVAILABLE').map((resource) => <li key={resource.code}>{resource.name} <span className="muted">— {availabilityLabels[resource.availability]}</span></li>)}</ul></section>
-      {!self && <footer className="permission-actions"><p role="status">{changed.length} {changed.length === 1 ? 'alteração pendente' : 'alterações pendentes'}</p><div className="team-actions"><button type="button" disabled={saving || !changed.length} onClick={(event) => ask('discard', event.currentTarget)}>Descartar alterações</button><button type="button" className="primary-button" disabled={saving || !changed.length} onClick={(event) => ask('save', event.currentTarget)}>{saving ? 'Salvando alterações…' : 'Salvar alterações'}</button><button type="button" disabled={saving} onClick={(event) => ask('reset', event.currentTarget)}>Restaurar padrões</button></div></footer>}
+      {!self && <footer className="permission-actions"><p role="status">{changed.length} {changed.length === 1 ? 'alteração pendente' : 'alterações pendentes'}</p><div className="team-actions"><Button size="compact" variant="outline" type="button" disabled={saving || !changed.length} onClick={(event) => ask('discard', event.currentTarget)}>Descartar alterações</Button><Button size="compact" type="button" disabled={saving || !changed.length} onClick={(event) => ask('save', event.currentTarget)}>{saving ? 'Salvando alterações…' : 'Salvar alterações'}</Button><Button size="compact" variant="outline" type="button" disabled={saving} onClick={(event) => ask('reset', event.currentTarget)}>Restaurar padrões</Button></div></footer>}
     </>}
     {dialog && <div className="permission-dialog-backdrop"><section className="permission-dialog" role="dialog" aria-modal="true" aria-labelledby={`${prefix}-confirm-title`} aria-describedby={`${prefix}-confirm-description`} onKeyDown={(event) => {
       if (event.key === 'Escape' && !saving) { event.preventDefault(); cancel(); }
