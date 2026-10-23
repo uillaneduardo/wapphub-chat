@@ -292,7 +292,7 @@ function ConversationViewContent() {
       }
       return true;
     }
-    catch (reason) { if (!mounted.current) return;
+    catch (reason) { if (!mounted.current) return false;
       const rejectedBeforeCommit = reason instanceof ApiError && [400, 401, 403, 404, 409, 413, 415, 422, 429].includes(reason.status);
       const uncertain = conversation?.provider === 'WHATSAPP_WEB' && intentSubmitted && !rejectedBeforeCommit;
       setMessages((current) => current.map((message) => message.clientMessageId === clientMessageId && !['SENT', 'DELIVERED', 'READ'].includes(message.status) ? uncertain ? { ...message, status: 'PENDING', deliveryOutcome: 'UNKNOWN' } : { ...message, status: 'FAILED', deliveryOutcome: 'NOT_SENT' } : message)); const code = reason instanceof ApiError && reason.code && /^[A-Z][A-Z0-9_]{0,79}$/.test(reason.code) ? reason.code : 'CONNECTION_FAILED';
