@@ -1,4 +1,4 @@
-# Instruções para agentes e Codex — WappHub Chat
+# Instruções para agentes — WappHub Chat
 
 Leia antes de alterar código:
 - README.md
@@ -39,12 +39,17 @@ Leia antes de alterar código:
 - A homologação visual é manual pelo usuário no notebook, após deploy explicitamente autorizado.
 - Ausência de teste visual no servidor é validação manual pendente, não falha de implementação.
 
-## Fluxo Codex/homelab — WappHub integrado (2026-10-11)
+## Fluxo ChatGPT/GitHub ou Codex — WappHub integrado (revisado 2026-10-23)
 
 **Coordenador/fonte canônica do trabalho:** `wapphub-core/docs/WHATSAPP_WEB_CONSOLIDATION_EXECUTION.md` e `wapphub-core/docs/WHATSAPP_WEB_CONSOLIDATION_PROGRESS.md`. Ler ambos **antes de alterar** Chat/Provider. Não criar plano ou arquivo de progresso concorrente; atualizar o progresso do Core ao iniciar/concluir cada fase, com evidências, commits e riscos.
 
-**Executor:** Codex no homelab. **Revisão:** ChatGPT via GitHub. **Decisões:** usuário aprova plano consolidado e homologa UI no próprio notebook após deploy autorizado. Etapa A0/A1/A2 só auditoria e proposta; sem alterar funcionalidades antes de aprovação. Etapas B1–B5 seguem integradas e testadas, sem pedir microaprovações. Não simular homologação de navegador no servidor.
+**Executores:** ChatGPT via GitHub ou Codex no homelab (opcional). ChatGPT pode avaliar, planejar, implementar, escrever testes e abrir PRs; CI verifica os checks disponíveis. Sem acesso ao runtime, ChatGPT fornece comandos de deploy e não afirma teste local. **Decisões:** pedido explícito de implementação autoriza o escopo sem reconfirmação; o usuário homologa UI no notebook após publicação. Etapas B1–B5 seguem integradas e testadas, sem pedir microaprovações. Não simular homologação de navegador no servidor.
 
 **Requisito operacional:** Chat deve permitir responder e **iniciar nova conversa usando contato existente ou número não cadastrado**. A entrada de número inclui DDI, normalização e mensagens de erro; Core valida Membership, permissão, canal, destinatário e idempotência antes de enviar. Nova conversa não é criada na mera digitação. Recebimento/envio de texto, imagem, áudio e vídeo devem refletir **capabilities efetivas**; status/autoria são do Core, não inferidos do frontend. Demo permanece utilizável.
 
 **Sincronização:** inbox realtime-first, históricos/contatos/conversas paginados, mensagens novas sem refresh e sem controles que falsamente desliguem a sincronização obrigatória. Arquivamento remoto (quando conhecido) não é o arquivamento interno do atendimento; tags/atribuições são do WappHub. Diagnósticos técnicos não se tornam notificações humanas repetitivas.
+
+
+## Entrega sem Codex
+
+Branch por alteração, PR com CI, lint/typecheck/testes/build, revisão dos contratos reais e nenhuma capability de mídia inventada. Core modificado exige planejamento e validação conjunta de API/Worker/Provider; mudança apenas no Chat publica apenas Chat. Entregar comandos de sincronização, build, health/logs e rollback do Compose efetivo. Preservar QR, volumes, DB e flags. Status CI_VERDE, PUBLICADO e HOMOLOGADO são distintos.
