@@ -16,7 +16,7 @@ describe('G.2 image queue', () => {
   it('rejects mixed files, oversized media, and exceeding the limit atomically', () => {
     const first = queueImages([], [photo('keep.jpg')], () => 'keep').items;
     expect(queueImages(first, [photo('bad.heic','image/heic')]).items).toBe(first);
-    expect(queueImages(first, [photo('document.pdf','application/pdf')]).error).toMatch(/Formato/);
+    expect(queueImages(first, [photo('document.pdf','application/pdf')]).error).toMatch(/somente imagens/);
     expect(queueImages(first, Array.from({ length: MAX_IMAGE_BATCH }, (_,i) => photo(i+'.jpg'))).error).toMatch(/até 10 imagens/);
     const huge = new File([new Uint8Array(8 * 1024 * 1024 + 1)],'huge.jpg',{type:'image/jpeg'});
     expect(queueImages(first,[huge]).items).toBe(first);
