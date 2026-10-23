@@ -9,6 +9,7 @@ import './styles/compact-ui.css';
 import './styles/shell-compact.css';
 import './styles/conversation-compact.css';
 import './styles/admin-compact.css';
+import './styles/settings-compact.css';
 
 installDocumentDiagnostics();
 
