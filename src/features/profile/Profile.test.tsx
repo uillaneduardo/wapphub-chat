@@ -29,6 +29,8 @@ describe('self-service identity settings', () => {
   it('edits global user name, keeps login email read-only and refreshes session', async () => {
     render(<ProfilePage />);
     expect(screen.getByLabelText('E-mail de acesso')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('E-mail de acesso')).toHaveAttribute('data-slot', 'shadcn-input');
+    expect(screen.getByRole('button', { name: 'Salvar dados da conta' })).toHaveAttribute('data-slot', 'shadcn-button');
     expect(screen.getByLabelText('Nome cadastrado')).toHaveValue('Ana Costa');
     fireEvent.change(screen.getByLabelText('Nome cadastrado'), { target: { value: '  Ana   Maria  ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar dados da conta' }));
