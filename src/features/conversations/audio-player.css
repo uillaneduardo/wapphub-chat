@@ -48,3 +48,22 @@
   .audio-player .audio-play-button { flex-basis: 38px; }
   .audio-player .audio-rate { width: 58px; }
 }
+
+
+/* G.1 — centered controls with button-based 1× → 1,5× → 2× playback. */
+.audio-player { align-items: center; gap: 7px; flex-wrap: wrap; }
+.audio-player .audio-timeline { align-self: center; gap: 1px; }
+.audio-player .audio-seek { height: 24px; min-height: 24px; }
+.audio-player .audio-rate {
+  display: inline-grid; place-items: center;
+  width: 45px; min-width: 45px; min-height: 36px; height: 36px;
+  flex: 0 0 45px; padding: 0 4px;
+  border-radius: 18px; font-variant-numeric: tabular-nums;
+}
+.audio-player.is-compact .audio-rate { width: 45px; }
+@media(max-width:600px) {
+  .audio-player .audio-play-button { flex-basis: 40px; width: 40px; height: 40px; }
+  .audio-player .audio-rate { width: 44px; flex-basis: 44px; min-height: 44px; height: 44px; }
+  .audio-player .audio-seek { min-height: 36px; height: 36px; }
+  .audio-player.is-compact .audio-rate { width: 44px; }
+}
