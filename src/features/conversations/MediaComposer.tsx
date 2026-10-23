@@ -135,7 +135,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
         <button type="button" className="audio-recording-stop" onClick={() => finish(false)} disabled={disabled} aria-label="Concluir gravação"><Square size={14} fill="currentColor" aria-hidden="true" />Concluir</button>
       </div>
     </div>}
-    {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : ''}`}>
+    {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : attachment.type === 'VIDEO' ? ' video-draft-preview' : ''}`}>
       <div className="attachment-preview-heading">
         <span className="sr-only">{attachment.type === 'IMAGE' ? 'Prévia de imagem' : attachment.type === 'VIDEO' ? 'Prévia de vídeo' : 'Prévia de áudio'}</span>
         <button type="button" className="attachment-discard-button" disabled={disabled} onClick={() => onChange(null)} aria-label="Descartar anexo" title="Descartar anexo"><Trash2 size={17} aria-hidden="true" /></button>
