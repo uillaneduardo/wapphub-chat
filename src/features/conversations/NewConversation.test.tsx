@@ -53,6 +53,31 @@ describe('M1 manual internal conversation flow', () => {
   it('rejects missing creation or contacts read permission without calls to mutate', async () => {
     state.session.permissions = ['conversations.read']; const create = vi.spyOn(chatApi, 'createConversation'); renderFlow('/app/conversations/new?contactId=foreign'); expect(screen.getByRole('alert')).toHaveTextContent('não permite'); expect(chatApi.getContact).not.toHaveBeenCalled(); expect(chatApi.listContacts).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled(); expect(screen.queryByRole('link', { name: 'Nova conversa' })).not.toBeInTheDocument();
   });
+  it('uses the compact channel selector without changing creation guards or disabled channels', async () => {
+    vi.mocked(chatApi.listChannels).mockResolvedValue({ items: [
+      { id: 'web-1', name: 'WhatsApp', outboundEnabled: true, mediaEnabled: true },
+      { id: 'web-disabled', name: 'Canal inativo', outboundEnabled: false, mediaEnabled: false },
+    ] });
+    const createExternal = vi.spyOn(chatApi, 'createExternalConversation');
+    const createInternal = vi.spyOn(chatApi, 'createConversation');
+    const send = vi.spyOn(chatApi, 'sendMessage');
+    renderFlow();
+    const channel = await screen.findByRole('combobox', { name: 'Canal da nova conversa' });
+    expect(channel).toHaveAttribute('data-slot', 'shadcn-native-select');
+    expect(channel).toHaveAttribute('data-density', 'compact');
+    expect(channel).toHaveAttribute('id', 'new-conversation-channel');
+    expect(screen.getByText('Canal da conversa')).toHaveAttribute('for', 'new-conversation-channel');
+    expect(screen.getByRole('option', { name: 'Canal inativo — indisponível' })).toBeDisabled();
+    expect(channel).toHaveValue('');
+    fireEvent.change(channel, { target: { value: 'web-1' } });
+    expect(channel).toHaveValue('web-1');
+    expect(screen.getByText(/WhatsApp\. A abertura valida o destinatário/)).toBeInTheDocument();
+    fireEvent.change(channel, { target: { value: '' } });
+    expect(screen.getByText(/Canal interno/)).toBeInTheDocument();
+    expect(createExternal).not.toHaveBeenCalled();
+    expect(createInternal).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
   it('opens WhatsApp by known contact only on explicit action and never sends automatically', async () => {
     vi.mocked(chatApi.listChannels).mockResolvedValue({ items: [{ id: 'web-1', name: 'WhatsApp', outboundEnabled: true, mediaEnabled: true }] });
     const create = vi.spyOn(chatApi, 'createExternalConversation').mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', outboundEnabled: true, assignedUserId: state.session.user.id }); const send = vi.spyOn(chatApi, 'sendMessage');
