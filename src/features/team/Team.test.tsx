@@ -25,6 +25,30 @@ beforeEach(() => {
   vi.mocked(teamApi.save).mockResolvedValue({ ...value, version: 8, revocations: ['messages.send'], effective: [] });
   vi.mocked(teamApi.reset).mockResolvedValue({ ...value, version: 8 });
 });
+describe('F.1 — shadcn controls in Team', () => {
+  it('keeps the permission action behind an explicit authorization check', async () => {
+    const view = render(<MemoryRouter><TeamPage /></MemoryRouter>);
+    await screen.findByText('Ana');
+    expect(screen.getByText('Ativo')).toHaveAttribute('data-variant', 'success');
+    expect(screen.getByText('Atendente')).toHaveAttribute('data-slot', 'shadcn-badge');
+    expect(screen.getByRole('link', { name: 'Gerenciar permissões' })).toHaveAttribute('data-slot', 'shadcn-button');
+    view.unmount();
+    session.permissions = ['team.read'];
+    render(<MemoryRouter><TeamPage /></MemoryRouter>);
+    await screen.findByText('Ana');
+    expect(screen.queryByRole('link', { name: 'Gerenciar permissões' })).not.toBeInTheDocument();
+  });
+  it('keeps permission search and actions native, without submitting a form', async () => {
+    mountEditor();
+    await screen.findByText('Ana');
+    expect(screen.getByRole('searchbox', { name: 'Buscar permissões' })).toHaveAttribute('data-slot', 'shadcn-input');
+    expect(screen.getByRole('button', { name: 'Limpar busca' })).toHaveAttribute('type', 'button');
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toHaveAttribute('data-slot', 'shadcn-button');
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled();
+    expect(teamApi.save).not.toHaveBeenCalled();
+  });
+});
+
 describe('functional team permissions', () => {
   it('shows real member identity/profile/state and authorized action; read-only users have no edit action', async () => {
     const view = render(<MemoryRouter><TeamPage /></MemoryRouter>); await screen.findByText('Ana');

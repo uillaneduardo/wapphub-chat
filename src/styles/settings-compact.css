@@ -109,10 +109,6 @@
   width: min(224px,100%);
 }
 .admin-compact-page.settings-compact-page :is(.provider-advanced,.web-provider-sync) { max-width: 100%; }
-.admin-compact-page.settings-compact-page :is(button,a,input,select,summary):focus-visible,
-.admin-compact-page.profile-page :is(button,input,textarea):focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
-}
 @media (max-width: 810px) {
   .admin-compact-page.profile-page .profile-grid { grid-template-columns: minmax(0,1fr); }
 }

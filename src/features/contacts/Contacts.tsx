@@ -40,9 +40,9 @@ function ContactDetail({ contactId }: { contactId: string }) {
   return <section className="contacts-page admin-compact-page"><Link to="/app/contacts">← Contatos</Link>
     {loading && <p role="status">Carregando contato…</p>}
     {error && <p role="alert">{error} <button type="button" className="text-button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button></p>}
-    {!loading && !error && contact && <section className="contact-card"><PageHeader title={contact.name} description="Contato da organização ativa" actions={session?.permissions.includes('contacts.write') && !editing && <button type="button" className="secondary-button" onClick={() => setEditing(true)}><Pencil size={16} aria-hidden="true" />Editar contato</button>} />
+    {!loading && !error && contact && <section className="contact-card"><PageHeader title={contact.name} description="Contato da organização ativa" actions={session?.permissions.includes('contacts.write') && !editing && <Button size="compact" type="button" variant="outline" onClick={() => setEditing(true)}><Pencil size={16} aria-hidden="true" />Editar contato</Button>} />
       {editing ? <ContactForm contact={contact} onSaved={(updated) => { setContact(updated); setEditing(false); }} onCancel={() => setEditing(false)} /> : <><p className="contact-identifier">{contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier)}</p><p className="muted">Contato da organização ativa. O histórico e os vínculos existentes são preservados.</p>
-        {session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && <Link className="primary-button contact-create-link" to={`/app/conversations/new?contactId=${encodeURIComponent(contact.id)}`}>Nova conversa interna</Link>}</>}
+        {session?.permissions.includes('conversations.create') && session.permissions.includes('conversations.read') && <Button asChild size="compact" className="contact-create-link"><Link to={`/app/conversations/new?contactId=${encodeURIComponent(contact.id)}`}>Nova conversa interna</Link></Button>}</>}
     </section>}
   </section>;
 }

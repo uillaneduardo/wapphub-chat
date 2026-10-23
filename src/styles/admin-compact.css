@@ -67,7 +67,6 @@
 .admin-compact-page.permissions-editor .permissions-toolbar input { min-height:36px; }
 .admin-compact-page.permissions-editor .member-summary { border-radius:10px; }
 .admin-compact-page.permissions-editor .permissions-context { border-radius:10px; }
-.admin-compact-page :is(button,a,input,select,textarea):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 @media (max-width:850px) {
   .admin-compact-page .team-list li { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; }
   .admin-compact-page .team-member-identity { grid-column:1/-1; }

@@ -16,6 +16,29 @@ function browser() { return render(<MemoryRouter><ContactBrowser /></MemoryRoute
 function fill(name = 'Ana', identifier = 'ana@example.test') { fireEvent.change(screen.getByLabelText('Nome'), { target: { value: name } }); fireEvent.change(screen.getByLabelText('Identificador principal'), { target: { value: identifier } }); }
 afterEach(() => { vi.restoreAllMocks(); state.session.currentOrganizationId = 'org-1'; state.session.permissions = ['contacts.read', 'contacts.write', 'conversations.create', 'conversations.read']; });
 
+describe('F.1 — shadcn controls in Contacts', () => {
+  it('keeps search and pagination native actions while using shared controls', async () => {
+    vi.spyOn(chatApi, 'listContacts').mockResolvedValue(page());
+    browser();
+    await screen.findByText('Ana');
+    expect(screen.getByRole('searchbox', { name: 'Pesquisar contatos' })).toHaveAttribute('data-slot', 'shadcn-input');
+    expect(screen.getByRole('button', { name: 'Pesquisar' })).toHaveAttribute('data-slot', 'shadcn-button');
+    expect(screen.getByRole('button', { name: 'Pesquisar' })).toHaveAttribute('type', 'submit');
+  });
+  it('preserves form semantics, readOnly linked identifier and safe cancel', () => {
+    const cancel = vi.fn(); const save = vi.fn();
+    render(<ContactForm contact={{ ...ana, providers: ['DEMO'] }} onCancel={cancel} onSaved={save} />);
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveAttribute('data-slot', 'shadcn-input');
+    expect(screen.getByRole('textbox', { name: 'Identificador principal' })).toHaveAttribute('readonly');
+    expect(screen.getByRole('button', { name: 'Salvar contato' })).toHaveAttribute('type', 'submit');
+    const button = screen.getByRole('button', { name: 'Cancelar' });
+    expect(button).toHaveAttribute('type', 'button');
+    fireEvent.click(button);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(save).not.toHaveBeenCalled();
+  });
+});
+
 describe('M1 contacts browser', () => {
   it('lists names, identifiers, provider origin and details links', async () => {
     vi.spyOn(chatApi, 'listContacts').mockResolvedValue(page([{ ...ana, providers: ['DEMO'] }])); browser();

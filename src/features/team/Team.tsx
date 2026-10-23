@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { UsersRound } from 'lucide-react';
 import { ContactAvatar } from '../../components/ui/avatar';
 import { PageHeader } from '../../components/ui/page-header';
-import { StatusPill } from '../../components/ui/status-pill';
+import { Badge } from '../../components/ui/shadcn/badge';
+import { Button } from '../../components/ui/shadcn/button';
 import { useSession } from '../session/SessionContext';
 import { teamApi } from '../../lib/teamApi';
 import { errorMessage, roleLabels } from './teamPresentation';
@@ -24,13 +25,13 @@ export function TeamPage() {
         <div className="team-member-identity"><ContactAvatar name={member.name} />
           <div><strong>{member.name}</strong><span>{member.email}</span></div>
         </div>
-        <StatusPill>{roleLabels[member.role] ?? member.role}</StatusPill>
-        <StatusPill tone={active ? 'success' : 'muted'}>{active ? 'Ativo' : 'Inativo'}</StatusPill>
-        {canManage && <Link to={`/app/team/${member.id}/permissions`}>Gerenciar permissões</Link>}
+        <Badge variant="outline">{roleLabels[member.role] ?? member.role}</Badge>
+        <Badge variant={active ? 'success' : 'secondary'}>{active ? 'Ativo' : 'Inativo'}</Badge>
+        {canManage && <Button asChild variant="outline" size="compact"><Link to={`/app/team/${member.id}/permissions`}>Gerenciar permissões</Link></Button>}
       </li>;
     })}</ul>
     {!loading && !error && members.length === 0 && <p role="status">Nenhum membro encontrado.</p>}
-    {cursor && <button className="secondary-button" type="button" disabled={loading} onClick={() => void more()}>Carregar mais membros</button>}
+    {cursor && <Button size="compact" variant="outline" type="button" disabled={loading} onClick={() => void more()}>Carregar mais membros</Button>}
   </section>;
 }
 

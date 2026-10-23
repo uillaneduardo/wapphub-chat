@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Search } from 'lucide-react';
 import { ContactAvatar } from '../../components/ui/avatar';
+import { Button } from '../../components/ui/shadcn/button';
+import { Input } from '../../components/ui/shadcn/input';
 import { chatApi } from '../../lib/chatApi';
 import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
@@ -42,7 +44,7 @@ export function ContactBrowser({ onSelect, selectedId }: { onSelect?: (contact: 
   }
   if (!canRead) return <p role="alert">Seu contexto não permite consultar contatos.</p>;
   return <section className="contact-browser" aria-label="Contatos da organização">
-    <form className="contact-search" onSubmit={(event) => { event.preventDefault(); setQuery(input.trim()); setRevision((value) => value + 1); }}><label htmlFor={`${id}-search`}>Pesquisar contatos</label><div><input id={`${id}-search`} type="search" placeholder="Nome ou identificador" maxLength={254} value={input} onChange={(event) => setInput(event.target.value)} /><button className="secondary-button" type="submit"><Search size={18} aria-hidden="true" />Pesquisar</button></div></form>
+    <form className="contact-search" onSubmit={(event) => { event.preventDefault(); setQuery(input.trim()); setRevision((value) => value + 1); }}><label htmlFor={`${id}-search`}>Pesquisar contatos</label><div><Input density="compact" id={`${id}-search`} type="search" placeholder="Nome ou identificador" maxLength={254} value={input} onChange={(event) => setInput(event.target.value)} /><Button size="compact" variant="outline" type="submit"><Search size={16} aria-hidden="true" />Pesquisar</Button></div></form>
     {loading && <p role="status">Carregando contatos…</p>}
     {error && <p role="alert">{error} <button className="text-button" type="button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button></p>}
     {!loading && !error && !items.length && <p role="status">Nenhum contato encontrado.</p>}
@@ -50,6 +52,6 @@ export function ContactBrowser({ onSelect, selectedId }: { onSelect?: (contact: 
       const content = <><ContactAvatar name={contact.name} /><span><strong>{contact.name}</strong><small>{contact.displayIdentifier ?? contactIdentifier(contact.primaryIdentifier)}</small></span>{!onSelect && <ChevronRight className="contact-row-chevron" aria-hidden="true" />}</>;
       return <li key={contact.id}>{onSelect ? <button className="contact-row" type="button" aria-pressed={contact.id === selectedId} aria-label={`Selecionar ${contact.name}`} onClick={() => onSelect(contact)}>{content}</button> : <Link className="contact-row" to={`/app/contacts/${contact.id}`}>{content}</Link>}</li>;
     })}</ul>
-    {cursor && <button className="secondary-button" type="button" onClick={() => void loadMore()} disabled={more}>{more ? 'Carregando…' : 'Carregar mais contatos'}</button>}
+    {cursor && <Button size="compact" variant="outline" type="button" onClick={() => void loadMore()} disabled={more}>{more ? 'Carregando…' : 'Carregar mais contatos'}</Button>}
   </section>;
 }
