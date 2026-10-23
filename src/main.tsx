@@ -12,6 +12,7 @@ import './styles/conversation-compact.css';
 import './styles/admin-compact.css';
 import './styles/settings-compact.css';
 import './styles/admin-shadcn.css';
+import './styles/new-conversation-compact.css';
 
 installDocumentDiagnostics();
 
