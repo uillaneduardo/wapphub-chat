@@ -22,7 +22,7 @@ describe('G.1 file validation for picker and mobile camera return', () => {
     expect(validateMediaFile(new File([], 'camera.jpg', { type: 'image/jpeg' })).error).toMatch(/não retornou o arquivo/);
     const large = new File([new Uint8Array(8 * 1024 * 1024 + 1)], 'camera.jpg', { type: 'image/jpeg' });
     expect(validateMediaFile(large).error).toMatch(/limite de 8 MB/);
-    expect(validateMediaFile(file('boleto.pdf', 'application/pdf')).error).toMatch(/Formato não aceito/);
+    expect(validateMediaFile(file('boleto.pdf', 'application/pdf')).attachment?.type).toBe('DOCUMENT');
   });
   it('preserves existing selection when a newly chosen file is unsupported or the picker is canceled', () => {
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:existing') });
