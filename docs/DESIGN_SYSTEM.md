@@ -1,5 +1,16 @@
 # Design System do WappHub Chat
 
+> **Estado atual do redesign (23/10/2026):** shadcn/ui (Tailwind v4 sem Preflight)
+> adicionado progressivamente. Navegação mobile usa **56px + safe-area** e fica
+> oculta dentro da conversa; painel de detalhes é overlay abaixo de **1440px**,
+> inline/recolhível no desktop amplo. O compositor usa uma linha com ferramentas
+> recolhíveis em desktop e mobile. As seções M1 antigas abaixo são **histórico**,
+> não especificações vigentes desses três componentes.
+> A consolidação administrativa F.1 está em
+> [UI_SHADCN_CONSOLIDATION_F1_20261023.md](UI_SHADCN_CONSOLIDATION_F1_20261023.md).
+> Pendências de mídia permanecem em [Chat #51](https://github.com/uillaneduardo/wapphub-chat/issues/51).
+
+
 ## Direção visual
 
 Interface neutra, operacional e discreta.
