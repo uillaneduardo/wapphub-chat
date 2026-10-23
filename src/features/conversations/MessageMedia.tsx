@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, Maximize2 } from 'lucide-react';
+import { Download, FileText, Maximize2 } from 'lucide-react';
 import { MediaTransfers, type MediaAsset, type MediaLease } from '../../lib/mediaTransfers';
 import { observeMedia } from '../../lib/mediaVisibility';
 import { MediaLightbox } from './MediaLightbox';
@@ -34,7 +34,7 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
   }, []);
   const start = useCallback(() => {
     const current = currentMessage.current;
-    if (lease.current || failed.current || !current.media || current.type === 'DOCUMENT') return;
+    if (lease.current || failed.current || !current.media) return;
     setBusy(true); setError('');
     const native = current.type !== 'IMAGE'; let prepared = false;
     const next = manager.acquire(`${current.type}:${current.media.mediaId}`, current.media.size, async signal => {
@@ -84,7 +84,8 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
     catch (reason) { if (!current.signal.aborted && mounted.current) setError(mediaError(reason)); }
     finally { setTimeout(() => current.release(), 250); if (downloadLease.current === current) downloadLease.current = null; if (mounted.current) setDownloadBusy(false); }
   }
-  if (!message.media || message.type === 'DOCUMENT') return <p className="muted">Arquivo indisponível nesta versão.</p>;
+  if (!message.media) return <p className="muted">Arquivo indisponível nesta versão.</p>;
+  if (message.type === 'DOCUMENT') return <div className="message-media media-document" role="group" aria-label="Documento anexado"><FileText size={22} aria-hidden="true" /><span>{message.media.fileName} ({(message.media.size / 1048576).toFixed(1)} MB)</span><button type="button" className="media-action media-icon-action" onClick={() => void download()} disabled={downloadBusy} aria-label="Baixar documento" title="Baixar documento"><Download size={17} /></button>{error && <span role="status">{error}</span>}</div>;
   return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node} role="group"
     aria-label={`Conteúdo de mídia — ${message.type === 'IMAGE' ? 'imagem' : message.type === 'VIDEO' ? 'vídeo' : message.type === 'VOICE' ? 'voz' : 'áudio'}`}>
     <div className="media-content">
