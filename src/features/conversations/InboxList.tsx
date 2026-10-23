@@ -5,13 +5,30 @@ import { chatApi, type ConversationScope } from '../../lib/chatApi';
 import { realtimeBus } from '../../lib/realtimeBus';
 import type { Conversation, Tag } from '../../types/chat';
 import { upsertInboxConversation } from './conversationModel';
-import { Search, Plus, Bell, BellOff } from 'lucide-react';
-import { readSoundPreference, saveSoundPreference, unlockNotificationAudio } from './notificationSound';
+import { Search, Plus, Bell, BellOff, MessagesSquare, AlertCircle, SearchX } from 'lucide-react';
+import { Button } from '../../components/ui/shadcn/button';
+import { Skeleton } from '../../components/ui/shadcn/skeleton';
+import { useNotificationSound } from '../../hooks/useNotificationSound';
+import { unlockNotificationAudio } from './notificationSound';
 import { ContactAvatar } from '../../components/ui/avatar';
 
 type InboxTab = ConversationScope | 'archived';
 const tabs: { id: InboxTab; label: string }[] = [{ id: 'mine', label: 'Minhas' }, { id: 'unassigned', label: 'Não atribuídas' }, { id: 'all', label: 'Todas' }, { id: 'archived', label: 'Arquivadas' }];
 const conversationEvents = new Set(['conversation.history.updated', 'contacts.updated', 'conversation.created', 'conversation.updated', 'conversation.archived', 'conversation.assigned', 'conversation.transferred', 'conversation.read.updated', 'message.created', 'message.updated', 'note.created', 'conversation.tag.added', 'conversation.tag.removed']);
+
+function InboxLoading() {
+  return <div className="inbox-loading" role="status" aria-label="Carregando conversas">
+    <span className="sr-only">Carregando conversas…</span>
+    {Array.from({ length: 4 }, (_, index) => <div className="inbox-skeleton-row" key={index}>
+      <Skeleton className="inbox-skeleton-avatar" />
+      <div className="inbox-skeleton-copy">
+        <Skeleton className="inbox-skeleton-title" />
+        <Skeleton className="inbox-skeleton-meta" />
+        <Skeleton className="inbox-skeleton-preview" />
+      </div>
+    </div>)}
+  </div>;
+}
 
 export function InboxList() {
   const { session } = useSession();
@@ -21,13 +38,12 @@ export function InboxList() {
   const pagination = useRef<AbortController | null>(null);
   const organizationId = session?.currentOrganizationId;
   const soundUserId = session?.user.id ?? '';
-  const [soundEnabled, setSoundEnabled] = useState(() => readSoundPreference(soundUserId, organizationId ?? ''));
-  useEffect(() => { setSoundEnabled(readSoundPreference(soundUserId, organizationId ?? '')); }, [soundUserId, organizationId]);
+  const [soundEnabled, setSoundEnabled] = useNotificationSound(soundUserId, organizationId);
   async function toggleSound() {
     if (!organizationId || !soundUserId) return;
     if (!soundEnabled) await unlockNotificationAudio();
     const next = !soundEnabled;
-    setSoundEnabled(next); saveSoundPreference(soundUserId, organizationId, next);
+    setSoundEnabled(next);
   }
   const userId = session?.user.id ?? '';
   const isAgent = session?.membership?.role === 'AGENT';
@@ -45,6 +61,7 @@ export function InboxList() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paginationError, setPaginationError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const selected = useMatch('/app/conversations/:conversationId');
   const filter = useMemo(() => ({ scope: tab === 'archived' ? (canSupervise ? 'all' : 'mine') as ConversationScope : tab, archived: tab === 'archived', ...(tagId ? { tagId } : {}) }), [tab, canSupervise, tagId]);
@@ -58,7 +75,7 @@ export function InboxList() {
   useEffect(() => {
     let active = true; const controller = new AbortController(); epoch.current += 1;
     pagination.current?.abort(); setLoadingMore(false);
-    setLoading(true); setError(null); setItems([]); setNextCursor(null);
+    setLoading(true); setError(null); setPaginationError(null); setItems([]); setNextCursor(null);
     bootstrap.current = chatApi.listConversations(query, controller.signal).then((page) => { if (active) { setItems(page.items); setNextCursor(page.nextCursor); } }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar as conversas.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; epoch.current += 1; controller.abort(); pagination.current?.abort(); };
   }, [query, reloadKey, organizationId, userId]);
@@ -74,7 +91,7 @@ export function InboxList() {
       const page = await chatApi.listConversations(query, signal);
       const tagPage = canReadTags ? await chatApi.listTags(undefined, signal) : null;
       if (signal.aborted) return;
-      setItems(page.items); setNextCursor(page.nextCursor); setError(null);
+      setItems(page.items); setNextCursor(page.nextCursor); setError(null); setPaginationError(null);
       if (tagPage) setTags(tagPage.items);
     };
     return realtimeBus.subscribe(async (event, signal) => {
@@ -112,9 +129,9 @@ export function InboxList() {
     if (!nextCursor || loadingMore) return;
     const requestEpoch = epoch.current;
     const controller = new AbortController(); pagination.current = controller;
-    setLoadingMore(true); setError(null);
+    setLoadingMore(true); setPaginationError(null);
     try { const page = await chatApi.listConversations({ ...query, cursor: nextCursor }, controller.signal); if (requestEpoch !== epoch.current) return; setItems((current) => { const known = new Set(current.map((item) => item.id)); return [...current, ...page.items.filter((item) => !known.has(item.id))]; }); setNextCursor(page.nextCursor); }
-    catch (reason) { if (requestEpoch !== epoch.current) return; setError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais conversas.'); }
+    catch (reason) { if (requestEpoch !== epoch.current) return; setPaginationError(reason instanceof Error ? reason.message : 'Não foi possível carregar mais conversas.'); }
     finally { if (requestEpoch === epoch.current) setLoadingMore(false); }
   }, [nextCursor, loadingMore, query]);
 
@@ -126,14 +143,32 @@ export function InboxList() {
     </div>
     {canReadTags && <label className="tag-filter">Filtrar por tag<select aria-label="Filtrar por tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Todas as tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label>}
     <div className="conversation-list" aria-live="polite">
-      {loading && <div className="list-state" role="status"><span className="spinner" />Carregando conversas…</div>}
-      {!loading && error && <div className="list-state error-state" role="alert"><p>{error}</p><button type="button" onClick={() => setReloadKey((value) => value + 1)}>Tentar novamente</button></div>}
-      {!loading && !error && items.length === 0 && <div className="list-state"><span className="empty-mark">○</span><strong>Nenhuma conversa</strong><span>Quando houver conversas neste filtro, elas aparecerão aqui.</span></div>}
-      {!loading && !error && items.length > 0 && visibleItems.length === 0 && <div className="list-state" role="status"><strong>Nenhum resultado</strong><span>Busque por outro nome ou carregue mais conversas. A busca considera apenas as conversas já carregadas.</span></div>}
+      {loading && <InboxLoading />}
+      {!loading && error && <div className="list-state inbox-feedback inbox-feedback-error" role="alert">
+        <AlertCircle size={23} aria-hidden="true" />
+        <strong>Não foi possível carregar as conversas</strong>
+        <p>{error}</p>
+        <Button size="compact" variant="outline" onClick={() => setReloadKey((value) => value + 1)}>Tentar novamente</Button>
+      </div>}
+      {!loading && !error && items.length === 0 && <div className="list-state inbox-feedback" role="status">
+        <MessagesSquare size={24} aria-hidden="true" />
+        <strong>Nenhuma conversa</strong>
+        <p>Quando houver conversas neste filtro, elas aparecerão aqui.</p>
+      </div>}
+      {!loading && !error && items.length > 0 && visibleItems.length === 0 && <div className="list-state inbox-feedback" role="status">
+        <SearchX size={24} aria-hidden="true" />
+        <strong>Nenhum resultado</strong>
+        <p>Busque por outro nome ou carregue mais conversas. A busca considera apenas as conversas já carregadas.</p>
+        {search && <Button size="compact" variant="outline" onClick={() => setSearch('')}>Limpar busca</Button>}
+      </div>}
       {!loading && !error && visibleItems.map((conversation) => <Link to={`/app/conversations/${conversation.id}?scope=${tab}`} key={conversation.id} className={`conversation-row${selected?.params.conversationId === conversation.id ? ' active' : ''}${canReadMessages && conversation.hasUnread ? ' has-unread' : ''}`} aria-current={selected?.params.conversationId === conversation.id ? 'page' : undefined}>
         <ContactAvatar name={conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`} /><span className="conversation-row-copy"><strong>{conversation.contactName ?? `Contato ${conversation.contactId.slice(0, 8)}`}{canReadMessages && conversation.hasUnread && <span className="conversation-unread-dot" title="Mensagens não lidas" aria-label="Mensagens não lidas" />}</strong><small>{conversation.status === 'ARCHIVED' ? 'Arquivada' : conversation.assignedUserId ? conversation.assignedUserId === session?.user.id ? 'Atribuída a você' : `Responsável ${conversation.assignedUserId.slice(0, 8)}` : 'Não atribuída'}</small><span className="conversation-preview">{canReadMessages ? conversation.lastMessagePreview ?? '' : ''}</span><span className="conversation-row-tags">{conversation.tagIds.slice(0, 3).map((id) => tags.find((tag) => tag.id === id)?.name ?? 'Tag').join(' · ')}</span></span><time>{new Date(conversation.lastMessageAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</time>
       </Link>)}
     </div>
-    {!loading && !error && nextCursor && <button type="button" className="load-more-button" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Carregando…' : 'Carregar mais'}</button>}
+    {!loading && !error && paginationError && <div className="inbox-pagination-error" role="alert">
+      <AlertCircle size={15} aria-hidden="true" />
+      <span>{paginationError}</span>
+    </div>}
+    {!loading && !error && nextCursor && <Button className="inbox-load-more" type="button" variant="outline" size="compact" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Carregando…' : paginationError ? 'Tentar carregar mais' : 'Carregar mais'}</Button>}
   </aside>;
 }
