@@ -304,6 +304,69 @@ it('P1.2 preserves loaded authorized notes during reconnect reconciliation', asy
  });
 
 
+it('G.2 sends appended image drafts as individual idempotent messages, with one caption', async () => {
+  mockBase();
+  vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:batch') });
+  Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+  const upload = vi.spyOn(chatApi, 'uploadMedia').mockImplementation(async (_id, selected) =>
+    ({ mediaId: 'media-' + selected.name, type: 'IMAGE', mimeType: 'image/jpeg', fileName: selected.name, size: selected.size, state: 'READY' }));
+  const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(async (_id, payload) =>
+    ({ ...message('saved-' + payload.clientMessageId, payload.clientMessageId, payload.body), type: 'IMAGE', direction: 'OUTBOUND' }));
+  const view = renderDetail();
+  await screen.findByRole('button', { name: 'Anexar mídia' });
+  const picker = view.container.querySelector('input[type=file]')!;
+  const one = new File(['one'], 'one.jpg', { type: 'image/jpeg' });
+  const two = new File(['two'], 'two.jpg', { type: 'image/jpeg' });
+  const three = new File(['three'], 'three.jpg', { type: 'image/jpeg' });
+  fireEvent.change(picker, { target: { files: [one, two] } });
+  fireEvent.change(picker, { target: { files: [three] } });
+  expect(screen.getByRole('group', { name: 'Imagens selecionadas' })).toHaveTextContent('3 imagens');
+  fireEvent.change(screen.getByRole('textbox', { name: 'Escrever mensagem' }), { target: { value: 'Legenda do primeiro anexo' } });
+  expect(send).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(3));
+  expect(upload.mock.calls.map(call => call[1].name)).toEqual(['one.jpg', 'two.jpg', 'three.jpg']);
+  expect(send.mock.calls.map(call => call[1].body)).toEqual(['Legenda do primeiro anexo', '', '']);
+  expect(new Set(send.mock.calls.map(call => call[1].clientMessageId)).size).toBe(3);
+  expect(send.mock.calls.map(call => call[1].mediaId)).toEqual(['media-one.jpg','media-two.jpg','media-three.jpg']);
+  await waitFor(() => expect(screen.queryByRole('group', { name: 'Imagens selecionadas' })).not.toBeInTheDocument());
+});
+
+it('G.2 halts on an upload failure, retains unsent images and retries without resending the first', async () => {
+  mockBase();
+  vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
+  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:batch-failure') });
+  Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+  const upload = vi.spyOn(chatApi, 'uploadMedia').mockImplementationOnce(async (_id, file) =>
+    ({ mediaId: 'media-' + file.name, type: 'IMAGE', mimeType: 'image/jpeg', fileName: file.name, size: file.size, state: 'READY' }))
+    .mockRejectedValueOnce(new ApiError(503,'server','MEDIA_UPLOAD_FAILED','MEDIA_UPLOAD_FAILED'))
+    .mockImplementation(async (_id,file) => ({ mediaId: 'media-' + file.name, type: 'IMAGE', mimeType: 'image/jpeg', fileName: file.name, size: file.size, state: 'READY' }));
+  const send = vi.spyOn(chatApi, 'sendMessage').mockImplementation(async (_id, payload) =>
+    ({ ...message('saved-' + payload.clientMessageId, payload.clientMessageId, payload.body), type: 'IMAGE', direction: 'OUTBOUND' }));
+  const view = renderDetail();
+  await screen.findByRole('button', { name: 'Anexar mídia' });
+  const picker = view.container.querySelector('input[type=file]')!;
+  fireEvent.change(picker, { target: { files: [
+    new File(['a'], 'first.jpg', { type: 'image/jpeg' }),
+    new File(['b'], 'second.jpg', { type: 'image/jpeg' }),
+    new File(['c'], 'third.jpg', { type: 'image/jpeg' }),
+  ] } });
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
+  await screen.findByText('Erro');
+  await waitFor(() => expect(screen.getByRole('group', { name: 'Imagens selecionadas' })).toHaveTextContent('2 imagens'));
+  expect(upload).toHaveBeenCalledTimes(2);
+  expect(send).toHaveBeenCalledTimes(1);
+  const firstClient = send.mock.calls[0]![1].clientMessageId;
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar mensagem' }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(3));
+  expect(upload.mock.calls.map(call => call[1].name)).toEqual(['first.jpg','second.jpg','second.jpg','third.jpg']);
+  expect(send.mock.calls[0]![1].clientMessageId).toBe(firstClient);
+  expect(send.mock.calls[1]![1].clientMessageId).not.toBe(firstClient);
+  expect(send.mock.calls[2]![1].clientMessageId).not.toBe(firstClient);
+  await waitFor(() => expect(screen.queryByRole('group', { name: 'Imagens selecionadas' })).not.toBeInTheDocument());
+});
+
 it.each(['upload', 'message'])('P1.1 retains the recording and reuses intent and uploaded media after %s failure', async stage => {
   mockBase(); vi.spyOn(chatApi, 'listTeamMembers').mockResolvedValue({ items: [], nextCursor: null });
   vi.mocked(chatApi.getConversation).mockResolvedValue({ ...conversation, provider: 'WHATSAPP_WEB', mediaEnabled: true, outboundEnabled: true });
