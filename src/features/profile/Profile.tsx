@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSession } from '../session/SessionContext';
 import { profileApi } from '../../lib/profileApi';
+import { UserRound } from 'lucide-react';
+import { PageHeader } from '../../components/ui/page-header';
+import { Button } from '../../components/ui/shadcn/button';
+import { Input } from '../../components/ui/shadcn/input';
 import './profile.css';
 
 function profileError(reason: unknown): string {
@@ -64,20 +68,20 @@ export function ProfilePage() {
     finally { setOrganizationBusy(false); }
   }
 
-  return <section className="profile-page">
-    <header className="profile-heading"><p className="eyebrow">MINHA CONTA</p><h1>Meu perfil</h1><p className="muted">Gerencie seus dados e como você aparece no atendimento.</p></header>
+  return <section className="profile-page admin-compact-page">
+    <PageHeader className="profile-heading" eyebrow="MINHA CONTA" title="Meu perfil" icon={<UserRound size={19} />} description="Gerencie seus dados e como você aparece no atendimento." />
     <div className="profile-grid">
       <section className="profile-card" aria-labelledby="profile-account-title">
         <div className="profile-card-heading"><h2 id="profile-account-title">Dados da conta</h2><p>Identidade utilizada para acessar o WappHub, inclusive em outras organizações.</p></div>
         <form onSubmit={(event) => void saveAccount(event)}>
           <label htmlFor="profile-name">Nome cadastrado</label>
-          <input id="profile-name" value={name} maxLength={120} autoComplete="name" required onChange={(event) => { setName(event.target.value); setAccountMessage(''); }} />
+          <Input id="profile-name" density="compact" value={name} maxLength={120} autoComplete="name" required onChange={(event) => { setName(event.target.value); setAccountMessage(''); }} />
           <label htmlFor="profile-email">E-mail de acesso</label>
-          <input id="profile-email" value={session.user.email} readOnly aria-describedby="profile-email-hint" />
+          <Input id="profile-email" density="compact" value={session.user.email} readOnly aria-describedby="profile-email-hint" />
           <small id="profile-email-hint" className="profile-hint">A alteração do e-mail ainda não está disponível neste módulo.</small>
           {accountError && <p role="alert" className="error-text">{accountError}</p>}
           {accountMessage && <p role="status" className="profile-success">{accountMessage}</p>}
-          <button type="submit" className="primary-button" disabled={accountBusy || invalidName(normalizedName, 120) || normalizedName === session.user.name}>{accountBusy ? 'Salvando…' : 'Salvar dados da conta'}</button>
+          <Button type="submit" size="compact" disabled={accountBusy || invalidName(normalizedName, 120) || normalizedName === session.user.name}>{accountBusy ? 'Salvando…' : 'Salvar dados da conta'}</Button>
         </form>
       </section>
       <section className="profile-card" aria-labelledby="profile-organization-title">
@@ -85,7 +89,7 @@ export function ProfilePage() {
         <form onSubmit={(event) => void saveOrganization(event)}>
           <label className="profile-check"><input type="checkbox" checked={inherit} onChange={(event) => { setInherit(event.target.checked); setOrganizationMessage(''); }} />Usar meu nome cadastrado</label>
           <label htmlFor="profile-display-name">Nome de exibição nas mensagens</label>
-          <input id="profile-display-name" value={alias} maxLength={80} disabled={inherit} required={!inherit} placeholder="Ex.: Ana • Atendimento" onChange={(event) => { setAlias(event.target.value); setOrganizationMessage(''); }} />
+          <Input id="profile-display-name" density="compact" value={alias} maxLength={80} disabled={inherit} required={!inherit} placeholder="Ex.: Ana • Atendimento" onChange={(event) => { setAlias(event.target.value); setOrganizationMessage(''); }} />
           <div className="profile-preview" aria-label="Prévia do nome de atendimento">
             <span>PRÉVIA DA ASSINATURA NO WHATSAPP</span>
             <strong>{displayPreview}</strong>
@@ -94,7 +98,7 @@ export function ProfilePage() {
           <small className="profile-hint">A nova assinatura vale para os próximos envios. Mensagens já transmitidas ao WhatsApp não são alteradas.</small>
           {organizationError && <p role="alert" className="error-text">{organizationError}</p>}
           {organizationMessage && <p role="status" className="profile-success">{organizationMessage}</p>}
-          <button type="submit" className="primary-button" disabled={organizationBusy || (!inherit && invalidName(normalizedAlias, 80)) || (inherit ? session.membership.displayName == null : normalizedAlias === session.membership.displayName)}>{organizationBusy ? 'Salvando…' : 'Salvar nome de atendimento'}</button>
+          <Button type="submit" size="compact" disabled={organizationBusy || (!inherit && invalidName(normalizedAlias, 80)) || (inherit ? session.membership.displayName == null : normalizedAlias === session.membership.displayName)}>{organizationBusy ? 'Salvando…' : 'Salvar nome de atendimento'}</Button>
         </form>
       </section>
     </div>
