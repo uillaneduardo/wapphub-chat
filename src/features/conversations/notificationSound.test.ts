@@ -26,6 +26,9 @@ describe('message notification sound policy', () => {
     const mounted = Date.parse('2026-10-23T13:00:00Z');
     expect(notificationIsFresh('2026-10-23T12:00:00Z', mounted, mounted + 2000)).toBe(false);
     expect(notificationIsFresh('2026-10-23T13:00:01Z', mounted, mounted + 2000)).toBe(true);
+    // A 10-minute-old queued event arriving after WebSocket recovery must stay silent.
+    expect(notificationIsFresh('2026-10-23T13:00:01Z', mounted, mounted + 10 * 60_000)).toBe(false);
+    expect(notificationIsFresh('2026-10-23T13:09:58Z', mounted, mounted + 10 * 60_000)).toBe(true);
     expect(notificationIsFresh('invalid', mounted)).toBe(false);
     expect(notificationIsFresh('2026-10-23T14:00:00Z', mounted, mounted + 2000)).toBe(false);
   });
