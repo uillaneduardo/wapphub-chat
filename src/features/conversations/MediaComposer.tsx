@@ -165,7 +165,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
         </div>
         <video ref={videoModal} src={preview} controls tabIndex={0} preload="metadata" aria-label="Vídeo ampliado antes do envio" />
       </div>
-    </div>
+    </div>}
     {error && <p role="alert">{error}</p>}
   </div>;
 }
