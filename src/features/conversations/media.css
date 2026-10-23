@@ -176,3 +176,21 @@
   .composer-minimal .composer-secondary .attachment-preview.video-draft-preview video { max-height: min(30dvh,230px); }
   .attachment-preview .attachment-video-expand { min-width: 44px; min-height: 44px; }
 }
+
+/* G.2 document messages: filename stays visible; actions remain touch accessible. */
+.message-media.media-document {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  width: min(100%, 360px); padding: 9px 11px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-muted); color: var(--text);
+}
+.message-media.media-document > span {
+  min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 13px;
+}
+.message-media.media-document .media-icon-action {
+  flex: 0 0 auto; min-width: 36px; min-height: 36px;
+}
+@media (max-width: 600px) {
+  .message-media.media-document { width: 100%; }
+  .message-media.media-document .media-icon-action { min-width: 44px; min-height: 44px; }
+}
