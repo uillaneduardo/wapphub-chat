@@ -23,6 +23,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
   const [preview, setPreview] = useState('');
   const [videoExpanded, setVideoExpanded] = useState(false);
   const videoClose = useRef<HTMLButtonElement>(null);
+  const videoModal = useRef<HTMLVideoElement>(null);
   const videoTrigger = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
 
@@ -41,6 +42,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
     const timer = setInterval(() => setSeconds(Math.floor((Date.now() - started.current) / 1000)), 500);
     return () => clearInterval(timer);
   }, [recording]);
+  useEffect(() => { if (videoExpanded) videoClose.current?.focus(); }, [videoExpanded]);
   useEffect(() => {
     setVideoExpanded(false);
     if (!attachment) return;
@@ -153,14 +155,15 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
       <div className="attachment-video-modal" role="dialog" aria-modal="true" aria-label="Prévia ampliada do vídeo"
         onKeyDown={event => {
           if (event.key === 'Escape') { event.preventDefault(); closeVideoPreview(); }
-          if (event.key === 'Tab' && event.target === videoClose.current && event.shiftKey) { event.preventDefault(); videoClose.current?.focus(); }
+          if (event.key === 'Tab' && event.target === videoClose.current && event.shiftKey) { event.preventDefault(); videoModal.current?.focus(); }
+          else if (event.key === 'Tab' && event.target === videoModal.current && !event.shiftKey) { event.preventDefault(); videoClose.current?.focus(); }
         }}>
         <div className="attachment-video-modal-toolbar">
           <strong>Prévia do vídeo</strong>
-          <button ref={node => { videoClose.current = node; if (node && document.activeElement !== node) node.focus(); }}
+          <button ref={videoClose}
             type="button" aria-label="Fechar prévia ampliada" onClick={closeVideoPreview}><X size={18} aria-hidden="true" /></button>
         </div>
-        <video src={preview} controls preload="metadata" aria-label="Vídeo ampliado antes do envio" />
+        <video ref={videoModal} src={preview} controls tabIndex={0} preload="metadata" aria-label="Vídeo ampliado antes do envio" />
       </div>
     </div>
     {error && <p role="alert">{error}</p>}
