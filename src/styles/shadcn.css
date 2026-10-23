@@ -29,6 +29,29 @@
   --radius-lg: 11px;
 }
 
+/* Native links use an unlayered global a { color: var(--accent) } rule.
+   Tailwind utility classes are layered, so link-based shadcn Buttons must
+   explicitly own their semantic foreground here. Preserve organization tokens. */
+[data-slot="shadcn-button"][data-variant="default"] {
+  background-color: var(--accent);
+  color: var(--accent-contrast);
+}
+[data-slot="shadcn-button"][data-variant="default"]:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--accent-hover);
+  color: var(--accent-contrast);
+}
+[data-slot="shadcn-button"][data-variant="outline"],
+[data-slot="shadcn-button"][data-variant="ghost"],
+[data-slot="shadcn-button"][data-variant="secondary"] {
+  color: var(--text);
+}
+[data-slot="shadcn-button"][data-variant="link"] {
+  color: var(--accent);
+}
+[data-slot="shadcn-button"][data-variant="destructive"] {
+  color: #fff;
+}
+
 /* Only the new shadcn primitives opt into these interaction rules. */
 [data-slot="shadcn-button"]:focus-visible {
   outline: 2px solid var(--accent);
