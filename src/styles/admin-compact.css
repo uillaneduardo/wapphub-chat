@@ -35,7 +35,7 @@
 .admin-compact-page .contact-search { display:grid; gap:8px; padding:14px; margin:0 0 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
 .admin-compact-page .contact-search label { gap:4px; font-size:11px; color:var(--text-muted); }
 .admin-compact-page .contact-search > div { flex-wrap:nowrap; gap:8px; }
-.admin-compact-page .contact-search input { flex:1 1 auto; min-width:0; min-height:36px; padding:7px 10px; font-size:12px; }
+.admin-compact-page .contact-search input { flex:1 1 auto; min-width:0; }
 .admin-compact-page .contact-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:8px; margin:0 0 12px; padding:0; list-style:none; }
 .admin-compact-page .contact-results > li { min-width:0; }
 .admin-compact-page .contact-row { min-height:60px; height:100%; gap:10px; padding:10px 12px; border-radius:10px; text-decoration:none; }
@@ -47,7 +47,6 @@
 .admin-compact-page .contact-row-chevron { width:15px; height:15px; flex:0 0 15px; color:var(--text-muted); }
 .admin-compact-page .contact-form { display:grid; max-width:600px; gap:12px; }
 .admin-compact-page .contact-form label { gap:5px; font-size:12px; }
-.admin-compact-page .contact-form input { min-height:38px; padding:8px 10px; font-size:12px; }
 .admin-compact-page .contact-form-actions { display:flex; gap:7px; }
 .admin-compact-page.team-page { padding:12px 4px; }
 .admin-compact-page .team-list { display:grid; gap:7px; margin:0 0 15px; padding:0; }
@@ -61,10 +60,7 @@
 .admin-compact-page .team-member-identity > div { display:grid; gap:3px; min-width:0; }
 .admin-compact-page .team-member-identity strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .admin-compact-page .team-member-identity span { font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.admin-compact-page .team-list a { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:7px 10px; border:1px solid var(--border); border-radius:8px; color:var(--text); text-decoration:none; font-size:11px; font-weight:600; white-space:nowrap; }
-.admin-compact-page .team-list a:hover { background:var(--surface-muted); color:var(--accent); }
 .admin-compact-page.permissions-editor .permissions-toolbar { gap:7px; }
-.admin-compact-page.permissions-editor .permissions-toolbar input { min-height:36px; }
 .admin-compact-page.permissions-editor .member-summary { border-radius:10px; }
 .admin-compact-page.permissions-editor .permissions-context { border-radius:10px; }
 @media (max-width:850px) {
@@ -77,11 +73,10 @@
   .admin-compact-page .ui-page-header h1 { font-size:17px; }
   .admin-compact-page .contact-search { padding:10px; }
   .admin-compact-page .contact-search > div { flex-wrap:wrap; }
-  .admin-compact-page .contact-search > div input { flex:1 1 160px; min-height:44px; }
+  .admin-compact-page .contact-search > div input { flex:1 1 160px; }
   .admin-compact-page :is(.primary-button,.secondary-button,.contact-form-actions button,.permissions-toolbar button) { min-height:44px; }
   .admin-compact-page .contact-results { grid-template-columns:minmax(0,1fr); gap:7px; }
   .admin-compact-page .contact-row { min-height:66px; }
   .admin-compact-page .team-list li { padding:12px; }
-  .admin-compact-page .team-list a { min-height:44px; }
-  .admin-compact-page .team-page { padding:8px; }
+    .admin-compact-page .team-page { padding:8px; }
 }
