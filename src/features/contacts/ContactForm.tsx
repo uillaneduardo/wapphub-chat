@@ -5,6 +5,8 @@ import { contactIdentifier } from '../../lib/contactIdentifier';
 import { realtimeBus } from '../../lib/realtimeBus';
 import { useSession } from '../session/SessionContext';
 import type { Contact } from '../../types/chat';
+import { Button } from '../../components/ui/shadcn/button';
+import { Input } from '../../components/ui/shadcn/input';
 
 function contactError(reason: unknown): string {
   if (reason && typeof reason === 'object' && 'status' in reason) {
@@ -42,10 +44,10 @@ export function ContactForm({ contact, onSaved, onCancel }: { contact?: Contact;
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   return <form className="contact-form" onSubmit={(event) => void submit(event)} aria-label={contact ? 'Editar contato' : 'Cadastrar contato'}>
-    <label htmlFor={`${id}-name`}>Nome<input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} disabled={!canWrite || busy || Boolean(saved)} /></label>
-    <label htmlFor={`${id}-identifier`}>Identificador principal<input id={`${id}-identifier`} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required maxLength={254} readOnly={linked} disabled={!canWrite || busy || Boolean(saved)} /></label>
+    <label htmlFor={`${id}-name`}>Nome<Input density="compact" id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} disabled={!canWrite || busy || Boolean(saved)} /></label>
+    <label htmlFor={`${id}-identifier`}>Identificador principal<Input density="compact" id={`${id}-identifier`} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required maxLength={254} readOnly={linked} disabled={!canWrite || busy || Boolean(saved)} /></label>
     {linked && <p className="muted">Vínculo externo preservado. Nesta tela, edite somente o nome.</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    <div className="contact-form-actions"><button className="primary-button" type="submit" disabled={!canWrite || busy}>{busy ? 'Salvando…' : saved ? 'Atualizar tela' : 'Salvar contato'}</button>{onCancel && <button className="secondary-button" type="button" onClick={onCancel} disabled={busy}>Cancelar</button>}</div>
+    <div className="contact-form-actions"><Button size="compact" type="submit" disabled={!canWrite || busy}>{busy ? 'Salvando…' : saved ? 'Atualizar tela' : 'Salvar contato'}</Button>{onCancel && <Button size="compact" variant="outline" type="button" onClick={onCancel} disabled={busy}>Cancelar</Button>}</div>
   </form>;
 }
