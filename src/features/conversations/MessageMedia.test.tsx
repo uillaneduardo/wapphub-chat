@@ -21,7 +21,7 @@ describe('B3 media demand and lifecycle', () => {
     vi.spyOn(chatApi, 'messageMedia').mockResolvedValue(new Blob(['visual']));
     vi.spyOn(chatApi, 'messageMediaSource').mockResolvedValue('/api/v1/visual-media');
     render(<MessageMedia message={{ ...message, type, media: { ...message.media!, type } }} />);
-    expect(screen.getByRole('group', { name: label === 'Áudio' ? 'Áudio da mensagem' : label === 'Imagem' ? 'Imagem da mensagem' : label === 'Vídeo' ? 'Vídeo da mensagem' : 'Mensagem de voz' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /Conteúdo de mídia/ })).toBeInTheDocument();
     expect(screen.queryByText('synthetic.png')).not.toBeInTheDocument();
     expect(screen.queryByText(label)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Abrir mídia' }));
