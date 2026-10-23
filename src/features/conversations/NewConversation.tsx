@@ -2,6 +2,7 @@ import { contactIdentifier } from "../../lib/contactIdentifier";
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { MessagesSquare } from 'lucide-react';
+import { NativeSelect } from '../../components/ui/shadcn/native-select';
 import { useSession } from '../session/SessionContext';
 import { ContactBrowser } from '../contacts/ContactBrowser';
 import { ContactForm } from '../contacts/ContactForm';
@@ -38,8 +39,15 @@ function NewConversationContent() {
     } finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
   if (!allowed) return <p role="alert">Seu contexto não permite criar e abrir conversas.</p>;
-  return <section className="new-conversation"><Link to="/app/conversations">← Conversas</Link><h1><MessagesSquare size={24} aria-hidden="true" />Nova conversa</h1><p className="muted">{channelId ? 'WhatsApp. A abertura valida o destinatário.' : 'Canal interno.'} {channelId ? 'Uma conversa externa acessível será reutilizada.' : 'Uma conversa interna aberta e acessível do contato será reutilizada.'} Criar a conversa não envia uma mensagem.</p>
-    {!!channels.length && <label>Canal<select aria-label="Canal da nova conversa" value={channelId} disabled={busy || !!created} onChange={event => { setChannelId(event.target.value); setRecipientMode('contact'); setCreated(null); }}><option value="">Interno</option>{channels.map(channel => <option key={channel.id} value={channel.id} disabled={!channel.outboundEnabled}>{channel.name}{channel.outboundEnabled ? '' : ' — indisponível'}</option>)}</select></label>}
+  return <section className="new-conversation new-conversation-compact"><Link to="/app/conversations">← Conversas</Link><h1><MessagesSquare size={24} aria-hidden="true" />Nova conversa</h1><p className="muted">{channelId ? 'WhatsApp. A abertura valida o destinatário.' : 'Canal interno.'} {channelId ? 'Uma conversa externa acessível será reutilizada.' : 'Uma conversa interna aberta e acessível do contato será reutilizada.'} Criar a conversa não envia uma mensagem.</p>
+    {!!channels.length && <div className="conversation-channel-field">
+      <label htmlFor="new-conversation-channel">Canal da conversa</label>
+      <NativeSelect id="new-conversation-channel" aria-label="Canal da nova conversa" density="compact" value={channelId} disabled={busy || !!created}
+        onChange={event => { setChannelId(event.target.value); setRecipientMode('contact'); setCreated(null); }}>
+        <option value="">Interno</option>
+        {channels.map(channel => <option key={channel.id} value={channel.id} disabled={!channel.outboundEnabled}>{channel.name}{channel.outboundEnabled ? '' : ' — indisponível'}</option>)}
+      </NativeSelect>
+    </div>}
     {channelId && <div className="provider-actions"><button type="button" className="secondary-button" disabled={busy} onClick={() => setRecipientMode('contact')}>Contato existente</button>{session?.permissions.includes('contacts.write') && <button type="button" className="secondary-button" disabled={busy} onClick={() => setRecipientMode('phone')}>Número novo</button>}</div>}
     {recipientMode === 'phone' && <label>Número com DDI<input type="tel" aria-label="Número com DDI" placeholder="+5581999999999" value={phone} onChange={event => setPhone(event.target.value)} disabled={busy || !!created} /><small>Informe +, código do país e número. O WhatsApp será consultado somente ao abrir.</small></label>}
     {error && <p role="alert" className="error-text">{error}</p>}

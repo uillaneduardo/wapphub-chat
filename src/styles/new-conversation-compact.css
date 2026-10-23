@@ -1,0 +1,151 @@
+/* New-conversation visual polish — scoped to the chat creation route.
+   Leaves contact permissions, channel resolution and message sending untouched. */
+.new-conversation-compact {
+  box-sizing: border-box;
+  min-width: 0;
+}
+.new-conversation-compact > a:first-child {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 550;
+}
+.new-conversation-compact > h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 11px;
+  font-size: clamp(19px, 1.7vw, 24px);
+  font-weight: 675;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+}
+.new-conversation-compact > .muted {
+  margin: 0 0 16px;
+  max-width: 760px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.new-conversation-compact .conversation-channel-field {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 380px);
+  min-width: 0;
+  margin: 0 0 14px;
+}
+.new-conversation-compact .conversation-channel-field > label {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--text);
+}
+.new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select-wrapper"] {
+  width: 100%;
+}
+.new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select"] {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  height: 38px;
+  padding: 6px 36px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background-color: var(--surface);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select"]:disabled {
+  background-color: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select-wrapper"] > svg {
+  width: 16px;
+  height: 16px;
+  right: 11px;
+  color: var(--text-muted);
+}
+.new-conversation-compact > label:has(> input[type="tel"]) {
+  display: grid;
+  gap: 6px;
+  max-width: 380px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.new-conversation-compact > label > input[type="tel"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+}
+.new-conversation-compact > label > input[type="tel"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.new-conversation-compact > label small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.new-conversation-compact > .provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.new-conversation-compact > .provider-actions > button {
+  box-sizing: border-box;
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.new-conversation-compact .contact-browser { min-width: 0; }
+.new-conversation-compact > .contact-selection {
+  margin: 15px 0 12px;
+  line-height: 1.5;
+  font-size: 12px;
+}
+.new-conversation-compact > button.primary-button {
+  min-height: 40px;
+  max-width: 100%;
+  height: auto;
+  margin-top: 4px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: normal;
+}
+@media (max-width: 720px) {
+  .new-conversation-compact > h1 { font-size: 19px; }
+  .new-conversation-compact > .muted { margin-bottom: 14px; }
+  .new-conversation-compact .conversation-channel-field {
+    width: 100%;
+    max-width: 100%;
+  }
+  .new-conversation-compact .conversation-channel-field [data-slot="shadcn-native-select"],
+  .new-conversation-compact > label > input[type="tel"],
+  .new-conversation-compact > .provider-actions > button,
+  .new-conversation-compact > button.primary-button { min-height: 44px; }
+}
