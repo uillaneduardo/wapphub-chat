@@ -4,7 +4,7 @@ import { validateMediaFile } from './mediaFileValidation';
 import { MAX_IMAGE_BATCH, queueImages, type QueuedImage } from './imageQueue';
 import { AudioPlayer, formatAudioTime } from './AudioPlayer';
 
-export type Attachment = { file: File; type: 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' };
+export type Attachment = { file: File; type: 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' | 'DOCUMENT' };
 
 function ImageQueueThumb({ image, index, disabled, onRemove }: { image: QueuedImage; index: number; disabled: boolean; onRemove: (id: string) => void }) {
   const [src, setSrc] = useState('');
@@ -148,7 +148,7 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
 
   return <div className="media-composer">
     <div className="provider-actions">
-      <input ref={input} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4"
+      <input ref={input} type="file" hidden multiple accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,audio/webm,video/mp4,.pdf"
         onChange={event => { selectFiles(event.target.files); event.target.value = ''; }} />
       <button type="button" className="text-button" aria-label="Anexar mídia" disabled={disabled || recording} onClick={() => input.current?.click()}>
         <Paperclip size={18} aria-hidden="true" />Anexar
@@ -176,10 +176,10 @@ export function MediaComposer({ attachment, onChange, disabled, onRecordingChang
     </div>}
     {attachment && <div className={`attachment-preview${attachment.type === 'AUDIO' || attachment.type === 'VOICE' ? ' audio-draft-preview' : attachment.type === 'VIDEO' ? ' video-draft-preview' : ''}`}>
       <div className="attachment-preview-heading">
-        <span className="sr-only">{attachment.type === 'IMAGE' ? 'Prévia de imagem' : attachment.type === 'VIDEO' ? 'Prévia de vídeo' : 'Prévia de áudio'}</span>
+        <span className="sr-only">{attachment.type === 'DOCUMENT' ? 'Documento selecionado' : attachment.type === 'IMAGE' ? 'Prévia de imagem' : attachment.type === 'VIDEO' ? 'Prévia de vídeo' : 'Prévia de áudio'}</span>
         <button type="button" className="attachment-discard-button" disabled={disabled} onClick={() => onChange(null)} aria-label="Descartar anexo" title="Descartar anexo"><Trash2 size={17} aria-hidden="true" /></button>
       </div>
-      {preview && (attachment.type === 'IMAGE'
+      {attachment.type === 'DOCUMENT' ? <div className="attachment-preview-hint">{attachment.file.name} ({(attachment.file.size / 1048576).toFixed(1)} MB)</div> : preview && (attachment.type === 'IMAGE'
         ? <img src={preview} alt="Prévia do anexo" />
         : attachment.type === 'VIDEO'
           ? <div className="attachment-video-frame"><video src={preview} controls preload="metadata" aria-label="Prévia do vídeo" />

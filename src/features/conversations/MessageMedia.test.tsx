@@ -8,6 +8,19 @@ import type { InternalTextMessage } from '../../types/chat';
 const message: InternalTextMessage = { id: 'message-1', conversationId: 'conversation-1', senderUserId: null, senderContactId: 'contact-1', clientMessageId: null, direction: 'INBOUND', type: 'IMAGE', body: null, status: 'SENT', createdAt: '2026-10-11T00:00:00Z', updatedAt: '2026-10-11T00:00:00Z', media: { mediaId: 'media-1', type: 'IMAGE', mimeType: 'image/png', fileName: 'synthetic.png', size: 1, state: 'PENDING' } };
 describe('B3 media demand and lifecycle', () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  it('G.2 displays the document filename and downloads through the authorized API', async () => {
+    const download = vi.spyOn(chatApi, 'messageMedia').mockResolvedValue(new Blob(['%PDF-1.7']));
+    const create = vi.fn(() => 'blob:document-preview');
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: create });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<MessageMedia message={{ ...message, type: 'DOCUMENT', media: { ...message.media!, type: 'DOCUMENT', mimeType: 'application/pdf', fileName: 'boleto.pdf', size: 8 } }} />);
+    expect(screen.getByText(/boleto.pdf/)).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Baixar documento' })); });
+    expect(download).toHaveBeenCalledWith('conversation-1', 'message-1', expect.any(AbortSignal));
+    expect(create).toHaveBeenCalled();
+  });
+
   it.each([
     ['IMAGE', 'Imagem'],
     ['AUDIO', 'Áudio'],

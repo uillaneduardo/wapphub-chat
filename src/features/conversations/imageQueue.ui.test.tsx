@@ -43,7 +43,7 @@ describe('G.2 image queue in the compact composer', () => {
     fireEvent.change(picker, { target: { files: [] } });
     expect(screen.getByRole('group', { name: 'Imagens selecionadas' })).toHaveTextContent('1 imagem');
     fireEvent.change(picker, { target: { files: [file('document.pdf', 'application/pdf')] } });
-    expect(screen.getByRole('alert')).toHaveTextContent(/Formato não aceito/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/somente imagens/);
     expect(screen.getByRole('group', { name: 'Imagens selecionadas' })).toHaveTextContent('1 imagem');
     fireEvent.change(picker, { target: { files: [file('video.mp4','video/mp4')] } });
     expect(screen.getByRole('alert')).toBeInTheDocument();
