@@ -5,6 +5,7 @@ import { App } from './app/App';
 import './styles/tokens.css';
 import './styles/shadcn.css';
 import './styles/global.css';
+import './styles/admin-base.css';
 import './styles/compact-ui.css';
 import './styles/shell-compact.css';
 import './styles/conversation-compact.css';
