@@ -16,6 +16,7 @@ vi.mock('../../lib/profileApi', () => ({ profileApi: { updateAccount: vi.fn(), u
 
 beforeEach(() => {
   vi.resetAllMocks();
+  localStorage.clear();
   state.session.user.name = 'Ana Costa';
   state.session.user.email = 'ana@example.test';
   state.session.organization.id = 'org-1';
@@ -56,6 +57,30 @@ describe('self-service identity settings', () => {
     expect(screen.getByLabelText('Nome de exibição nas mensagens')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Salvar nome de atendimento' }));
     await waitFor(() => expect(profileApi.updateOrganization).toHaveBeenCalledWith(null));
+  });
+  it('lets users manage sound locally per organization without calling profile endpoints', async () => {
+    render(<ProfilePage />);
+    const notification = screen.getByRole('region', { name: 'Notificações' });
+    expect(notification).toHaveTextContent('Configuração local deste navegador');
+    expect(screen.getByText('Desativado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ativar som' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Ativar som' }));
+    const off = await screen.findByRole('button', { name: 'Desativar som' });
+    expect(off).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Testar som' })).toBeInTheDocument();
+    expect(localStorage.getItem('wapphub:message-sound:v1:user-1:org-1')).toBe('on');
+    fireEvent.click(screen.getByRole('button', { name: 'Desativar som' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ativar som' })).toHaveAttribute('aria-pressed', 'false'));
+    expect(profileApi.updateAccount).not.toHaveBeenCalled();
+    expect(profileApi.updateOrganization).not.toHaveBeenCalled();
+  });
+  it('shows a safe explanation when the browser cannot play a preview', async () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ativar som' }));
+    await screen.findByRole('button', { name: 'Testar som' });
+    fireEvent.click(screen.getByRole('button', { name: 'Testar som' }));
+    await screen.findByRole('status');
+    expect(screen.getByRole('status')).toHaveTextContent('O navegador bloqueou o som');
   });
   it('rejects unsafe alias formatting before any request', () => {
     render(<ProfilePage />);
