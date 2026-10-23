@@ -35,10 +35,10 @@ describe('F.3 — notification preference shared by Inbox and Meu perfil', () =>
     render(<Toggle label="Inbox" />);
     const key = soundPreferenceKey('user-1', 'org-1');
     localStorage.setItem(key, 'on');
-    fireEvent.storage(window, { key, newValue: 'on' });
+    fireEvent(window, new StorageEvent('storage', { key, newValue: 'on' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Inbox' })).toHaveAttribute('aria-pressed', 'true'));
     localStorage.setItem(key, 'off');
-    fireEvent.storage(window, { key, newValue: 'off' });
+    fireEvent(window, new StorageEvent('storage', { key, newValue: 'off' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Inbox' })).toHaveAttribute('aria-pressed', 'false'));
   });
   it('respects manual notification sound preference writes from legacy callers', async () => {
