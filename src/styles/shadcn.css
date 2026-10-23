@@ -1,0 +1,39 @@
+/* Tailwind v4 isolated mode for shadcn. Import ONLY the theme + utilities.
+   Deliberately omit tailwindcss/preflight.css: global reset would regress
+   the existing Inbox, navigation, media and authenticated forms. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-contrast);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-muted);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 11px;
+}
+
+/* Only the new shadcn primitives opt into these interaction rules. */
+[data-slot="shadcn-button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  [data-slot="shadcn-button"] { min-height: 44px; }
+}

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ContactRound, Plus, Pencil } from 'lucide-react';
 import { ContactBrowser } from './ContactBrowser';
 import { PageHeader } from '../../components/ui/page-header';
+import { Button } from '../../components/ui/shadcn/button';
 import { ContactForm } from './ContactForm';
 import { useSession } from '../session/SessionContext';
 import { chatApi } from '../../lib/chatApi';
@@ -12,7 +13,7 @@ import type { Contact } from '../../types/chat';
 
 export function ContactsPage() {
   const { session } = useSession(); const navigate = useNavigate(); const [creating, setCreating] = useState(false);
-  return <section className="contacts-page admin-compact-page"><PageHeader eyebrow="ORGANIZAÇÃO" title="Contatos" description="Consulte e gerencie os contatos da organização ativa." icon={<ContactRound size={20} />} actions={session?.permissions.includes('contacts.write') && <button type="button" className="primary-button" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />Novo contato</button>} />
+  return <section className="contacts-page admin-compact-page"><PageHeader eyebrow="ORGANIZAÇÃO" title="Contatos" description="Consulte e gerencie os contatos da organização ativa." icon={<ContactRound size={20} />} actions={session?.permissions.includes('contacts.write') && <Button type="button" size="compact" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" />Novo contato</Button>} />
     {creating && <section className="contact-card"><h2>Cadastrar contato</h2><ContactForm onSaved={(value) => navigate(`/app/contacts/${value.id}`)} onCancel={() => setCreating(false)} /></section>}
     <ContactBrowser />
   </section>;
