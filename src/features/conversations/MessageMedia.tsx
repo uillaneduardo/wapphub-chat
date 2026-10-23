@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AudioLines, Download, Image as ImageIcon, Maximize2, Mic2, Video as VideoIcon } from 'lucide-react';
+import { Download, Maximize2 } from 'lucide-react';
 import { MediaTransfers, type MediaAsset, type MediaLease } from '../../lib/mediaTransfers';
 import { observeMedia } from '../../lib/mediaVisibility';
 import { MediaLightbox } from './MediaLightbox';
@@ -85,14 +85,8 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
     finally { setTimeout(() => current.release(), 250); if (downloadLease.current === current) downloadLease.current = null; if (mounted.current) setDownloadBusy(false); }
   }
   if (!message.media || message.type === 'DOCUMENT') return <p className="muted">Arquivo indisponível nesta versão.</p>;
-  const kind = message.type === 'IMAGE' ? 'Imagem' : message.type === 'VIDEO' ? 'Vídeo' : message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio';
-  const kindIcon = message.type === 'IMAGE' ? <ImageIcon size={16} aria-hidden="true" /> : message.type === 'VIDEO' ? <VideoIcon size={16} aria-hidden="true" /> : message.type === 'VOICE' ? <Mic2 size={16} aria-hidden="true" /> : <AudioLines size={16} aria-hidden="true" />;
-  const showName = message.media.fileName.trim().toLowerCase() !== 'arquivo';
-  return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node}>
-    <div className="media-heading">
-      <span className="media-kind">{kindIcon}<span>{kind}</span></span>
-      {showName && <span className="media-filename" title={message.media.fileName}>{message.media.fileName}</span>}
-    </div>
+  return <div className={`message-media media-${message.type.toLowerCase()}`} ref={node}
+    aria-label={message.type === 'IMAGE' ? 'Imagem da mensagem' : message.type === 'VIDEO' ? 'Vídeo da mensagem' : message.type === 'VOICE' ? 'Mensagem de voz' : 'Áudio da mensagem'}>
     <div className="media-content">
       {!asset ? error ? null : typeof IntersectionObserver === 'undefined'
         ? <button type="button" className="secondary-button media-load-button" disabled={busy} onClick={start}>{busy ? 'Carregando mídia…' : 'Abrir mídia'}</button>
@@ -100,7 +94,7 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
         : message.type === 'IMAGE'
           ? <button type="button" className="media-preview-button" onClick={open} aria-label="Ampliar imagem">
               <img src={asset.url} alt={message.body || 'Imagem recebida'} onError={() => { failed.current = true; setError('Não foi possível exibir esta imagem. Tente novamente.'); }} />
-              <span className="media-expand-hint" aria-hidden="true"><Maximize2 size={15} />Ampliar</span>
+              <span className="media-expand-hint" aria-hidden="true"><Maximize2 size={16} /></span>
             </button>
           : message.type === 'VIDEO'
             ? <div className="media-video-frame">
@@ -113,8 +107,8 @@ export function MessageMedia({ message, transfers }: { message: InternalTextMess
               onError={playbackError} />}
     </div>
     {asset && <div className="media-actions">
-      {message.type === 'VIDEO' && <button type="button" className="media-action" onClick={open}><Maximize2 size={15} aria-hidden="true" />Ampliar vídeo</button>}
-      <a className="media-action" href={asset.url} download={message.media.fileName} aria-label="Baixar arquivo" aria-disabled={downloadBusy} onClick={event => { event.preventDefault(); void download(); }}><Download size={15} aria-hidden="true" />{downloadBusy ? 'Baixando…' : 'Baixar'}</a>
+      {message.type === 'VIDEO' && <button type="button" className="media-action media-icon-action" onClick={open} aria-label="Ampliar vídeo" title="Ampliar vídeo"><Maximize2 size={17} aria-hidden="true" /></button>}
+      <a className="media-action media-icon-action" href={asset.url} download={message.media.fileName} aria-label="Baixar arquivo" title={downloadBusy ? 'Baixando mídia…' : 'Baixar arquivo'} aria-disabled={downloadBusy} onClick={event => { event.preventDefault(); if (!downloadBusy) void download(); }}><Download size={17} aria-hidden="true" />{downloadBusy && <span className="sr-only">Baixando…</span>}</a>
     </div>}
     {error && <div className="media-error"><p role="status">{error}</p><button type="button" className="secondary-button" onClick={retry}>Tentar novamente</button></div>}
     {expanded && asset && <MediaLightbox url={asset.url} video={message.type === 'VIDEO'} alt={message.body || 'Imagem recebida'} onClose={close} onRetry={() => { close(); retry(); }} onDownload={() => void download()} downloadBusy={downloadBusy} fallbackFocus={node.current?.closest<HTMLElement>('.message-history') ?? null} />}
