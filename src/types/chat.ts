@@ -13,7 +13,7 @@ export interface TransferRequest { userId: string; visibility: HistoryVisibility
 export interface Provider { code: 'DEMO' | 'META' | 'WHATSAPP_WEB'; name: string; description: string; state: 'AVAILABLE' | 'IN_DEVELOPMENT'; enabled: boolean }
 export interface DemoContact { contactId: string; name: string; conversationId: string | null }
 
-export type ChatEventType = 'conversation.created' | 'conversation.updated' | 'conversation.history.updated' | 'contacts.updated' | 'conversation.archived' | 'conversation.assigned' | 'conversation.transferred' | 'message.created' | 'message.updated' | 'note.created' | 'tag.created' | 'tag.updated' | 'tag.deleted' | 'conversation.tag.added' | 'conversation.tag.removed' | 'provider.connection.updated';
+export type ChatEventType = 'conversation.created' | 'conversation.updated' | 'conversation.history.updated' | 'contacts.updated' | 'conversation.archived' | 'conversation.assigned' | 'conversation.transferred' | 'conversation.read.updated' | 'message.created' | 'message.updated' | 'note.created' | 'tag.created' | 'tag.updated' | 'tag.deleted' | 'conversation.tag.added' | 'conversation.tag.removed' | 'provider.connection.updated';
 export interface ChatEvent { version: 1; eventId: string; organizationId: string; type: ChatEventType; entityId: string; occurredAt: string; payload: { resourceId: string; conversationId?: string } }
 export interface SyncCheckpoint { version: 1; type: 'sync.checkpoint'; lastEventId: string; hasMore: boolean }
 export interface RealtimeEventsPage { events: ChatEvent[]; lastEventId: string; hasMore: boolean }
