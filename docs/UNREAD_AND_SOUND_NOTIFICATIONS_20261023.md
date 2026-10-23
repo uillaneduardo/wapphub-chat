@@ -20,6 +20,7 @@
 - Inbox: fundo leve, nome um pouco mais forte e bolinha de 8px na cor `--accent`, com `aria-label` de não lidas. Sem mensagens.read não exibir dados nem marcadores.
 - Botão discreto Bell/BellOff ao lado da contagem. `aria-pressed`, `aria-label`, tamanho adaptado a toque.
 - Sons gerados via Web Audio (dois tons leves), sem arquivo externo e sem autoplay no bootstrap. Preferência desativada por padrão, salvo escolha local anterior.
+- O **listener de som pertence a AppShell**, e continua ativo quando o usuário navega em Contatos, Perfil, Configurações e demais rotas autenticadas. A Inbox apenas oferece o botão Bell/BellOff; não monta segundo listener sonoro.
 - Apenas eventos realtime `message.created` **recentes após montagem da página**, confirmados com `getMessage`, provenientes do contato ou usuário diferente. Ignora históricos importados, eco de próprio envio, mensagens optimistic, eventos de reconexão antigos, conversas abertas em foco e repetidos.
 - A indisponibilidade do Web Audio não interrompe chat/realtime. Falhas de leitura não ativam falsa confirmação visual.
 
