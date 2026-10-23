@@ -13,6 +13,7 @@ import './styles/admin-compact.css';
 import './styles/settings-compact.css';
 import './styles/admin-shadcn.css';
 import './styles/new-conversation-compact.css';
+import './features/conversations/unread-notifications.css';
 
 installDocumentDiagnostics();
 
