@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { AppIcon } from '../../components/AppIcon';
+import { Badge } from '../../components/ui/shadcn/badge';
 import { HistoryControls } from './HistoryControls';
 import { ProviderDiagnosticsButton } from './ProviderDiagnostics';
 import { ApiError } from '../../lib/api';
@@ -184,8 +185,8 @@ export function WebProviderCard({ organizationId }: { organizationId: string }) 
   const confirmed = presentation.connected, state = connection?.uiState ?? 'DISCONNECTED';
   const recovering = ['RUNNING', 'AUTHENTICATED'].includes(connection?.lifecycle?.recovery?.state ?? '');
   const disabled = loading || busy || pending(connection) || recovering;
-  return <section className="web-provider-stack"><article className="provider-card web-provider-card" aria-labelledby={titleId}>
-    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp</h2><p>Canal da organização selecionada.</p></div></div><span className={`provider-state ${confirmed ? 'is-enabled' : ''}`} role="status"><AppIcon name={confirmed ? 'providers' : 'status'} />{loading ? 'Carregando…' : presentation.status}</span></div>
+  return <section className="web-provider-stack settings-compact-provider"><article className="provider-card web-provider-card" aria-labelledby={titleId}>
+    <div className="provider-card-head"><div><span className="provider-mark"><AppIcon name="providers" /></span><div><h2 id={titleId}>WhatsApp</h2><p>Canal da organização selecionada.</p></div></div><Badge variant={confirmed ? 'success' : 'secondary'} className={`provider-state ${confirmed ? 'is-enabled' : ''}`} role="status"><AppIcon name={confirmed ? 'providers' : 'status'} />{loading ? 'Carregando…' : presentation.status}</Badge></div>
     <p role="status">{presentation.guidance}</p>
     {connection?.lastCheckedAt && <p className="muted">Última verificação: {new Date(connection.lastCheckedAt).toLocaleString('pt-BR')}</p>}
     {error && <p role="alert" className="error-text">{error}</p>}

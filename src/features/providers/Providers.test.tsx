@@ -21,6 +21,9 @@ describe('Demo provider screens', () => {
     render(<MemoryRouter><ProvidersPage /></MemoryRouter>);
     fireEvent.click(await screen.findByText('Outros provedores')); await screen.findByRole('heading', { name: 'Meta' });
     expect(screen.getByRole('button', { name: 'Configuração indisponível' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Configuração indisponível' })).toHaveAttribute('data-slot', 'shadcn-button');
+    expect(screen.getByRole('button', { name: 'Ativar Demo' })).toHaveAttribute('type', 'submit');
+    expect(screen.getByText('Em desenvolvimento', { selector: '[data-slot="shadcn-badge"]' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ativar Demo' }));
     await waitFor(() => expect(toggle).toHaveBeenCalledWith(true));
   });

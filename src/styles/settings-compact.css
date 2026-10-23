@@ -1,0 +1,129 @@
+/* E.2 – compact administration, with strict scoping to Profile / Providers.
+   Colors derive from Organization CSS tokens; no changes to conversation media,
+   composer, page routing, confirmation commands or Core permissions. */
+.admin-compact-page.profile-page,
+.admin-compact-page.settings-compact-page {
+  box-sizing: border-box;
+  width: min(100%, 1050px);
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+}
+.admin-compact-page.profile-page .profile-heading {
+  margin-bottom: 16px;
+}
+.admin-compact-page.profile-page .profile-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+.admin-compact-page.profile-page .profile-card {
+  padding: 18px;
+  border-radius: 11px;
+}
+.admin-compact-page.profile-page .profile-card-heading { margin-bottom: 16px; }
+.admin-compact-page.profile-page .profile-card-heading h2 { font-size: 14px; letter-spacing: -.01em; }
+.admin-compact-page.profile-page .profile-card-heading p { font-size: 12px; }
+.admin-compact-page.profile-page .profile-card form { gap: 8px; }
+.admin-compact-page.profile-page .profile-card label:not(.profile-check) {
+  font-size: 11px; margin-top: 6px;
+}
+.admin-compact-page.profile-page .profile-card [data-slot="shadcn-input"] {
+  box-sizing: border-box; width: 100%; min-height: 38px; height: 38px;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 10px; font-size: 12px; background: var(--surface); color: var(--text);
+}
+.admin-compact-page.profile-page .profile-card [data-slot="shadcn-input"][readonly],
+.admin-compact-page.profile-page .profile-card [data-slot="shadcn-input"]:disabled {
+  background: var(--surface-muted); color: var(--text-muted);
+}
+.admin-compact-page.profile-page .profile-card [data-slot="shadcn-button"] {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: max-content; max-width: 100%; min-height: 36px; margin-top: 10px;
+  padding: 7px 12px; font-size: 12px; border-radius: 8px; cursor: pointer;
+}
+.admin-compact-page.profile-page .profile-card [data-slot="shadcn-button"]:disabled {
+  opacity: .55; cursor: not-allowed;
+}
+.admin-compact-page.profile-page .profile-check { min-height: 36px; }
+.admin-compact-page.profile-page .profile-preview {
+  margin-top: 3px; padding: 12px 14px; gap: 5px; border-radius: 9px;
+}
+.admin-compact-page.profile-page .profile-preview span { font-size: 10px; }
+.admin-compact-page.profile-page .profile-hint { font-size: 11px; }
+
+.admin-compact-page.settings-compact-page > .ui-page-header { margin-bottom: 15px; }
+.admin-compact-page.settings-compact-page .provider-advanced.other-providers {
+  box-sizing: border-box; min-width: 0; border: 1px solid var(--border);
+  border-radius: 10px; margin-top: 13px; padding: 0 12px; background: var(--surface);
+}
+.admin-compact-page.settings-compact-page .provider-advanced.other-providers > summary {
+  min-height: 44px; padding: 12px 3px; font-size: 12px;
+  font-weight: 600; cursor: pointer; color: var(--text);
+}
+.admin-compact-page.settings-compact-page .other-providers .provider-card { margin-bottom: 12px; }
+.admin-compact-page.settings-compact-page .provider-card,
+.admin-compact-page.settings-compact-page .web-provider-stack .provider-card {
+  box-sizing: border-box; padding: 16px; border-radius: 11px; min-width: 0;
+}
+.admin-compact-page.settings-compact-page .provider-card-head { gap: 8px 12px; }
+.admin-compact-page.settings-compact-page .provider-card-head > div { gap: 9px; }
+.admin-compact-page.settings-compact-page .provider-mark {
+  width: 36px; height: 36px; min-width: 36px; border-radius: 10px;
+  font-size: 15px;
+}
+.admin-compact-page.settings-compact-page .provider-card h2 { font-size: 14px; margin-bottom: 2px; }
+.admin-compact-page.settings-compact-page .provider-card-head p { font-size: 11px; }
+.admin-compact-page.settings-compact-page .provider-state,
+.admin-compact-page.settings-compact-page [data-slot="shadcn-badge"] {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 8px; border-radius: 999px; line-height: 1.5; font-size: 11px;
+  font-weight: 600; white-space: normal;
+}
+.admin-compact-page.settings-compact-page .provider-state.is-enabled {
+  color: var(--success); background: color-mix(in srgb,var(--success) 9%,var(--surface));
+  border-color: color-mix(in srgb,var(--success) 22%,var(--border));
+}
+.admin-compact-page.settings-compact-page .provider-detail { padding: 12px 0; }
+.admin-compact-page.settings-compact-page .provider-actions,
+.admin-compact-page.settings-compact-page .settings-compact-provider .provider-actions {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 12px;
+}
+.admin-compact-page.settings-compact-page [data-slot="shadcn-button"],
+.admin-compact-page.settings-compact-page .provider-actions .primary-button,
+.admin-compact-page.settings-compact-page .provider-actions .secondary-button,
+.admin-compact-page.settings-compact-page .provider-actions .text-button {
+  box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 36px; height: auto; gap: 6px; padding: 7px 11px;
+  border-radius: 8px; font-size: 12px; line-height: 1.4; cursor: pointer;
+}
+.admin-compact-page.settings-compact-page [data-slot="shadcn-button"]:disabled,
+.admin-compact-page.settings-compact-page .provider-actions button:disabled {
+  cursor: not-allowed; opacity: .55;
+}
+.admin-compact-page.settings-compact-page .web-provider-stack { gap: 11px; }
+.admin-compact-page.settings-compact-page .web-provider-pairing {
+  align-items: flex-start; gap: 14px; padding: 12px; margin-block: 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-muted);
+}
+.admin-compact-page.settings-compact-page .web-provider-qr {
+  width: min(224px,100%);
+}
+.admin-compact-page.settings-compact-page :is(.provider-advanced,.web-provider-sync) { max-width: 100%; }
+.admin-compact-page.settings-compact-page :is(button,a,input,select,summary):focus-visible,
+.admin-compact-page.profile-page :is(button,input,textarea):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+@media (max-width: 810px) {
+  .admin-compact-page.profile-page .profile-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 720px) {
+  .admin-compact-page.profile-page .profile-card { padding: 14px; }
+  .admin-compact-page.profile-page .profile-card [data-slot="shadcn-input"] { min-height: 44px; height: 44px; }
+  .admin-compact-page.profile-page .profile-card [data-slot="shadcn-button"] { width: 100%; min-height: 44px; }
+  .admin-compact-page.settings-compact-page .provider-card,
+  .admin-compact-page.settings-compact-page .web-provider-stack .provider-card { padding: 13px; }
+  .admin-compact-page.settings-compact-page .provider-card-head { flex-wrap: wrap; }
+  .admin-compact-page.settings-compact-page [data-slot="shadcn-button"],
+  .admin-compact-page.settings-compact-page .provider-actions button,
+  .admin-compact-page.settings-compact-page .provider-actions a { min-height: 44px; }
+}
