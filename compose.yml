@@ -4,7 +4,7 @@ services:
     build:
       context: .
       args:
-        VITE_API_BASE_URL: https://api.wapphub.com.br
+        VITE_API_BASE_URL: https://wapphub-api.ulln.com.br
     restart: unless-stopped
     networks:
       ingress:
